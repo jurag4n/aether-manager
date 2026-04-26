@@ -59,14 +59,9 @@
 # ── Application class ─────────────────────────────────────────────────────────
 -keep class dev.aether.manager.AetherApplication { *; }
 
-# ── Kotlin intrinsics (reduce size) ──────────────────────────────────────────
--assumenosideeffects class kotlin.jvm.internal.Intrinsics {
-    public static void check*(...);
-    public static void throw*(...);
-}
--assumenosideeffects class java.util.Objects {
-    ** requireNonNull(...);
-}
+# ── Kotlin intrinsics (DISABLED — VerifyError risk on Kotlin 2.x + R8) ─────
+# -assumenosideeffects class kotlin.jvm.internal.Intrinsics { ... }  <- JANGAN aktifkan
+# -assumenosideeffects class java.util.Objects { ... }               <- JANGAN aktifkan
 
 # ── Kotlin Coroutines ─────────────────────────────────────────────────────────
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
@@ -119,3 +114,32 @@
 -dontwarn java.lang.invoke.**
 -dontwarn **$$Lambda$*
 -dontwarn javax.annotation.**
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FIX RUNTIME CRASHES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── DISABLE: Kotlin intrinsics removal (penyebab VerifyError di Kotlin 2.x) ──
+# Rule -assumenosideeffects pada Intrinsics tidak aman di R8 fullMode + Kotlin 2.x
+# Baris lama dihapus dari sini — jangan tambahkan kembali.
+
+# ── Fix VerifyError: Compose + R8 fullMode ────────────────────────────────────
+# R8 agresif meng-inline lambda Compose dan merusak method signature saat runtime.
+-keep @androidx.compose.runtime.Composable class * { *; }
+-keepclassmembers class * {
+    @androidx.compose.runtime.Composable <methods>;
+}
+-keep class androidx.compose.** { *; }
+-dontwarn androidx.compose.**
+
+# ── Fix VerifyError: Kotlin lambda / SAM conversion ──────────────────────────
+-keep class kotlin.jvm.functions.** { *; }
+-keep class kotlin.jvm.internal.Lambda { *; }
+-keep class * extends kotlin.jvm.internal.Lambda { *; }
+
+# ── Fix "No package ID 6a" — resource compose-charts ter-strip ───────────────
+-keep class io.github.ehsannarmani.** { *; }
+-dontwarn io.github.ehsannarmani.**
+
+# ── Fix shimmer resource strip ────────────────────────────────────────────────
+-keep class com.facebook.shimmer.** { *; }
