@@ -20,12 +20,12 @@ val gitHash: String by lazy {
 
 android {
     namespace   = "dev.aether.manager"
-    compileSdk  = 36
+    compileSdk  = 35
 
     defaultConfig {
         applicationId = "dev.aether.manager"
         minSdk        = 26
-        targetSdk     = 36
+        targetSdk     = 35
         versionCode   = 240
         versionName   = "2.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
