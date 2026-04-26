@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aether License Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&family=Google+Sans+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+:root {
+  --md-sys-color-primary: #D0BCFF;
+  --md-sys-color-on-primary: #381E72;
+  --md-sys-color-primary-container: #4F378B;
+  --md-sys-color-on-primary-container: #EADDFF;
+  --md-sys-color-secondary: #CCC2DC;
+  --md-sys-color-on-secondary: #332D41;
+  --md-sys-color-secondary-container: #4A4458;
+  --md-sys-color-on-secondary-container: #E8DEF8;
+  --md-sys-color-tertiary: #EFB8C8;
+  --md-sys-color-on-tertiary: #492532;
+  --md-sys-color-tertiary-container: #633B48;
+  --md-sys-color-on-tertiary-container: #FFD8E4;
+  --md-sys-color-error: #F2B8B5;
+  --md-sys-color-on-error: #601410;
+  --md-sys-color-error-container: #8C1D18;
+  --md-sys-color-on-error-container: #F9DEDC;
+  --md-sys-color-background: #1C1B1F;
+  --md-sys-color-on-background: #E6E1E5;
+  --md-sys-color-surface: #1C1B1F;
+  --md-sys-color-on-surface: #E6E1E5;
+  --md-sys-color-surface-variant: #49454F;
+  --md-sys-color-on-surface-variant: #CAC4D0;
+  --md-sys-color-outline: #938F99;
+  --md-sys-color-outline-variant: #49454F;
+  --md-sys-color-surface-container-lowest: #0F0D13;
+  --md-sys-color-surface-container-low: #1D1B20;
+  --md-sys-color-surface-container: #211F26;
+  --md-sys-color-surface-container-high: #2B2930;
+  --md-sys-color-surface-container-highest: #36343B;
+  --md-sys-color-inverse-surface: #E6E1E5;
+  --md-sys-color-inverse-on-surface: #313033;
+  --md-sys-color-inverse-primary: #6750A4;
+  --elevation-1: 0 1px 2px rgba(0,0,0,.3), 0 1px 3px 1px rgba(0,0,0,.15);
+  --elevation-2: 0 1px 2px rgba(0,0,0,.3), 0 2px 6px 2px rgba(0,0,0,.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Google Sans', system-ui, sans-serif;
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+.material-icons-round { font-size: 20px; vertical-align: middle; }
+
+/* ── Top App Bar ── */
+.top-bar {
+  background: var(--md-sys-color-surface-container-low);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  padding: 0 16px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-bar-icon { color: var(--md-sys-color-primary); }
+.top-bar-title { font-size: 22px; font-weight: 600; flex: 1; }
+.top-bar-badge {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 100px;
+  letter-spacing: .04em;
+}
+
+/* ── Layout ── */
+.page { max-width: 960px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Cards ── */
+.card {
+  background: var(--md-sys-color-surface-container);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.card-header {
+  padding: 20px 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.card-header-icon { color: var(--md-sys-color-primary); }
+.card-title { font-size: 13px; font-weight: 600; color: var(--md-sys-color-on-surface-variant); text-transform: uppercase; letter-spacing: .08em; flex: 1; }
+.card-body { padding: 0 20px 20px; }
+
+/* ── Inputs ── */
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field label { display: block; font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; font-weight: 500; }
+
+.md-input {
+  width: 100%;
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+}
+.md-input:focus { border-color: var(--md-sys-color-primary); }
+.md-input::placeholder { color: var(--md-sys-color-outline); }
+select.md-input option { background: var(--md-sys-color-surface-container-high); }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity .15s, box-shadow .15s;
+  text-decoration: none;
+}
+.btn:hover { opacity: .88; }
+.btn:active { opacity: .76; }
+
+.btn-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+.btn-tonal  { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+.btn-error  { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
+.btn-text   { background: transparent; color: var(--md-sys-color-primary); padding: 8px 14px; }
+.btn-outline { background: transparent; border: 1px solid var(--md-sys-color-outline-variant); color: var(--md-sys-color-on-surface); padding: 9px 18px; }
+
+.btn-sm { padding: 7px 14px; font-size: 12px; gap: 5px; }
+.btn-sm .material-icons-round { font-size: 16px; }
+.btn-icon { padding: 8px; border-radius: 50%; width: 36px; height: 36px; justify-content: center; }
+.btn-icon.btn-sm { width: 30px; height: 30px; padding: 5px; }
+
+/* ── Result box ── */
+.result-box {
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 14px;
+  font-size: 13px;
+  display: none;
+  animation: fadeIn .2s ease;
+}
+.result-box.show { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+.key-mono {
+  font-family: 'Google Sans Mono', monospace;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--md-sys-color-primary);
+  letter-spacing: .08em;
+  word-break: break-all;
+  margin-bottom: 8px;
+}
+.result-meta { font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px; }
+
+/* ── Status chips ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chip-active   { background: #1A3A2A; color: #6EE7A0; }
+.chip-expired  { background: #3A1A1A; color: #F87171; }
+.chip-lifetime { background: #1E1A3A; color: var(--md-sys-color-primary); }
+.chip-revoked  { background: #3A2A1A; color: #FB923C; }
+.chip-pending  { background: #2A2A1A; color: #FCD34D; }
+
+/* ── Key table ── */
+.key-table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+tbody td { padding: 11px 12px; border-bottom: 1px solid var(--md-sys-color-outline-variant); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .1s; }
+tbody tr:hover { background: rgba(208,188,255,.04); }
+.td-key { font-family: 'Google Sans Mono', monospace; color: var(--md-sys-color-primary); font-size: 13px; }
+.td-device { font-family: 'Google Sans Mono', monospace; color: var(--md-sys-color-on-surface-variant); font-size: 11px; }
+.td-actions { display: flex; gap: 6px; align-items: center; }
+
+/* ── Order cards ── */
+.order-card {
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.order-card:last-child { margin-bottom: 0; }
+.order-name { font-weight: 600; font-size: 14px; }
+.order-phone { color: var(--md-sys-color-on-surface-variant); font-size: 13px; }
+.order-id-text { font-family: 'Google Sans Mono', monospace; font-size: 11px; color: var(--md-sys-color-outline); }
+.order-time { font-size: 11px; color: var(--md-sys-color-outline); margin-top: 2px; }
+.order-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+/* ── Notify dot ── */
+.notify-dot {
+  display: inline-block; width: 8px; height: 8px;
+  background: #FB923C; border-radius: 50%; margin-left: 6px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Empty state ── */
+.empty-state { text-align: center; padding: 32px; color: var(--md-sys-color-outline); font-size: 13px; }
+.empty-state .material-icons-round { font-size: 36px; display: block; margin-bottom: 8px; opacity: .4; }
+
+/* ── Lookup row ── */
+.lookup-row { display: flex; gap: 10px; align-items: center; }
+.lookup-row .md-input { flex: 1; }
+.lookup-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ── Config ── */
+.config-row { display: flex; gap: 10px; align-items: flex-end; }
+.config-row .field { flex: 1; margin-bottom: 0; }
+
+/* ── Login ── */
+#loginScreen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px;
+}
+.login-card {
+  background: var(--md-sys-color-surface-container);
+  border-radius: 28px;
+  padding: 36px 32px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: var(--elevation-2);
+}
+.login-logo { margin-bottom: 12px; display: flex; align-items: center; justify-content: flex-start; }
+.login-logo svg { filter: drop-shadow(0 0 12px color-mix(in srgb, var(--md-sys-color-primary) 40%, transparent)); }
+.login-title { font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 24px; }
+.login-error { color: var(--md-sys-color-error); font-size: 12px; margin-top: 8px; display: none; }
+
+#app { display: none; }
+
+/* ── Divider ── */
+.divider { height: 1px; background: var(--md-sys-color-outline-variant); margin: 4px 0; }
+
+/* ── Search filter row ── */
+.filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+.filter-row .md-input { flex: 1; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface);
+  padding: 12px 20px; border-radius: 100px; font-size: 13px; font-weight: 500;
+  z-index: 9999; transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  pointer-events: none; white-space: nowrap;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Edit modal ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  z-index: 1000; display: none;
+  align-items: center; justify-content: center; padding: 24px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  animation: slideUp .2s ease;
+}
+@keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+.modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<!-- Token Screen (step 2) -->
+<div id="tokenScreen" style="display:none;position:fixed;inset:0;background:var(--md-sys-color-background);align-items:center;justify-content:center;z-index:200;padding:24px;min-height:100vh;">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#4F378B"/><path d="M18 10a3 3 0 0 0-3 3v1h-1a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1v-1a3 3 0 0 0-3-3zm0 2a1 1 0 0 1 1 1v1h-2v-1a1 1 0 0 1 1-1zm0 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z" fill="#D0BCFF"/></svg>
+    </div>
+    <div class="login-title">Admin Token</div>
+    <div class="login-sub">Masukkan ADMIN_TOKEN dari environment untuk melanjutkan</div>
+    <div class="field">
+      <input class="md-input" type="password" id="tokenInput" placeholder="ADMIN_TOKEN" onkeydown="if(event.key==='Enter')enterToken()">
+    </div>
+    <button class="btn btn-filled" style="width:100%;justify-content:center" onclick="enterToken()">
+      <span class="material-icons-round">vpn_key</span> Verifikasi Token
+    </button>
+    <div class="login-error" id="tokenErr">Token salah atau kosong</div>
+  </div>
+</div>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="8.5" cy="8.5" r="5.5" stroke="var(--md-sys-color-primary)" stroke-width="1.8"/>
+        <circle cx="8.5" cy="8.5" r="2.5" fill="var(--md-sys-color-primary)" opacity=".35"/>
+        <path d="M12.5 12.5L20 20" stroke="var(--md-sys-color-primary)" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M17 18.5L19 16.5" stroke="var(--md-sys-color-primary)" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M15 20.5L17 18.5" stroke="var(--md-sys-color-primary)" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="login-title">Aether Admin</div>
+    <div class="login-sub">License Management Panel</div>
+    <div class="field">
+      <label>Password</label>
+      <input class="md-input" type="password" id="pwInput" placeholder="Admin password" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="btn btn-filled" style="width:100%;justify-content:center" onclick="login()">
+      <span class="material-icons-round">login</span> Masuk
+    </button>
+    <div class="login-error" id="loginErr">Password salah</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="top-bar">
+    <span class="material-icons-round top-bar-icon">vpn_key</span>
+    <span class="top-bar-title">Aether Admin</span>
+    <span class="top-bar-badge">Admin</span>
+    <button class="btn btn-text btn-sm" onclick="logout()" style="margin-left:8px">
+      <span class="material-icons-round">logout</span> Logout
+    </button>
+  </div>
+
+  <div class="page">
+
+    <!-- Config -->
+    <div class="card">
+      <div class="card-header">
+        <span class="material-icons-round card-header-icon">settings</span>
+        <span class="card-title">Konfigurasi</span>
+      </div>
+      <div class="card-body">
+        <div class="config-row">
+          <div class="field">
+            <label>Admin Token</label>
+            <input class="md-input" id="adminToken" type="password" placeholder="ADMIN_TOKEN dari environment">
+          </div>
+          <div class="field" style="max-width:260px">
+            <label>API URL</label>
+            <input class="md-input" id="apiUrl" value="https://aether-app-weld.vercel.app/api" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generate Key -->
+    <div class="card">
+      <div class="card-header">
+        <span class="material-icons-round card-header-icon">add_circle</span>
+        <span class="card-title">Generate License Key</span>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="field">
+            <label>Durasi</label>
+            <select class="md-input" id="duration">
+              <option value="-1">Lifetime</option>
+              <option value="7">7 Hari</option>
+              <option value="30">30 Hari</option>
+              <option value="90">90 Hari</option>
+              <option value="180">180 Hari</option>
+              <option value="365">1 Tahun</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Catatan (opsional)</label>
+            <input class="md-input" id="keyNote" placeholder="Nama buyer / order ID">
+          </div>
+        </div>
+        <button class="btn btn-filled" onclick="generateKey()" style="margin-top:4px">
+          <span class="material-icons-round">auto_awesome</span> Generate Key
+        </button>
+        <div class="result-box" id="genResult"></div>
+      </div>
+    </div>
+
+    <!-- Lookup / Manage -->
+    <div class="card">
+      <div class="card-header">
+        <span class="material-icons-round card-header-icon">manage_search</span>
+        <span class="card-title">Lookup & Kelola Key</span>
+      </div>
+      <div class="card-body">
+        <div class="lookup-row">
+          <input class="md-input" id="lookupKey" placeholder="AETH-XXXX-XXXX-XXXX"
+            style="text-transform:uppercase;font-family:'Google Sans Mono',monospace"
+            oninput="this.value=this.value.toUpperCase()">
+          <div class="lookup-actions">
+            <button class="btn btn-tonal btn-sm" onclick="lookupKey()">
+              <span class="material-icons-round">search</span> Cari
+            </button>
+            <button class="btn btn-error btn-sm" onclick="revokeKey()">
+              <span class="material-icons-round">block</span> Revoke
+            </button>
+          </div>
+        </div>
+        <div class="result-box" id="lookupResult"></div>
+      </div>
+    </div>
+
+    <!-- Pending Orders -->
+    <div class="card">
+      <div class="card-header">
+        <span class="material-icons-round card-header-icon">pending_actions</span>
+        <span class="card-title">Pending Orders</span>
+        <span id="pendingDot" class="notify-dot" style="display:none"></span>
+        <button class="btn btn-tonal btn-sm" onclick="loadOrders()" style="margin-left:auto">
+          <span class="material-icons-round">refresh</span> Refresh
+        </button>
+      </div>
+      <div class="card-body">
+        <div id="orderList">
+          <div class="empty-state">
+            <span class="material-icons-round">inbox</span>
+            Klik Refresh untuk memuat orders
+          </div>
+        </div>
+        <div class="result-box" id="confirmResult"></div>
+      </div>
+    </div>
+
+    <!-- All Keys -->
+    <div class="card">
+      <div class="card-header">
+        <span class="material-icons-round card-header-icon">list_alt</span>
+        <span class="card-title">Semua License Keys</span>
+        <button class="btn btn-tonal btn-sm" onclick="listKeys()" style="margin-left:auto">
+          <span class="material-icons-round">refresh</span> Refresh
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="filter-row">
+          <input class="md-input" id="keySearch" placeholder="Filter key, device, note..." oninput="filterKeys()" style="font-size:13px">
+          <select class="md-input" id="keyStatusFilter" onchange="filterKeys()" style="max-width:140px;font-size:13px">
+            <option value="">Semua status</option>
+            <option value="active">Active</option>
+            <option value="lifetime">Lifetime</option>
+            <option value="expired">Expired</option>
+            <option value="revoked">Revoked</option>
+          </select>
+          <select class="md-input" id="keySortOrder" onchange="filterKeys()" style="max-width:160px;font-size:13px">
+            <option value="newest">Terbaru dulu</option>
+            <option value="oldest">Terlama dulu</option>
+          </select>
+        </div>
+        <div class="key-table-wrap" id="keyTable">
+          <div class="empty-state">
+            <span class="material-icons-round">key_off</span>
+            Klik Refresh untuk memuat keys
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--md-sys-color-outline)" id="keyCount"></div>
+      </div>
+    </div>
+
+    <!-- All Invoices -->
+    <div class="card">
+      <div class="card-header">
+        <span class="material-icons-round card-header-icon">receipt_long</span>
+        <span class="card-title">Semua Invoices</span>
+        <button class="btn btn-tonal btn-sm" onclick="listInvoices()" style="margin-left:auto">
+          <span class="material-icons-round">refresh</span> Refresh
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="filter-row">
+          <input class="md-input" id="invSearch" placeholder="Filter nama, order ID, status..." oninput="filterInvoices()" style="font-size:13px">
+          <select class="md-input" id="invStatusFilter" onchange="filterInvoices()" style="max-width:140px;font-size:13px">
+            <option value="">Semua status</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="key-table-wrap" id="invoiceTable">
+          <div class="empty-state">
+            <span class="material-icons-round">receipt</span>
+            Klik Refresh untuk memuat invoices
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--md-sys-color-outline)" id="invCount"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Edit Key Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">Edit Key</div>
+    <input type="hidden" id="editKeyId">
+    <div class="field">
+      <label>Catatan</label>
+      <input class="md-input" id="editKeyNote" placeholder="Nama buyer / keterangan">
+    </div>
+    <div class="field">
+      <label>Ubah Masa Aktif</label>
+      <select class="md-input" id="editDuration">
+        <option value="">Tidak berubah</option>
+        <optgroup label="➕ Tambah">
+          <option value="+7">+7 Hari</option>
+          <option value="+30">+30 Hari</option>
+          <option value="+90">+90 Hari</option>
+          <option value="+180">+180 Hari</option>
+          <option value="+365">+1 Tahun</option>
+        </optgroup>
+        <optgroup label="➖ Kurangi">
+          <option value="-7">-7 Hari</option>
+          <option value="-30">-30 Hari</option>
+          <option value="-90">-90 Hari</option>
+          <option value="-180">-180 Hari</option>
+          <option value="-365">-1 Tahun</option>
+        </optgroup>
+        <optgroup label="⚙️ Set">
+          <option value="lifetime">Set ke Lifetime</option>
+          <option value="set7">Set 7 Hari dari sekarang</option>
+          <option value="set30">Set 30 Hari dari sekarang</option>
+          <option value="set90">Set 90 Hari dari sekarang</option>
+          <option value="set365">Set 1 Tahun dari sekarang</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeEditModal()">Batal</button>
+      <button class="btn btn-filled" onclick="saveEditKey()">
+        <span class="material-icons-round">save</span> Simpan
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const ADMIN_PW = 'aether2024admin';
+
+let allKeys = [];
+let allInvoices = [];
+
+function login() {
+  if (document.getElementById('pwInput').value === ADMIN_PW) {
+    // Step 1 ok — tampilkan layar token
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('tokenScreen').style.display = 'flex';
+    document.getElementById('tokenErr').style.display = 'none';
+    document.getElementById('tokenInput').value = '';
+    setTimeout(() => document.getElementById('tokenInput').focus(), 100);
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+  }
+}
+
+function enterToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) {
+    document.getElementById('tokenErr').style.display = 'block';
+    return;
+  }
+  // Simpan token ke input tersembunyi, lalu masuk panel
+  document.getElementById('adminToken').value = t;
+  document.getElementById('tokenScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadOrders();
+  listKeys();
+}
+
+function logout() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('tokenScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pwInput').value = '';
+  document.getElementById('adminToken').value = '';
+  document.getElementById('tokenInput').value = '';
+}
+
+function apiUrl() { return document.getElementById('apiUrl').value.replace(/\/$/, ''); }
+function token()  { return document.getElementById('adminToken').value; }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function randomKey() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const seg = () => Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+  return `AETH-${seg()}-${seg()}-${seg()}`;
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Disalin ke clipboard'));
+}
+
+async function generateKey() {
+  const duration = parseInt(document.getElementById('duration').value);
+  const note = document.getElementById('keyNote').value.trim();
+  const key = randomKey();
+  const expiresAt = duration === -1 ? null : Date.now() + duration * 86400000;
+  const res = document.getElementById('genResult');
+  res.className = 'result-box show';
+  res.innerHTML = '<span style="color:var(--md-sys-color-outline)">Generating...</span>';
+  try {
+    const r = await fetch(`${apiUrl()}/admin/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+      body: JSON.stringify({ key, expiresAt, note })
+    });
+    const data = await r.json();
+    if (r.ok) {
+      const expLabel = expiresAt ? new Date(expiresAt).toLocaleDateString('id-ID') : 'Lifetime';
+      res.innerHTML = `
+        <div class="key-mono">${key}</div>
+        <div class="result-meta">Berlaku: ${expLabel}${note ? ' · ' + note : ''}</div>
+        <button class="btn btn-tonal btn-sm" style="margin-top:12px" onclick="copyText('${key}')">
+          <span class="material-icons-round">content_copy</span> Salin Key
+        </button>`;
+      toast('Key berhasil dibuat');
+    } else {
+      res.innerHTML = `<span style="color:var(--md-sys-color-error)">Error: ${data.error || r.status}</span>`;
+    }
+  } catch(e) {
+    res.innerHTML = `<span style="color:var(--md-sys-color-error)">${e.message}</span>`;
+  }
+}
+
+async function lookupKey() {
+  const key = document.getElementById('lookupKey').value.trim();
+  if (!key) return;
+  const res = document.getElementById('lookupResult');
+  res.className = 'result-box show';
+  res.innerHTML = '<span style="color:var(--md-sys-color-outline)">Mencari...</span>';
+  try {
+    const r = await fetch(`${apiUrl()}/admin/key/${key}`, { headers: { 'x-admin-token': token() } });
+    const data = await r.json();
+    if (r.ok) {
+      const exp = data.expiresAt ? new Date(data.expiresAt).toLocaleString('id-ID') : 'Lifetime';
+      const statusChip = getStatusChip(data);
+      res.innerHTML = `
+        <div class="key-mono" style="font-size:16px">${data.key}</div>
+        <div style="margin:10px 0 6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${statusChip}
+          <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant)">Exp: ${exp}</span>
+        </div>
+        <div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.8">
+          Device: <span style="font-family:'Google Sans Mono',monospace">${data.deviceId || 'Belum diaktivasi'}</span><br>
+          Catatan: ${data.note || '-'}
+        </div>`;
+    } else {
+      res.innerHTML = `<span style="color:var(--md-sys-color-error)">${data.error || 'Tidak ditemukan'}</span>`;
+    }
+  } catch(e) { res.innerHTML = `<span style="color:var(--md-sys-color-error)">${e.message}</span>`; }
+}
+
+async function revokeKey() {
+  const key = document.getElementById('lookupKey').value.trim();
+  if (!key) return;
+  const res = document.getElementById('lookupResult');
+  res.className = 'result-box show';
+  res.innerHTML = '<span style="color:var(--md-sys-color-outline)">Merevoking...</span>';
+  try {
+    const r = await fetch(`${apiUrl()}/admin/revoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+      body: JSON.stringify({ key })
+    });
+    const data = await r.json();
+    if (r.ok) {
+      res.innerHTML = `<span style="color:#6EE7A0">✓ Key berhasil direvoke</span>`;
+      toast('Key direvoke');
+    } else {
+      res.innerHTML = `<span style="color:var(--md-sys-color-error)">${data.error}</span>`;
+    }
+  } catch(e) { res.innerHTML = `<span style="color:var(--md-sys-color-error)">${e.message}</span>`; }
+}
+
+async function deleteKey(key) {
+  try {
+    const r = await fetch(`${apiUrl()}/admin/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+      body: JSON.stringify({ key })
+    });
+    const text = await r.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(_) {}
+    if (r.ok) {
+      toast('Key dihapus');
+      listKeys();
+    } else {
+      toast('Gagal hapus: ' + (data.error || r.status));
+    }
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+function openEditModal(key, note) {
+  document.getElementById('editKeyId').value = key;
+  document.getElementById('editKeyNote').value = note || '';
+  document.getElementById('editDuration').value = '';
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+async function saveEditKey() {
+  const key = document.getElementById('editKeyId').value;
+  const note = document.getElementById('editKeyNote').value.trim();
+  const extDays = document.getElementById('editDuration').value;
+
+  const payload = { key, note };
+  const base = allKeys.find(k => k.key === key);
+  const now = Date.now();
+
+  if (extDays === 'lifetime') {
+    payload.expiresAt = null;
+  } else if (extDays === 'set7') {
+    payload.expiresAt = now + 7 * 86400000;
+  } else if (extDays === 'set30') {
+    payload.expiresAt = now + 30 * 86400000;
+  } else if (extDays === 'set90') {
+    payload.expiresAt = now + 90 * 86400000;
+  } else if (extDays === 'set365') {
+    payload.expiresAt = now + 365 * 86400000;
+  } else if (extDays && extDays.startsWith('+')) {
+    // Tambah dari expiry sekarang atau dari now jika sudah expired
+    const fromExpiry = base && base.expiresAt && base.expiresAt > now ? base.expiresAt : now;
+    payload.expiresAt = fromExpiry + parseInt(extDays) * 86400000;
+  } else if (extDays && extDays.startsWith('-')) {
+    // Kurangi dari expiry sekarang
+    if (base && base.expiresAt !== null) {
+      const newExp = base.expiresAt + parseInt(extDays) * 86400000;
+      payload.expiresAt = newExp < now ? now + 3600000 : newExp; // min 1 jam dari sekarang
+    }
+  }
+
+  try {
+    const r = await fetch(`${apiUrl()}/admin/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+      body: JSON.stringify(payload)
+    });
+    const text = await r.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(_) {}
+    if (r.ok) {
+      toast('Key diperbarui');
+      closeEditModal();
+      listKeys();
+    } else {
+      toast('Gagal update: ' + (data.error || r.status));
+    }
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+function getStatusChip(k) {
+  const now = Date.now();
+  if (!k.isActive) return `<span class="chip chip-revoked">Revoked</span>`;
+  if (k.expiresAt === null) return `<span class="chip chip-lifetime">Lifetime</span>`;
+  if (k.expiresAt > now) return `<span class="chip chip-active">Active</span>`;
+  return `<span class="chip chip-expired">Expired</span>`;
+}
+
+async function listKeys() {
+  const container = document.getElementById('keyTable');
+  container.innerHTML = '<div class="empty-state"><span class="material-icons-round" style="animation:spin 1s linear infinite">autorenew</span></div>';
+  try {
+    const r = await fetch(`${apiUrl()}/admin/keys`, { headers: { 'x-admin-token': token() } });
+    const data = await r.json();
+    if (!r.ok) { container.innerHTML = `<div class="empty-state" style="color:var(--md-sys-color-error)">${data.error}</div>`; return; }
+    allKeys = data.keys || [];
+    renderKeys();
+  } catch(e) { container.innerHTML = `<div class="empty-state" style="color:var(--md-sys-color-error)">${e.message}</div>`; }
+}
+
+function filterKeys() { renderKeys(); }
+
+function renderKeys() {
+  const container = document.getElementById('keyTable');
+  const search = document.getElementById('keySearch').value.toLowerCase();
+  const statusF = document.getElementById('keyStatusFilter').value;
+  const now = Date.now();
+
+  const sortOrder = document.getElementById('keySortOrder').value;
+
+  const filtered = allKeys.filter(k => {
+    const matchSearch = !search ||
+      k.key.toLowerCase().includes(search) ||
+      (k.deviceId||'').toLowerCase().includes(search) ||
+      (k.note||'').toLowerCase().includes(search);
+    let keyStatus = '';
+    if (!k.isActive) keyStatus = 'revoked';
+    else if (k.expiresAt === null) keyStatus = 'lifetime';
+    else if (k.expiresAt > now) keyStatus = 'active';
+    else keyStatus = 'expired';
+    const matchStatus = !statusF || keyStatus === statusF;
+    return matchSearch && matchStatus;
+  });
+
+  // Sort: terbaru (createdAt desc) atau terlama (createdAt asc)
+  filtered.sort((a, b) => {
+    const ta = a.createdAt || 0;
+    const tb = b.createdAt || 0;
+    return sortOrder === 'oldest' ? ta - tb : tb - ta;
+  });
+
+  document.getElementById('keyCount').textContent = `Menampilkan ${filtered.length} dari ${allKeys.length} key`;
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><span class="material-icons-round">search_off</span>Tidak ada key ditemukan</div>';
+    return;
+  }
+
+  const rows = filtered.map(k => {
+    const exp = k.expiresAt ? new Date(k.expiresAt).toLocaleDateString('id-ID') : 'Lifetime';
+    const devShort = k.deviceId ? k.deviceId.substring(0,10)+'…' : '-';
+    return `<tr>
+      <td class="td-key">${k.key}</td>
+      <td class="td-device">${devShort}</td>
+      <td style="font-size:12px;white-space:nowrap">${exp}</td>
+      <td>${getStatusChip(k)}</td>
+      <td style="color:var(--md-sys-color-on-surface-variant);font-size:12px">${k.note || '-'}</td>
+      <td class="td-actions">
+        <button class="btn btn-tonal btn-icon btn-sm" title="Edit" onclick="openEditModal('${k.key}','${(k.note||'').replace(/'/g,"\\'")}')">
+          <span class="material-icons-round">edit</span>
+        </button>
+        <button class="btn btn-error btn-icon btn-sm" title="Revoke" onclick="revokeFromTable('${k.key}')">
+          <span class="material-icons-round">block</span>
+        </button>
+        <button class="btn btn-icon btn-sm" style="background:var(--md-sys-color-error-container);color:var(--md-sys-color-on-error-container)" title="Hapus" onclick="deleteKey('${k.key}')">
+          <span class="material-icons-round">delete</span>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<table>
+    <thead><tr>
+      <th>Key</th><th>Device</th><th>Expires</th><th>Status</th><th>Note</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function revokeFromTable(key) {
+  try {
+    const r = await fetch(`${apiUrl()}/admin/revoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+      body: JSON.stringify({ key })
+    });
+    if (r.ok) { toast('Key direvoke'); listKeys(); }
+    else { const d = await r.json(); toast('Gagal: ' + d.error); }
+  } catch(e) { toast(e.message); }
+}
+
+async function listInvoices() {
+  const container = document.getElementById('invoiceTable');
+  container.innerHTML = '<div class="empty-state"><span class="material-icons-round">autorenew</span></div>';
+  try {
+    const r = await fetch(`${apiUrl()}/payment/list-orders`, { headers: { 'x-admin-token': token() } });
+    const data = await r.json();
+    if (!r.ok) { container.innerHTML = `<div class="empty-state" style="color:var(--md-sys-color-error)">${data.error}</div>`; return; }
+    allInvoices = data.orders || [];
+    renderInvoices();
+  } catch(e) { container.innerHTML = `<div class="empty-state" style="color:var(--md-sys-color-error)">${e.message}</div>`; }
+}
+
+function filterInvoices() { renderInvoices(); }
+
+function renderInvoices() {
+  const container = document.getElementById('invoiceTable');
+  const search = document.getElementById('invSearch').value.toLowerCase();
+  const statusF = document.getElementById('invStatusFilter').value;
+
+  const filtered = allInvoices.filter(o => {
+    const matchSearch = !search ||
+      (o.name||'').toLowerCase().includes(search) ||
+      (o.orderId||'').toLowerCase().includes(search) ||
+      (o.phone||'').toLowerCase().includes(search);
+    const matchStatus = !statusF || (o.status||'').toLowerCase() === statusF;
+    return matchSearch && matchStatus;
+  });
+
+  document.getElementById('invCount').textContent = `Menampilkan ${filtered.length} dari ${allInvoices.length} invoice`;
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><span class="material-icons-round">receipt</span>Tidak ada invoice ditemukan</div>';
+    return;
+  }
+
+  function invChip(status) {
+    if (status === 'confirmed') return `<span class="chip chip-active">Confirmed</span>`;
+    if (status === 'pending')   return `<span class="chip chip-pending">Pending</span>`;
+    return `<span class="chip chip-expired">${status}</span>`;
+  }
+
+  const rows = filtered.map(o => {
+    const time = new Date(o.createdAt).toLocaleString('id-ID');
+    return `<tr>
+      <td class="td-key" style="font-size:11px">${o.orderId}</td>
+      <td><b>${o.name}</b><br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant)">${o.phone}</span></td>
+      <td style="font-size:12px;white-space:nowrap">${time}</td>
+      <td>${invChip(o.status)}</td>
+      <td style="font-size:12px;color:var(--md-sys-color-on-surface-variant)">${o.licenseKey || '-'}</td>
+      <td class="td-actions">
+        ${o.status === 'pending' ? `<button class="btn btn-tonal btn-sm" onclick="confirmOrderFromTable('${o.orderId}')">
+          <span class="material-icons-round">check_circle</span> Konfirmasi
+        </button>` : ''}
+        <button class="btn btn-error btn-icon btn-sm" title="Hapus Invoice" onclick="deleteInvoice('${o.orderId}')">
+          <span class="material-icons-round">delete</span>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<table>
+    <thead><tr>
+      <th>Order ID</th><th>Pembeli</th><th>Waktu</th><th>Status</th><th>License Key</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function deleteInvoice(orderId) {
+  if (!confirm(`Hapus invoice ${orderId}? Tindakan ini tidak bisa dibatalkan.`)) return;
+  try {
+    const r = await fetch(`${apiUrl()}/payment/delete-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+      body: JSON.stringify({ orderId })
+    });
+    if (r.ok) {
+      toast('Invoice dihapus');
+      listInvoices();
+      loadOrders();
+    } else {
+      const d = await r.json();
+      toast('Gagal hapus: ' + (d.error || r.status));
+    }
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function loadOrders() {
+  const container = document.getElementById('orderList');
+  const dot = document.getElementById('pendingDot');
+  container.innerHTML = '<div class="empty-state"><span class="material-icons-round">autorenew</span></div>';
+  try {
+    const r = await fetch(`${apiUrl()}/payment/list-orders?status=pending`, { headers: { 'x-admin-token': token() } });
+    const data = await r.json();
+    if (!r.ok) { container.innerHTML = `<div class="empty-state" style="color:var(--md-sys-color-error)">${data.error}</div>`; return; }
+    const orders = (data.orders || []).filter(o => o.status === 'pending');
+    dot.style.display = orders.length > 0 ? 'inline-block' : 'none';
+    if (!orders.length) {
+      container.innerHTML = '<div class="empty-state"><span class="material-icons-round">check_circle</span>Tidak ada pending order saat ini</div>';
+      return;
+    }
+    container.innerHTML = orders.map(o => {
+      const time = new Date(o.createdAt).toLocaleString('id-ID');
+      return `<div class="order-card">
+        <div>
+          <div class="order-name">${o.name}</div>
+          <div class="order-phone">${o.phone}</div>
+          <div class="order-id-text">${o.orderId}</div>
+          <div class="order-time">${time}</div>
+        </div>
+        <div class="order-actions">
+          <span class="chip chip-pending">Pending</span>
+          <button class="btn btn-tonal btn-sm" onclick="confirmOrder('${o.orderId}')">
+            <span class="material-icons-round">check_circle</span> Konfirmasi
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = `<div class="empty-state" style="color:var(--md-sys-color-error)">${e.message}</div>`;
+  }
+}
+
+async function confirmOrder(orderId) {
+  const res = document.getElementById('confirmResult');
+  res.className = 'result-box show';
+  res.innerHTML = '<span style="color:var(--md-sys-color-outline)">Memproses...</span>';
+  try {
+    const r = await fetch(`${apiUrl()}/payment/confirm-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+      body: JSON.stringify({ orderId })
+    });
+    const data = await r.json();
+    if (r.ok) {
+      const expDate = new Date(data.expiresAt).toLocaleDateString('id-ID');
+      res.innerHTML = `
+        <div style="color:#6EE7A0;font-weight:600;margin-bottom:8px">✓ Order berhasil dikonfirmasi</div>
+        <div class="key-mono" style="font-size:16px">${data.licenseKey}</div>
+        <div class="result-meta">Berlaku hingga ${expDate} · License aktif otomatis di HP user.</div>`;
+      toast('Order dikonfirmasi');
+      loadOrders();
+    } else {
+      res.innerHTML = `<span style="color:var(--md-sys-color-error)">Error: ${data.error}</span>`;
+    }
+  } catch(e) { res.innerHTML = `<span style="color:var(--md-sys-color-error)">${e.message}</span>`; }
+}
+
+async function confirmOrderFromTable(orderId) {
+  await confirmOrder(orderId);
+  listInvoices();
+}
+
+setInterval(() => {
+  if (document.getElementById('app').style.display !== 'none') loadOrders();
+}, 30000);
+</script>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</body>
+</html>

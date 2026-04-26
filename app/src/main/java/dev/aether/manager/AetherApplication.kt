@@ -1,0 +1,135 @@
+package dev.aether.manager
+
+import android.app.Application
+import android.content.pm.PackageManager
+import android.os.Build
+import com.topjohnwu.superuser.Shell
+import com.unity3d.ads.IUnityAdsInitializationListener
+import com.unity3d.ads.UnityAds
+import dev.aether.manager.ads.AdManager
+import dev.aether.manager.ads.InterstitialAdManager
+import com.google.android.gms.ads.MobileAds
+import dev.aether.manager.ads.AdmobInterstitialManager
+
+class AetherApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+
+        // Security check hanya aktif di RELEASE build yang benar-benar signed.
+        // Di debug build, semua check di-skip agar tidak FC saat development/testing.
+        if (!BuildConfig.DEBUG) {
+            checkSignature()
+            checkAll()
+        }
+
+        initLibsu()
+        CimolAgent.tryLoad()
+        initUnityAds()
+        initAdmob()
+    }
+
+    // ─── Security checks ──────────────────────────────────────────────────────
+
+    private fun checkSignature() {
+        if (!NativeAether.tryLoad()) return
+        try {
+            @Suppress("DEPRECATION")
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                PackageManager.GET_SIGNING_CERTIFICATES
+            else
+                PackageManager.GET_SIGNATURES
+
+            val info = packageManager.getPackageInfo(packageName, flags)
+
+            val sigBytes: ByteArray? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
+            } else {
+                @Suppress("DEPRECATION")
+                info.signatures?.firstOrNull()?.toByteArray()
+            }
+
+            if (sigBytes == null) return
+
+            val hex = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(sigBytes).joinToString("") { "%02x".format(it) }
+
+            NativeAether.nativeCheckSignature(hex)
+        } catch (_: Exception) {
+            // Jangan kill — bisa false positive Samsung Knox / binder error
+        }
+    }
+
+    private fun checkAll() {
+        if (!NativeAether.tryLoad()) return
+        try {
+            NativeAether.nativeCheckAll(this)
+        } catch (_: Throwable) {
+            // Catch Throwable (bukan hanya Exception) agar UnsatisfiedLinkError
+            // dan Error lainnya tidak menyebabkan unhandled crash ke sistem.
+            // nativeKillProcess hanya dipanggil jika .so berhasil load (tryLoad() true di atas).
+            NativeAether.nativeKillProcess()
+        }
+    }
+
+    // ─── libsu ────────────────────────────────────────────────────────────────
+
+    private fun initLibsu() {
+        Shell.enableVerboseLogging = false
+        Shell.setDefaultBuilder(
+            Shell.Builder.create()
+                .setFlags(Shell.FLAG_REDIRECT_STDERR)
+                .setTimeout(10)
+        )
+    }
+
+    // ─── Unity Ads ────────────────────────────────────────────────────────────
+
+    private fun initUnityAds() {
+        if (UnityAds.isInitialized) {
+            if (!BuildConfig.DEBUG) checkUnityIntact()
+            InterstitialAdManager.preload(this)
+            return
+        }
+
+        UnityAds.initialize(
+            this,
+            AdManager.GAME_ID,
+            AdManager.isTestMode,
+            object : IUnityAdsInitializationListener {
+                override fun onInitializationComplete() {
+                    if (!BuildConfig.DEBUG) checkUnityIntact()
+                    InterstitialAdManager.preload(this@AetherApplication)
+                }
+
+                override fun onInitializationFailed(
+                    error: UnityAds.UnityAdsInitializationError,
+                    message: String
+                ) {
+                    if (!BuildConfig.DEBUG &&
+                        error != UnityAds.UnityAdsInitializationError.INTERNAL_ERROR) {
+                        checkUnityIntact()
+                    }
+                }
+            }
+        )
+    }
+
+    // ─── AdMob ────────────────────────────────────────────────────────────────
+
+    private fun initAdmob() {
+        MobileAds.initialize(this) {
+            // Preload iklan AdMob setelah init selesai
+            AdmobInterstitialManager.preload(this)
+        }
+    }
+
+    private fun checkUnityIntact() {
+        if (!NativeAether.tryLoad()) return
+        try {
+            NativeAether.nativeCheckUnityIntact()
+        } catch (_: Throwable) {
+            NativeAether.nativeKillProcess()
+        }
+    }
+}

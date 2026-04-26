@@ -1,0 +1,223 @@
+name: Build Aether Manager
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+jobs:
+  build:
+    name: Build Aplikasi
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      actions: write
+
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_NDK_VERSION: 27.2.12479018
+      CMAKE_VERSION: 3.22.1
+      BUILD_TOOLS_VERSION: 36.0.0
+      COMPILE_SDK: 36
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: gradle
+
+      - name: Cache Android SDK components
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ANDROID_SDK_ROOT }}/ndk/${{ env.ANDROID_NDK_VERSION }}
+            ${{ env.ANDROID_SDK_ROOT }}/cmake/${{ env.CMAKE_VERSION }}
+            ${{ env.ANDROID_SDK_ROOT }}/platforms/android-${{ env.COMPILE_SDK }}
+            ${{ env.ANDROID_SDK_ROOT }}/build-tools/${{ env.BUILD_TOOLS_VERSION }}
+          key: android-sdk-ndk${{ env.ANDROID_NDK_VERSION }}-cmake${{ env.CMAKE_VERSION }}-api${{ env.COMPILE_SDK }}
+          restore-keys: |
+            android-sdk-ndk${{ env.ANDROID_NDK_VERSION }}-
+
+      - name: Install SDK components
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" \
+            "platforms;android-$COMPILE_SDK" \
+            "ndk;$ANDROID_NDK_VERSION" \
+            "cmake;$CMAKE_VERSION" \
+            "build-tools;$BUILD_TOOLS_VERSION"
+
+      - name: Set Android env
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION" >> $GITHUB_ENV
+          echo "$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION" >> $GITHUB_PATH
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.gradle/build-cache
+            ~/.android/build-cache
+          key: gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+          restore-keys: |
+            gradle-
+
+      - name: Decode keystore
+        run: |
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > aether.jks
+
+      - name: Fix gradlew permission
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:assembleRelease \
+            --build-cache \
+            --parallel \
+            --configuration-cache \
+            --stacktrace \
+            -Dorg.gradle.daemon=false \
+            -Dorg.gradle.jvmargs="-Xmx4g"
+
+      - name: Sign Release APK
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*.apk" | grep -v signed | head -1)
+
+          if [ -z "$UNSIGNED_APK" ]; then
+            echo "ERROR: APK tidak ditemukan"
+            exit 1
+          fi
+
+          BASENAME=$(basename "${UNSIGNED_APK%.apk}")
+          SIGNED_APK="app/build/outputs/apk/release/${BASENAME}-signed.apk"
+
+          apksigner sign \
+            --ks aether.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out "$SIGNED_APK" \
+            "$UNSIGNED_APK"
+
+          apksigner verify --print-certs "$SIGNED_APK"
+
+          echo "RELEASE_APK=$SIGNED_APK" >> $GITHUB_ENV
+          echo "APK_SIZE=$(du -h "$SIGNED_APK" | cut -f1)" >> $GITHUB_ENV
+          echo "APK_NAME=${BASENAME}-signed" >> $GITHUB_ENV
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.RELEASE_APK }}
+          compression-level: 0
+          retention-days: 3
+
+      - name: Collect build info
+        if: always()
+        run: |
+          SHA=$(git rev-parse HEAD)
+          SHORT_SHA="${SHA::7}"
+          REPO="${{ github.repository }}"
+          SERVER="${{ github.server_url }}"
+          TAG=$(git tag --points-at "$SHA" 2>/dev/null | head -1)
+          RUN_ID="${{ github.run_id }}"
+
+          if [ -n "$TAG" ]; then
+            BUILD_TYPE="release"
+            REF="$TAG"
+            BUILD_URL="${SERVER}/${REPO}/releases/tag/${TAG}"
+          else
+            BUILD_TYPE="dev"
+            REF="${{ github.ref_name }}"
+            BUILD_URL="${SERVER}/${REPO}/actions/runs/${RUN_ID}"
+          fi
+
+          BUILD_TYPE_LABEL=$(python3 -c "s='${BUILD_TYPE}'; print(s[0].upper()+s[1:])")
+
+          echo "BRANCH=${REF}" >> $GITHUB_ENV
+          echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_ENV
+          echo "COMMIT_URL=${SERVER}/${REPO}/commit/${SHA}" >> $GITHUB_ENV
+          echo "COMMIT_MSG=$(git log -1 --pretty=format:'%s' "$SHA")" >> $GITHUB_ENV
+          echo "AUTHOR=$(git log -1 --pretty=format:'%an' "$SHA")" >> $GITHUB_ENV
+          echo "BUILD_TYPE_LABEL=${BUILD_TYPE_LABEL}" >> $GITHUB_ENV
+          echo "BUILD_URL=${BUILD_URL}" >> $GITHUB_ENV
+          echo "VERSION_NAME=$(grep -E '^\s*versionName\s*=' app/build.gradle.kts | grep -o '".*"' | tr -d '"' | head -1)" >> $GITHUB_ENV
+          echo "VERSION_CODE=$(grep -E '^\s*versionCode\s*=' app/build.gradle.kts | grep -oP '[0-9]+' | head -1)" >> $GITHUB_ENV
+
+      - name: Notify Telegram - success
+        if: success()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          VERSION_NAME:  ${{ env.VERSION_NAME }}
+          VERSION_CODE:  ${{ env.VERSION_CODE }}
+          BRANCH:        ${{ env.BRANCH }}
+          SHORT_SHA:     ${{ env.SHORT_SHA }}
+          COMMIT_URL:    ${{ env.COMMIT_URL }}
+          COMMIT_MSG:    ${{ env.COMMIT_MSG }}
+          AUTHOR:        ${{ env.AUTHOR }}
+          APK_SIZE:      ${{ env.APK_SIZE }}
+          BUILD_URL:     ${{ env.BUILD_URL }}
+          BUILD_TYPE_LABEL: ${{ env.BUILD_TYPE_LABEL }}
+          RELEASE_APK:   ${{ env.RELEASE_APK }}
+          CMAKE_VERSION: ${{ env.CMAKE_VERSION }}
+          ANDROID_NDK_VERSION: ${{ env.ANDROID_NDK_VERSION }}
+        run: |
+          BUILD_DATE=$(date "+%d/%m/%Y")
+          CAPTION=$(printf '*Aether Manager Updated* ✨\n\n*📱 App Info*\n`Version  : %s (%s)`\n`Build    : %s`\n`Size     : %s`\n`Date     : %s`\n\n*🔧 Toolchain*\n`CMake %s, NDK %s`\n`ABI  : arm64\-v8a, armeabi\-v7a`\n\n*📝 Commit*\n`%s`\n\n*🔗 Links*\n[Commit](%s)  \|  [Build Log](%s)\n\n_sent by @aetherassistant22\_bot_' \
+            "$VERSION_NAME" "$VERSION_CODE" "$BUILD_TYPE_LABEL" "$APK_SIZE" "$BUILD_DATE" \
+            "$CMAKE_VERSION" "$ANDROID_NDK_VERSION" \
+            "$COMMIT_MSG" "$COMMIT_URL" "$BUILD_URL")
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+            -F "chat_id=${CHAT_ID}" \
+            -F "document=@${RELEASE_APK}" \
+            -F "caption=${CAPTION}" \
+            -F "parse_mode=MarkdownV2" \
+            -F "disable_notification=false"
+
+      - name: Notify Telegram - failure
+        if: failure()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          BRANCH:     ${{ env.BRANCH }}
+          SHORT_SHA:  ${{ env.SHORT_SHA }}
+          COMMIT_URL: ${{ env.COMMIT_URL }}
+          COMMIT_MSG: ${{ env.COMMIT_MSG }}
+          AUTHOR:     ${{ env.AUTHOR }}
+          BUILD_URL:  ${{ env.BUILD_URL }}
+        run: |
+          BUILD_DATE=$(date "+%d/%m/%Y")
+          TEXT=$(printf '*Aether Manager Build Failed* ❌\n\n*📝 Commit*\n`%s`\n\n*🌿 Branch*\n`%s`\n\n*🔗 Links*\n[Commit](%s)  \|  [Build Log](%s)\n\n_sent by @aetherassistant22\_bot_' \
+            "$COMMIT_MSG" "$BRANCH" "$COMMIT_URL" "$BUILD_URL")
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -F "chat_id=${CHAT_ID}" \
+            -F "text=${TEXT}" \
+            -F "parse_mode=MarkdownV2" \
+            -F "disable_web_page_preview=true"
