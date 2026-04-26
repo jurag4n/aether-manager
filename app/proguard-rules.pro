@@ -31,21 +31,34 @@
 -keep class com.unity3d.**   { *; }
 -keep class com.unity3d.ads.** { *; }
 
-# ── Native methods (JNI) — KRITIS untuk libprotect.so ────────────────────────
+# ── Native methods (JNI) — KRITIS untuk libaether.so & libcimolagent.so ──────
 # Pastikan semua method dengan prefix "native" tidak di-rename/strip
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
 
-# ── IntegrityGuard — jangan obfuscate nama class & native methods ─────────────
-# R8 harus bisa menemukan method yang di-export dari JNI dengan nama persis ini.
--keep class dev.aether.manager.security.IntegrityGuard {
-    private native java.lang.String nativeGetApkHash(android.content.Context);
-    private native boolean nativeIsHooked();
-    private native boolean nativeCheckIntegrity(android.content.Context, java.lang.String);
-    private native void nativeKillProcess(java.lang.String);
-    private native java.lang.String nativeGetPackageName();
+# ── NativeAether — JNI bridge ke libaether.so ─────────────────────────────────
+# R8 harus bisa menemukan semua external fun dengan nama JNI yang persis.
+-keep class dev.aether.manager.NativeAether {
+    public static *** tryLoad();
+    public static native ***;
+    native <methods>;
 }
+
+# ── CimolAgent — JNI bridge ke libcimolagent.so ───────────────────────────────
+-keep class dev.aether.manager.CimolAgent {
+    public static *** tryLoad();
+    public static *** isAvailable();
+    native <methods>;
+}
+
+# ── BroadcastReceiver & Service — harus tetap ada di release build ────────────
+# BootReceiver ada di dalam AetherService.kt; R8 bisa hapus jika tidak di-keep.
+-keep class dev.aether.manager.service.BootReceiver { *; }
+-keep class dev.aether.manager.service.AetherService { *; }
+
+# ── Application class ─────────────────────────────────────────────────────────
+-keep class dev.aether.manager.AetherApplication { *; }
 
 # ── Kotlin intrinsics (reduce size) ──────────────────────────────────────────
 -assumenosideeffects class kotlin.jvm.internal.Intrinsics {

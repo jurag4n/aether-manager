@@ -16,6 +16,11 @@ class AetherApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Load native library PERTAMA sebelum apapun yang bergantung padanya.
+        // Tanpa ini, nativeGetGameId() dan semua JNI call lain akan crash
+        // dengan UnsatisfiedLinkError bahkan di debug build.
+        NativeAether.tryLoad()
+
         // Security check hanya aktif di RELEASE build yang benar-benar signed.
         // Di debug build, semua check di-skip agar tidak FC saat development/testing.
         if (!BuildConfig.DEBUG) {
@@ -32,6 +37,8 @@ class AetherApplication : Application() {
     // ─── Security checks ──────────────────────────────────────────────────────
 
     private fun checkSignature() {
+        // tryLoad() sudah dipanggil di onCreate() — cukup cek via runCatching
+        // apakah library memang tersedia (System.loadLibrary idempotent).
         if (!NativeAether.tryLoad()) return
         try {
             @Suppress("DEPRECATION")
