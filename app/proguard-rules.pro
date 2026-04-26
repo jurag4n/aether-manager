@@ -41,7 +41,6 @@
 # R8 harus bisa menemukan semua external fun dengan nama JNI yang persis.
 -keep class dev.aether.manager.NativeAether {
     public static *** tryLoad();
-    public static native ***;
     native <methods>;
 }
 
