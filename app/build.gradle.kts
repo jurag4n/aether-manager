@@ -30,11 +30,7 @@ android {
         versionName   = "2.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // ── NDK / CMake config ──────────────────────────────────────────────
         ndk {
-            // arm64-v8a  = semua device modern (flagship & mid-range)
-            // armeabi-v7a = device lama 32-bit
-            // x86_64     = emulator/Chromebook
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
         }
 
@@ -49,7 +45,6 @@ android {
         }
     }
 
-    // ── CMake — libprotect.so ───────────────────────────────────────────────
     externalNativeBuild {
         cmake {
             path   = file("src/main/cpp/CMakeLists.txt")
@@ -59,9 +54,6 @@ android {
 
     signingConfigs {
         create("release") {
-            // Signing hanya aktif di lokal (CI pakai apksigner manual via build.yml)
-            // Kalau aether.jks tidak ada (environment CI), block ini di-skip
-            // sehingga Gradle TIDAK menandatangani APK — biarkan apksigner yang sign.
             val ks = rootProject.file("aether.jks")
             val isCI = System.getenv("CI") == "true"
             if (ks.exists() && !isCI) {
@@ -77,9 +69,6 @@ android {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
-            // Di CI: signingConfig null → Gradle keluarkan APK unsigned,
-            // lalu apksigner di build.yml yang sign.
-            // Di lokal: pakai signingConfig "release" jika keystore ada.
             val isCI = System.getenv("CI") == "true"
             signingConfig = if (isCI) null else signingConfigs.getByName("release")
             proguardFiles(
@@ -116,9 +105,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf("-opt-in=kotlin.RequiresOptIn")
+    kotlin {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+            optIn.add("kotlin.RequiresOptIn")
+        }
     }
 
     buildFeatures {
@@ -138,7 +129,6 @@ android {
                 "/META-INF/MANIFEST.MF", "**.proto", "kotlin/**", "META-INF/com/**"
             )
         }
-        // Pastikan libprotect.so tidak di-compress (agar bisa langsung di-mmap)
         jniLibs {
             useLegacyPackaging = false
         }
@@ -182,19 +172,15 @@ dependencies {
     implementation(libs.lottie.compose)
     implementation(libs.timber)
     implementation(libs.androidx.biometric)
-    // ── Networking ────────────────────────────────────────────────────────
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content)
     implementation(libs.ktor.serialization)
-    // ── UI extras ─────────────────────────────────────────────────────────
     implementation(libs.shimmer)
     implementation(libs.compose.charts)
-    // ── Lifecycle / background ────────────────────────────────────────────
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.startup)
-    // ── Firebase ──────────────────────────────────────────────────────────
     implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
     implementation("com.google.firebase:firebase-analytics")
     debugImplementation(libs.leakcanary.android)
