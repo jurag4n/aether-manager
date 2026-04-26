@@ -76,6 +76,12 @@ android {
                 "proguard-rules.pro"
             )
             multiDexEnabled = false
+            // Fix VerifyError: disable R8 class merging & method inlining
+            optimization {
+                keepRules {
+                    ignoreExternalDependencies = true
+                }
+            }
         }
         debug {
             isMinifyEnabled = false

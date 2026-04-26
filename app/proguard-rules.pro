@@ -5,91 +5,50 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
 ##---------------Begin: proguard configuration for Gson  ----------
-# Gson uses generic type information stored in a class file when working with fields. Proguard
-# removes such information by default, so configure it to keep all of it.
 -keepattributes Signature
-
-# For using GSON @Expose annotation
 -keepattributes *Annotation*
-
-# Gson specific classes
 -dontwarn sun.misc.**
-#-keep class com.google.gson.stream.** { *; }
-
-# Application classes that will be serialized/deserialized over Gson
 -keep class com.google.gson.examples.android.model.** { <fields>; }
-
-# Prevent proguard from stripping interface information from TypeAdapter, TypeAdapterFactory,
-# JsonSerializer, JsonDeserializer instances (so they can be used in @JsonAdapter)
 -keep class * extends com.google.gson.TypeAdapter
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
-
-# Prevent R8 from leaving Data object members always null
 -keepclassmembers,allowobfuscation class * {
   @com.google.gson.annotations.SerializedName <fields>;
 }
-
-# Retain generic signatures of TypeToken and its subclasses with R8 version 3.0 and higher.
 -keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
 -keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
-
 ##---------------End: proguard configuration for Gson  ----------
 
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
-
 -keepnames class * implements android.os.Parcelable
-
 
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
 
-# DISABLED: causes VerifyError with Kotlin 2.x + R8
-#-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
-#	public static void check*(...);
-#	public static void throw*(...);
-#}
-
-# DISABLED: causes VerifyError with Kotlin 2.x + R8
-#-assumenosideeffects class java.util.Objects{
-#    ** requireNonNull(...);
-#}
-
-#-keep class com.frb.engine.Starter {
-#    public static void main(java.lang.String[]);
-#}
-
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
 # ════════════════════════════════════════════════════════════════
-# REQUIRED RULES — Aether Manager
+# FIX VerifyError — R8 fullMode=false + rules ini wajib semua
+# Root cause: R8 AGP 8.7.x merge/inline Compose lambdas → bytecode
+# invalid (>77 argument registers) → ditolak Android Runtime verifier
 # ════════════════════════════════════════════════════════════════
 
-# ── Fix VerifyError: Compose + R8 optimization conflict ──────────
-# R8 merges/inlines Compose lambdas and breaks method signatures at runtime.
+# Disable optimization & preverification sepenuhnya
 -dontoptimize
+-dontpreverify
+
+# ── Compose: jangan disentuh R8 sama sekali ──────────────────────
 -keep class androidx.compose.** { *; }
 -keep class androidx.compose.runtime.** { *; }
+-keep class androidx.compose.runtime.internal.** { *; }
 -keep class androidx.compose.ui.** { *; }
 -keep class androidx.compose.material3.** { *; }
 -keep class androidx.compose.animation.** { *; }
@@ -97,7 +56,18 @@
     @androidx.compose.runtime.Composable <methods>;
 }
 
-# ── JNI bridges (CRITICAL — app will crash without these) ────────
+# ── Kotlin lambda/function classes — R8 inlining = register overflow
+-keep class kotlin.jvm.functions.** { *; }
+-keep class kotlin.coroutines.** { *; }
+-keep class kotlin.coroutines.jvm.internal.** { *; }
+-keepclassmembers class * implements kotlin.jvm.functions.Function* { *; }
+
+# ── Kotlin companion objects — jangan di-merge
+-keepclassmembers class * {
+    public static ** Companion;
+}
+
+# ── JNI bridges (CRITICAL — app crash tanpa ini) ─────────────────
 -keep class dev.aether.manager.NativeAether {
     public static *** tryLoad();
     native <methods>;
