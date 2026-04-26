@@ -1,6 +1,6 @@
 [versions]
 agp = "8.10.0"
-kotlin = "2.1.0"
+kotlin = "2.3.21"
 coreKtx = "1.16.0"
 lifecycleRuntime = "2.9.0"
 activityCompose = "1.10.1"
@@ -20,7 +20,6 @@ libsu = "5.3.0"
 mmkv = "2.0.1"
 zstdJni = "1.5.5-11"
 sqliteBundled = "2.5.1"
-# New additions
 kotlinxSerializationJson = "1.8.1"
 roomRuntime = "2.7.1"
 composeFoundation = "1.8.0"
@@ -28,16 +27,11 @@ lottie = "6.6.6"
 timber = "5.0.1"
 leakcanary = "2.14"
 androidxBiometric = "1.2.0-alpha05"
-# ── Networking ─────────────────────────────────────────────────────────────
 retrofit = "2.11.0"
-# ── UI extras ──────────────────────────────────────────────────────────────
 shimmer = "0.5.0"
 composeCharts = "0.2.5"
-# ── Lifecycle / coroutines extras ─────────────────────────────────────────
 lifecycleProcess = "2.9.0"
-# ── Startup / tracing ─────────────────────────────────────────────────────
 androidxStartup = "1.2.0"
-# ── Ktor client (HTTP ringan, coroutine-native) ────────────────────────────
 ktor = "3.1.3"
 
 [libraries]
@@ -57,7 +51,6 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePrefs" }
 accompanist-systemuicontroller = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanist" }
-# Unity Ads
 unity-ads = { group = "com.unity3d.ads", name = "unity-ads", version.ref = "unity-ads" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
@@ -70,61 +63,28 @@ libsu-io = { group = "com.github.topjohnwu.libsu", name = "io", version.ref = "l
 mmkv = { group = "com.tencent", name = "mmkv", version.ref = "mmkv" }
 zstd-jni = { group = "com.github.luben", name = "zstd-jni", version.ref = "zstdJni" }
 sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqliteBundled" }
-
-# ── Kotlin Serialization ───────────────────────────────────────────────────
-# Pengganti Gson yang lebih idiomatic Kotlin, null-safe, dan support @Serializable
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
-
-# ── Room Database ──────────────────────────────────────────────────────────
-# ORM untuk structured local data (logs, history tweaks, dll); lebih type-safe dari raw SQLite
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomRuntime" }
-room-ktx     = { group = "androidx.room", name = "room-ktx",     version.ref = "roomRuntime" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomRuntime" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "roomRuntime" }
-
-# ── Compose Foundation ─────────────────────────────────────────────────────
-# Untuk custom layout, gestures, pager, dan lazy grid yang lebih lengkap
 compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "composeFoundation" }
-
-# ── Lottie ─────────────────────────────────────────────────────────────────
-# Animasi JSON ringan untuk splash/loading screen & onboarding
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
-
-# ── Timber ─────────────────────────────────────────────────────────────────
-# Logging wrapper yang bisa di-strip di release; jauh lebih proper dari Log.d
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
-
-# ── Biometric ─────────────────────────────────────────────────────────────
-# Fingerprint/PIN auth sebelum akses fitur root sensitif
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "androidxBiometric" }
-
-# ── LeakCanary (debug only) ────────────────────────────────────────────────
-# Deteksi memory leak otomatis saat development
 leakcanary-android = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
-
-# ── Retrofit (REST client — cocok untuk UpdateChecker & API calls) ─────────
-retrofit-core           = { group = "com.squareup.retrofit2", name = "retrofit",                          version.ref = "retrofit" }
-retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization",   version.ref = "retrofit" }
-
-# ── Shimmer (skeleton loading effect di UI) ───────────────────────────────
+retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
 shimmer = { group = "com.facebook.shimmer", name = "shimmer", version = "0.5.0" }
-
-# ── Compose Charts (grafik CPU/GPU/RAM monitor) ────────────────────────────
 compose-charts = { group = "io.github.ehsannarmani", name = "compose-charts-android", version.ref = "composeCharts" }
-
-# ── Lifecycle Process (deteksi foreground/background app) ─────────────────
 androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
-
-# ── App Startup (init komponen lebih cepat di launch) ─────────────────────
 androidx-startup = { group = "androidx.startup", name = "startup-runtime", version.ref = "androidxStartup" }
-
-# ── Ktor client (HTTP async, coroutine-native — alternatif OkHttp untuk internal calls) ──
-ktor-client-android = { group = "io.ktor", name = "ktor-client-android",            version.ref = "ktor" }
+ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 ktor-client-content = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
-ktor-serialization  = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-serialization = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-ksp = { id = "com.google.devtools.ksp", version = "2.1.0-1.0.29" }
+ksp = { id = "com.google.devtools.ksp", version = "2.3.6" }
