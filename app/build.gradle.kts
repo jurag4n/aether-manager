@@ -25,8 +25,8 @@ android {
         applicationId = "dev.aether.manager"
         minSdk        = 26
         targetSdk     = 36
-        versionCode   = 250
-        versionName   = "2.5"
+        versionCode   = 240
+        versionName   = "2.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // ── NDK / CMake config ──────────────────────────────────────────────
@@ -58,12 +58,17 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile     = rootProject.file("aether.jks")
-            storePassword = System.getenv("STORE_PASSWORD") ?: ""
-            keyAlias      = System.getenv("KEY_ALIAS")      ?: ""
-            keyPassword   = System.getenv("KEY_PASSWORD")   ?: ""
-            enableV1Signing = true
-            enableV2Signing = true
+            // Signing hanya aktif di lokal (CI pakai apksigner manual via build.yml)
+            // Kalau aether.jks tidak ada (environment CI), block ini di-skip
+            // sehingga Gradle TIDAK menandatangani APK — biarkan apksigner yang sign.
+            val ks = rootProject.file("aether.jks")
+            val isCI = System.getenv("CI") == "true"
+            if (ks.exists() && !isCI) {
+                storeFile     = ks
+                storePassword = System.getenv("STORE_PASSWORD") ?: ""
+                keyAlias      = System.getenv("KEY_ALIAS")      ?: ""
+                keyPassword   = System.getenv("KEY_PASSWORD")   ?: ""
+            }
         }
     }
 
@@ -71,11 +76,16 @@ android {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            // Di CI: signingConfig null → Gradle keluarkan APK unsigned,
+            // lalu apksigner di build.yml yang sign.
+            // Di lokal: pakai signingConfig "release" jika keystore ada.
+            val isCI = System.getenv("CI") == "true"
+            signingConfig = if (isCI) null else signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            multiDexEnabled = false
         }
         debug {
             isMinifyEnabled = false
