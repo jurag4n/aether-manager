@@ -5,7 +5,7 @@ agp = "8.9.1"
 # Kotlin 2.2.0 = latest stable, fix "2.1.21 tidak ada", kompatibel dengan Compose 2025
 kotlin = "2.2.0"
 # KSP HARUS match kotlin version: format kotlinVersion-kspVersion
-ksp = "2.2.0-1.0.28"
+ksp = "2.2.0-1.0.27"
 
 # ── AndroidX Core ─────────────────────────────────────────────────────────────
 coreKtx          = "1.16.0"
