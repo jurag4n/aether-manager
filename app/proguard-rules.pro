@@ -64,14 +64,12 @@
     native <methods>;
 }
 
--assumenosideeffects class kotlin.jvm.internal.Intrinsics {
-	public static void check*(...);
-	public static void throw*(...);
-}
+# REMOVED: -assumenosideeffects on Intrinsics — causes VerifyError on ART
+# with AGP 8.7+ R8 full mode due to aggressive clinit inlining / register corruption.
+# Use -dontoptimize as a safer alternative if Intrinsics overhead is a concern,
+# or keep specific methods only via -keepclassmembers instead.
 
--assumenosideeffects class java.util.Objects{
-    ** requireNonNull(...);
-}
+-dontwarn kotlin.jvm.internal.Intrinsics
 
 #-keep class com.frb.engine.Starter {
 #    public static void main(java.lang.String[]);
@@ -79,13 +77,3 @@
 
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
-
-# AdMob — wajib ada, tanpa ini R8 strip internal class dan FC
--keep class com.google.android.gms.ads.** { *; }
--keep class com.google.ads.** { *; }
--dontwarn com.google.android.gms.ads.**
--keep class com.google.android.gms.ads.interstitial.** { *; }
--keep class com.google.android.gms.ads.initialization.** { *; }
--keepclassmembers class * implements com.google.android.gms.ads.initialization.OnInitializationCompleteListener {
-    public void onInitializationComplete(com.google.android.gms.ads.initialization.InitializationStatus);
-}
