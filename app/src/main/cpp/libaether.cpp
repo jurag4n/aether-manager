@@ -419,17 +419,17 @@ __attribute__((visibility("hidden")))
 static int l2_timing_check(void) {
     struct timeval t0, t1;
     gettimeofday(&t0, NULL);
-    // operasi dummy yang cepat secara normal
+    // Iterasi dikurangi 100 (dari 1000): loop lebih murni mengukur
+    // single-step overhead, tanpa noise cache warm-up.
     volatile int x = 0;
-    for (int i=0;i<1000;i++) x+=i;
+    for (int i=0;i<100;i++) x+=i;
     (void)x;
     gettimeofday(&t1, NULL);
     long us = (t1.tv_sec - t0.tv_sec) * 1000000L + (t1.tv_usec - t0.tv_usec);
-    // Threshold: > 500ms untuk 1000 iterasi artinya sedang di-trace.
-    // 200ms terlalu ketat untuk device budget/low-end yang CPU-nya throttled
-    // saat cold start (banyak proses berjalan bersamaan saat boot) → false kill.
-    // Debugger single-step biasanya 10x-100x lebih lambat dari threshold ini.
-    return (us > 500000) ? 1 : 0;  // 500ms — safe untuk semua device
+    // Threshold 2000ms: cold start Snapdragon budget (powersave governor,
+    // banyak proses boot) bisa ratusan ms untuk loop sederhana.
+    // Debugger single-step pada 100 iterasi tetap >> 2s → deteksi tetap valid.
+    return (us > 2000000) ? 1 : 0;  // 2000ms — safe untuk cold start semua device
 }
 
 __attribute__((visibility("hidden")))
@@ -470,7 +470,10 @@ static int get_apk_path(char *out, size_t outlen) {
         char *apk=strstr(line,".apk"); if(!apk) continue;
         char *sl=NULL; for(char *p=apk;p>=line;p--) if(*p=='/'){sl=p;break;}
         if(!sl) continue;
-        size_t plen=(size_t)(apk+4-sl); if(plen>=outlen) continue;
+        // Terminate at first char after ".apk" that isn't part of path
+        // (e.g. '!' in "base.apk!classes.dex" from V2/V3 APK signing block)
+        char *end=apk+4; while(*end&&*end!='!'&&*end!=' '&&*end!='\n') end++;
+        size_t plen=(size_t)(end-sl); if(plen>=outlen) continue;
         strncpy(out,sl,plen); out[plen]='\0'; fclose(f); return 1;
     }
     fclose(f); return 0;
