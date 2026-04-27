@@ -18,15 +18,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.data.UiState
 import dev.aether.manager.i18n.LocalStrings
@@ -34,11 +30,7 @@ import dev.aether.manager.ui.components.*
 import dev.aether.manager.ui.home.TabSectionTitle
 
 @Composable
-fun TweakScreen(
-    vm: MainViewModel,
-    isPremium: Boolean = false,
-    onUpgrade: () -> Unit = {}
-) {
+fun TweakScreen(vm: MainViewModel) {
     val s           = LocalStrings.current
     val tweaks      by vm.tweaks.collectAsState()
     val deviceState by vm.deviceInfo.collectAsState()
@@ -78,98 +70,74 @@ fun TweakScreen(
             }
 
             // ── CPU Freq Limiter ──────────────────────────────
-            if (isPremium) {
-                TweakSection(s.tweakSectionCpuFreq) {
-                    TweakRow(
-                        Icons.Outlined.Tune,
-                        s.tweakCpuFreqEnable,
-                        s.tweakCpuFreqEnableDesc,
-                        tweaks.cpuFreqEnable
-                    ) { vm.setTweak("cpu_freq_enable", it) }
-                    AnimatedVisibility(visible = tweaks.cpuFreqEnable) {
-                        Column {
-                            ItemDivider()
-                            CpuClusterRow(
-                                clusterName = s.tweakCpuClusterPrime,
-                                icon        = Icons.Outlined.ElectricBolt,
-                                accentColor = MaterialTheme.colorScheme.error,
-                                minVal      = tweaks.cpuFreqPrimeMin,
-                                maxVal      = tweaks.cpuFreqPrimeMax,
-                                onMinSelect = { vm.setTweakStr("cpu_freq_prime_min", it) },
-                                onMaxSelect = { vm.setTweakStr("cpu_freq_prime_max", it) }
-                            )
-                            ItemDivider()
-                            CpuClusterRow(
-                                clusterName = s.tweakCpuClusterGold,
-                                icon        = Icons.Outlined.Star,
-                                accentColor = MaterialTheme.colorScheme.tertiary,
-                                minVal      = tweaks.cpuFreqGoldMin,
-                                maxVal      = tweaks.cpuFreqGoldMax,
-                                onMinSelect = { vm.setTweakStr("cpu_freq_gold_min", it) },
-                                onMaxSelect = { vm.setTweakStr("cpu_freq_gold_max", it) }
-                            )
-                            ItemDivider()
-                            CpuClusterRow(
-                                clusterName = s.tweakCpuClusterSilver,
-                                icon        = Icons.Outlined.Memory,
-                                accentColor = MaterialTheme.colorScheme.secondary,
-                                minVal      = tweaks.cpuFreqSilverMin,
-                                maxVal      = tweaks.cpuFreqSilverMax,
-                                onMinSelect = { vm.setTweakStr("cpu_freq_silver_min", it) },
-                                onMaxSelect = { vm.setTweakStr("cpu_freq_silver_max", it) }
-                            )
-                        }
+            TweakSection(s.tweakSectionCpuFreq) {
+                TweakRow(
+                    Icons.Outlined.Tune,
+                    s.tweakCpuFreqEnable,
+                    s.tweakCpuFreqEnableDesc,
+                    tweaks.cpuFreqEnable
+                ) { vm.setTweak("cpu_freq_enable", it) }
+                AnimatedVisibility(visible = tweaks.cpuFreqEnable) {
+                    Column {
+                        ItemDivider()
+                        CpuClusterRow(
+                            clusterName = s.tweakCpuClusterPrime,
+                            icon        = Icons.Outlined.ElectricBolt,
+                            accentColor = MaterialTheme.colorScheme.error,
+                            minVal      = tweaks.cpuFreqPrimeMin,
+                            maxVal      = tweaks.cpuFreqPrimeMax,
+                            onMinSelect = { vm.setTweakStr("cpu_freq_prime_min", it) },
+                            onMaxSelect = { vm.setTweakStr("cpu_freq_prime_max", it) }
+                        )
+                        ItemDivider()
+                        CpuClusterRow(
+                            clusterName = s.tweakCpuClusterGold,
+                            icon        = Icons.Outlined.Star,
+                            accentColor = MaterialTheme.colorScheme.tertiary,
+                            minVal      = tweaks.cpuFreqGoldMin,
+                            maxVal      = tweaks.cpuFreqGoldMax,
+                            onMinSelect = { vm.setTweakStr("cpu_freq_gold_min", it) },
+                            onMaxSelect = { vm.setTweakStr("cpu_freq_gold_max", it) }
+                        )
+                        ItemDivider()
+                        CpuClusterRow(
+                            clusterName = s.tweakCpuClusterSilver,
+                            icon        = Icons.Outlined.Memory,
+                            accentColor = MaterialTheme.colorScheme.secondary,
+                            minVal      = tweaks.cpuFreqSilverMin,
+                            maxVal      = tweaks.cpuFreqSilverMax,
+                            onMinSelect = { vm.setTweakStr("cpu_freq_silver_min", it) },
+                            onMaxSelect = { vm.setTweakStr("cpu_freq_silver_max", it) }
+                        )
                     }
                 }
-            } else {
-                PremiumLockedSection(
-                    title     = s.tweakSectionCpuFreq,
-                    icon      = Icons.Outlined.Tune,
-                    onUpgrade = onUpgrade
-                )
             }
 
             // ── Thermal Profile ───────────────────────────────
-            if (isPremium) {
-                TweakSection(s.tweakThermalProfile) {
-                    ThermalProfileRow(
-                        desc    = s.tweakThermalDesc,
-                        current = tweaks.thermalProfile,
-                        labelDefault     = s.tweakThermalDefault,
-                        labelPerformance = s.tweakThermalPerformance,
-                        labelExtreme     = s.tweakThermalExtreme,
-                        onSelect = { vm.setTweakStr("thermal_profile", it) }
-                    )
-                }
-            } else {
-                PremiumLockedSection(
-                    title     = s.tweakThermalProfile,
-                    icon      = Icons.Outlined.Thermostat,
-                    onUpgrade = onUpgrade
+            TweakSection(s.tweakThermalProfile) {
+                ThermalProfileRow(
+                    desc    = s.tweakThermalDesc,
+                    current = tweaks.thermalProfile,
+                    labelDefault     = s.tweakThermalDefault,
+                    labelPerformance = s.tweakThermalPerformance,
+                    labelExtreme     = s.tweakThermalExtreme,
+                    onSelect = { vm.setTweakStr("thermal_profile", it) }
                 )
             }
 
             // ── GPU Freq Lock ─────────────────────────────────
-            if (isPremium) {
-                TweakSection("GPU") {
-                    TweakRow(Icons.Outlined.LockOpen, s.tweakGpuFreqLock, s.tweakGpuFreqLockDesc, tweaks.gpuFreqLock) { vm.setTweak("gpu_freq_lock", it) }
-                    AnimatedVisibility(visible = tweaks.gpuFreqLock) {
-                        Column {
-                            ItemDivider()
-                            GpuFreqRow(
-                                current  = tweaks.gpuFreqMax,
-                                label    = s.tweakGpuFreqMax,
-                                onSelect = { vm.setTweakStr("gpu_freq_max", it) }
-                            )
-                        }
+            TweakSection("GPU") {
+                TweakRow(Icons.Outlined.LockOpen, s.tweakGpuFreqLock, s.tweakGpuFreqLockDesc, tweaks.gpuFreqLock) { vm.setTweak("gpu_freq_lock", it) }
+                AnimatedVisibility(visible = tweaks.gpuFreqLock) {
+                    Column {
+                        ItemDivider()
+                        GpuFreqRow(
+                            current  = tweaks.gpuFreqMax,
+                            label    = s.tweakGpuFreqMax,
+                            onSelect = { vm.setTweakStr("gpu_freq_max", it) }
+                        )
                     }
                 }
-            } else {
-                PremiumLockedSection(
-                    title     = "GPU Freq Lock",
-                    icon      = Icons.Outlined.VideogameAsset,
-                    onUpgrade = onUpgrade
-                )
             }
 
             // ── Memory ────────────────────────────────────────
@@ -251,127 +219,6 @@ private fun TweakSection(title: String, content: @Composable ColumnScope.() -> U
             tonalElevation = 0.dp
         ) {
             Column(content = content)
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Premium Locked Section
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun PremiumLockedSection(
-    title: String,
-    icon: ImageVector,
-    onUpgrade: () -> Unit
-) {
-    val s = LocalStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TabSectionTitle(icon = Icons.Outlined.Settings, title = title)
-        Surface(
-            shape          = RoundedCornerShape(20.dp),
-            color          = MaterialTheme.colorScheme.surfaceContainerLow,
-            border         = androidx.compose.foundation.BorderStroke(
-                1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
-            ),
-            tonalElevation = 0.dp
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f),
-                                MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0f)
-                            )
-                        )
-                    )
-                    .padding(vertical = 28.dp, horizontal = 20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Feature icon + lock badge overlay
-                    Box(
-                        modifier        = Modifier.size(48.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector     = icon,
-                            contentDescription = null,
-                            modifier        = Modifier
-                                .size(40.dp)
-                                .alpha(0.25f),
-                            tint            = MaterialTheme.colorScheme.onSurface
-                        )
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .background(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(50)
-                                )
-                                .padding(3.dp)
-                        ) {
-                            Icon(
-                                imageVector     = Icons.Filled.Lock,
-                                contentDescription = null,
-                                modifier        = Modifier.size(12.dp),
-                                tint            = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-
-                    // Label "PREMIUM"
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Text(
-                            text     = s.premiumLabel,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                            style    = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.ExtraBold,
-                            color    = MaterialTheme.colorScheme.onPrimaryContainer,
-                            letterSpacing = 1.5.sp
-                        )
-                    }
-
-                    Text(
-                        text      = "${s.premiumLockedDesc} $title.",
-                        style     = MaterialTheme.typography.bodySmall,
-                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 18.sp
-                    )
-
-                    Spacer(Modifier.height(2.dp))
-
-                    Button(
-                        onClick = onUpgrade,
-                        shape   = RoundedCornerShape(14.dp),
-                        colors  = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-                    ) {
-                        Icon(
-                            imageVector     = Icons.Filled.Star,
-                            contentDescription = null,
-                            modifier        = Modifier.size(15.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text       = s.premiumUpgradeBtn,
-                            fontSize   = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
         }
     }
 }

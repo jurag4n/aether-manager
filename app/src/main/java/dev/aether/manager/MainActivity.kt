@@ -145,9 +145,8 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // ── Trigger iklan saat ganti tab / buka settings ──────────────────────
-    LaunchedEffect(currentScreen) { AdScheduler.tryShow() }
-    LaunchedEffect(showSettings)  { AdScheduler.tryShow() }
+    // Iklan dikelola otomatis oleh AdScheduler (interval-based).
+    // Tidak perlu trigger manual saat ganti tab — mengurangi spam.
 
     // ── Toast ─────────────────────────────────────────────────────────────
     val snack by vm.snackMessage.collectAsState()
@@ -211,7 +210,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                 actions = {
                     IconButton(onClick = {
                         showSettings = true
-                        AdScheduler.tryShow()
                     }) {
                         Icon(Icons.Outlined.Settings, null)
                     }
@@ -237,7 +235,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                         selected = selected,
                         onClick  = {
                             currentScreen = item.screen
-                            AdScheduler.tryShow()
                         },
                         icon = {
                             Box(Modifier.scale(scale)) {
@@ -274,11 +271,7 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             ) { screen ->
                 when (screen) {
                     Screen.HOME  -> HomeScreen(vm)
-                    Screen.TWEAK -> TweakScreen(
-                        vm        = vm,
-                        isPremium = isPremium,
-                        onUpgrade = { showLicense = true }
-                    )
+                    Screen.TWEAK -> TweakScreen(vm)
                     Screen.APPS  -> AppProfileScreen(apVm)
                 }
             }

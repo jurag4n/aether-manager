@@ -135,11 +135,6 @@ data class AppStrings(
     val tweakGpuFreqLockDesc: String,
     val tweakGpuFreqMax: String,
 
-    // ── Premium Lock ──────────────────────────────────────────
-    val premiumLabel: String,
-    val premiumLockedDesc: String,
-    val premiumUpgradeBtn: String,
-
     // ── Touch Boost ───────────────────────────────────────────
     val tweakTouchBoost: String,
     val tweakTouchBoostDesc: String,
