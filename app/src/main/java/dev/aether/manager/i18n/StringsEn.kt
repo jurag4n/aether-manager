@@ -1,6 +1,7 @@
 package dev.aether.manager.i18n
 
-val StringsEn = AppStrings(
+private object StringsEnHolder {
+    val value = AppStrings(
     navHome  = "Home",
     navTweak = "Tweaks",
     navApps  = "Apps",
@@ -119,6 +120,9 @@ val StringsEn = AppStrings(
     tweakGpuFreqLock = "GPU Freq Lock",
     tweakGpuFreqLockDesc = "Lock GPU to a specific frequency level",
     tweakGpuFreqMax = "GPU Max Freq",
+    premiumLabel = "✦  PREMIUM",
+    premiumLockedDesc = "This feature is only available for Premium users.\nActivate a license to unlock",
+    premiumUpgradeBtn = "Upgrade to Premium",
     tweakTouchBoost = "Touch Response Boost",
     tweakTouchBoostDesc = "Boost touchscreen responsiveness & polling",
     tweakTouchSampleRate = "Sample Rate",
@@ -372,3 +376,5 @@ val StringsEn = AppStrings(
     serviceNotifChannelDesc = "Background service",
     serviceNotifText = "Tweaks active",
 )
+}
+val StringsEn: AppStrings get() = StringsEnHolder.value

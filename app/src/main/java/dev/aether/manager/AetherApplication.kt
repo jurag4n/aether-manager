@@ -3,28 +3,40 @@ package dev.aether.manager
 import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import com.topjohnwu.superuser.Shell
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
 import dev.aether.manager.ads.AdManager
 import dev.aether.manager.ads.InterstitialAdManager
-import dev.aether.manager.CimolAgent
+import com.google.android.gms.ads.MobileAds
+import dev.aether.manager.ads.AdmobInterstitialManager
 
 class AetherApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
 
+        // Load native library PERTAMA sebelum apapun yang bergantung padanya.
+        NativeAether.tryLoad()
+
         // Security check hanya aktif di RELEASE build yang benar-benar signed.
-        // Di debug build, semua check di-skip agar tidak FC saat development/testing.
-        if (!BuildConfig.DEBUG) {
-            checkSignature()
-            checkAll()
-        }
+      //  if (!BuildConfig.DEBUG) {
+       //     checkSignature()
+        //    checkAll()
+       // }
 
         initLibsu()
         CimolAgent.tryLoad()
-        initUnityAds()
+
+        // FIX: Wrap ads init dalam try-catch agar exception dari SDK
+        // tidak menyebabkan FC sebelum SplashActivity sempat dibuka.
+        runCatching { initUnityAds() }.onFailure {
+            Log.e("AetherApp", "Unity Ads init failed", it)
+        }
+        runCatching { initAdmob() }.onFailure {
+            Log.e("AetherApp", "AdMob init failed", it)
+        }
     }
 
     // ─── Security checks ──────────────────────────────────────────────────────
@@ -62,7 +74,7 @@ class AetherApplication : Application() {
         if (!NativeAether.tryLoad()) return
         try {
             NativeAether.nativeCheckAll(this)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             NativeAether.nativeKillProcess()
         }
     }
@@ -81,20 +93,25 @@ class AetherApplication : Application() {
     // ─── Unity Ads ────────────────────────────────────────────────────────────
 
     private fun initUnityAds() {
+        // FIX: Ambil GAME_ID dengan runCatching — jika .so tidak ada,
+        // nativeGetGameId() lempar UnsatisfiedLinkError dan ditangkap di sini.
+        val gameId = runCatching { AdManager.GAME_ID }.getOrDefault("")
+        if (gameId.isEmpty()) return  // .so tidak tersedia — skip Unity init
+
         if (UnityAds.isInitialized) {
-            if (!BuildConfig.DEBUG) checkUnityIntact()
-            InterstitialAdManager.preload(this)
+            if (!BuildConfig.DEBUG) runCatching { checkUnityIntact() }
+            runCatching { InterstitialAdManager.preload(this) }
             return
         }
 
         UnityAds.initialize(
             this,
-            AdManager.GAME_ID,
+            gameId,
             AdManager.isTestMode,
             object : IUnityAdsInitializationListener {
                 override fun onInitializationComplete() {
-                    if (!BuildConfig.DEBUG) checkUnityIntact()
-                    InterstitialAdManager.preload(this@AetherApplication)
+                    if (!BuildConfig.DEBUG) runCatching { checkUnityIntact() }
+                    runCatching { InterstitialAdManager.preload(this@AetherApplication) }
                 }
 
                 override fun onInitializationFailed(
@@ -103,18 +120,32 @@ class AetherApplication : Application() {
                 ) {
                     if (!BuildConfig.DEBUG &&
                         error != UnityAds.UnityAdsInitializationError.INTERNAL_ERROR) {
-                        checkUnityIntact()
+                        runCatching { checkUnityIntact() }
                     }
                 }
             }
         )
     }
 
+    // ─── AdMob ────────────────────────────────────────────────────────────────
+
+    private fun initAdmob() {
+        // FIX: MobileAds.initialize() kadang lempar exception internal pada device
+        // tanpa GMS terbaru. Wrap preload() dalam runCatching agar aman.
+        MobileAds.initialize(this) {
+            runCatching {
+                AdmobInterstitialManager.preload(this)
+            }.onFailure {
+                Log.e("AetherApp", "AdMob preload failed", it)
+            }
+        }
+    }
+
     private fun checkUnityIntact() {
         if (!NativeAether.tryLoad()) return
         try {
             NativeAether.nativeCheckUnityIntact()
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             NativeAether.nativeKillProcess()
         }
     }

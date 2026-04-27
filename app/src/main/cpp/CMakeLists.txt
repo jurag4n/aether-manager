@@ -27,9 +27,13 @@ target_compile_options(aether PRIVATE
     -Wextra
     -Wno-unused-parameter
     -DANDROID
-    $<$<CONFIG:Release>:-DNDEBUG>
-    $<$<NOT:$<CONFIG:Release>>:-DDEV_LOG=1>
 )
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_definitions(aether PRIVATE NDEBUG)
+else()
+    target_compile_definitions(aether PRIVATE DEV_LOG=1)
+endif()
 
 target_link_options(aether PRIVATE
     -flto=thin
@@ -71,8 +75,11 @@ target_compile_options(cimolagent PRIVATE
     -Wextra
     -Wno-unused-parameter
     -DANDROID
-    $<$<CONFIG:Release>:-DNDEBUG>
 )
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_definitions(cimolagent PRIVATE NDEBUG)
+endif()
 
 target_link_options(cimolagent PRIVATE
     -flto=thin

@@ -30,6 +30,8 @@ object InterstitialAdManager {
         }
     }
 
+    fun isReady(): Boolean = isLoaded
+
     fun preload(context: Context) {
         if (!UnityAds.isInitialized) return
         if (isLoaded || isLoading) return

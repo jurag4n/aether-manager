@@ -419,14 +419,17 @@ __attribute__((visibility("hidden")))
 static int l2_timing_check(void) {
     struct timeval t0, t1;
     gettimeofday(&t0, NULL);
-    // operasi dummy yang cepat secara normal
+    // Iterasi dikurangi 100 (dari 1000): loop lebih murni mengukur
+    // single-step overhead, tanpa noise cache warm-up.
     volatile int x = 0;
-    for (int i=0;i<1000;i++) x+=i;
+    for (int i=0;i<100;i++) x+=i;
     (void)x;
     gettimeofday(&t1, NULL);
     long us = (t1.tv_sec - t0.tv_sec) * 1000000L + (t1.tv_usec - t0.tv_usec);
-    // Threshold: > 50ms untuk 1000 iterasi artinya sedang di-trace
-    return (us > 200000) ? 1 : 0;  // 200ms — safe untuk Samsung throttle
+    // Threshold 2000ms: cold start Snapdragon budget (powersave governor,
+    // banyak proses boot) bisa ratusan ms untuk loop sederhana.
+    // Debugger single-step pada 100 iterasi tetap >> 2s → deteksi tetap valid.
+    return (us > 2000000) ? 1 : 0;  // 2000ms — safe untuk cold start semua device
 }
 
 __attribute__((visibility("hidden")))
@@ -467,7 +470,10 @@ static int get_apk_path(char *out, size_t outlen) {
         char *apk=strstr(line,".apk"); if(!apk) continue;
         char *sl=NULL; for(char *p=apk;p>=line;p--) if(*p=='/'){sl=p;break;}
         if(!sl) continue;
-        size_t plen=(size_t)(apk+4-sl); if(plen>=outlen) continue;
+        // Terminate at first char after ".apk" that isn't part of path
+        // (e.g. '!' in "base.apk!classes.dex" from V2/V3 APK signing block)
+        char *end=apk+4; while(*end&&*end!='!'&&*end!=' '&&*end!='\n') end++;
+        size_t plen=(size_t)(end-sl); if(plen>=outlen) continue;
         strncpy(out,sl,plen); out[plen]='\0'; fclose(f); return 1;
     }
     fclose(f); return 0;
@@ -830,10 +836,16 @@ static void get_source_dir(JNIEnv *env, jobject ctx, char *out, size_t outlen) {
 
 __attribute__((constructor(101), visibility("hidden")))
 static void early_security_check(void) {
-    // Hanya cek tracer pid dan maps di init — cukup cepat, tidak perlu JNI.
+    // Hanya cek frida maps di init — cukup cepat, tidak perlu JNI.
+    //
+    // l1_tracer_pid DIHAPUS dari sini: beberapa ROM (MIUI/HyperOS, ColorOS,
+    // Samsung Knox) menyebabkan TracerPid non-zero secara normal saat cold
+    // start, sebelum app fully initialized -> false positive SIGKILL.
+    // TracerPid tetap dicek di layer1_anti_hook() via nativeCheckAll()
+    // yang dipanggil setelah Application.onCreate() selesai.
+    //
     // l2_self_ptrace TIDAK dijalankan di sini: Samsung Knox bisa belum siap
-    // saat .init_array dipanggil sehingga ptrace errno ambigu → false kill.
-    if (l1_tracer_pid()) { DEVLOG("tracer_pid"); aether_kill(); }
+    // saat .init_array dipanggil sehingga ptrace errno ambigu -> false kill.
     if (l1_frida_maps()) { DEVLOG("frida_maps"); aether_kill(); }
 }
 

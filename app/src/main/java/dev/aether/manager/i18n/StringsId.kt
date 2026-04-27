@@ -1,6 +1,7 @@
 package dev.aether.manager.i18n
 
-val StringsId = AppStrings(
+private object StringsIdHolder {
+    val value = AppStrings(
     navHome  = "Beranda",
     navTweak = "Tweak",
     navApps  = "Aplikasi",
@@ -119,6 +120,9 @@ val StringsId = AppStrings(
     tweakGpuFreqLock = "GPU Freq Lock",
     tweakGpuFreqLockDesc = "Kunci frekuensi GPU ke level tertentu",
     tweakGpuFreqMax = "GPU Max Freq",
+    premiumLabel = "✦  PREMIUM",
+    premiumLockedDesc = "Fitur ini hanya tersedia untuk pengguna Premium.\nAktifkan lisensi untuk membuka",
+    premiumUpgradeBtn = "Upgrade ke Premium",
     tweakTouchBoost = "Touch Response Boost",
     tweakTouchBoostDesc = "Tingkatkan responsivitas layar sentuh",
     tweakTouchSampleRate = "Sample Rate",
@@ -372,3 +376,5 @@ val StringsId = AppStrings(
     serviceNotifChannelDesc = "Layanan background",
     serviceNotifText = "Tweak aktif",
 )
+}
+val StringsId: AppStrings get() = StringsIdHolder.value

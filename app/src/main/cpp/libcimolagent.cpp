@@ -8,9 +8,9 @@
  * │  MODULE 1 — CPU      : freq, governor, usage (/proc/stat)        │
  * │  MODULE 2 — Thermal  : semua thermal_zone via sysfs              │
  * │  MODULE 3 — Memory   : /proc/meminfo + zram mm_stat              │
- * │  MODULE 4 — Battery  : /sys/class/power_supply/battery/*         │
+ * │  MODULE 4 — Battery  : /sys/class/power_supply/battery/...       │
  * │  MODULE 5 — I/O      : block device scheduler read/write         │
- * │  MODULE 6 — KSM      : /sys/kernel/mm/ksm/*                      │
+ * │  MODULE 6 — KSM      : /sys/kernel/mm/ksm/...                    │
  * │  MODULE 7 — Process  : /proc/[pid]/stat scanner                  │
  * │  MODULE 8 — GPU      : Adreno/Mali freq + busy (best-effort)     │
  * │  MODULE 9 — Executor : execWithTimeout + sysfs r/w               │
