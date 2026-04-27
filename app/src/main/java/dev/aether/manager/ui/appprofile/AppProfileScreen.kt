@@ -197,8 +197,8 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
             EmptyListHint(searchQuery.isNotEmpty())
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(filtered, key = { it.packageName }) { app ->
@@ -374,12 +374,34 @@ private fun AppListItem(
         }
     }
 
-    Column {
+    val cardBg by animateColorAsState(
+        targetValue = if (isEnabled)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
+        else
+            MaterialTheme.colorScheme.surfaceContainerLow,
+        animationSpec = tween(250),
+        label = "card_bg"
+    )
+    val cardBorder by animateColorAsState(
+        targetValue = if (isEnabled)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        else
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+        animationSpec = tween(250),
+        label = "card_border"
+    )
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        color = cardBg,
+        border = BorderStroke(1.dp, cardBorder),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 4.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -448,13 +470,6 @@ private fun AppListItem(
                 }
             }
         }
-
-        // Thin divider antar item
-        HorizontalDivider(
-            modifier = Modifier.padding(start = 62.dp),
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-        )
     }
 
     if (showDeleteDialog) {
