@@ -7,132 +7,124 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-// ── Pisah ke object supaya R8 tidak merge 58 Color val ke satu <clinit> ──────
-// Root cause VerifyError: top-level private val di file yang sama semua masuk
-// satu <clinit> → R8 inline Color() constructor → 77+ argument registers → crash
+private val md_primary_light = Color(0xFF6750A4)
+private val md_onPrimary_light = Color(0xFFFFFFFF)
+private val md_primaryContainer_light = Color(0xFFEADDFF)
+private val md_onPrimaryContainer_light = Color(0xFF4F378B)
+private val md_secondary_light = Color(0xFF625B71)
+private val md_onSecondary_light = Color(0xFFFFFFFF)
+private val md_secondaryContainer_light = Color(0xFFE8DEF8)
+private val md_onSecondaryContainer_light = Color(0xFF4A4458)
+private val md_tertiary_light = Color(0xFF7D5260)
+private val md_onTertiary_light = Color(0xFFFFFFFF)
+private val md_tertiaryContainer_light = Color(0xFFFFD8E4)
+private val md_onTertiaryContainer_light = Color(0xFF633B48)
+private val md_error_light = Color(0xFFB3261E)
+private val md_onError_light = Color(0xFFFFFFFF)
+private val md_errorContainer_light = Color(0xFFF9DEDC)
+private val md_onErrorContainer_light = Color(0xFF8C1D18)
+private val md_surface_light = Color(0xFFFEF7FF)
+private val md_onSurface_light = Color(0xFF1D1B20)
+private val md_surfaceVariant_light = Color(0xFFE7E0EC)
+private val md_onSurfaceVariant_light = Color(0xFF49454F)
+private val md_outline_light = Color(0xFF79747E)
+private val md_outlineVariant_light = Color(0xFFCAC4D0)
+private val md_inverseSurface_light = Color(0xFF322F35)
+private val md_inverseOnSurface_light = Color(0xFFF5EFF7)
+private val md_surfaceContainer_light = Color(0xFFF3EDF7)
+private val md_surfaceContainerLow_light = Color(0xFFF7F2FA)
+private val md_surfaceContainerHigh_light = Color(0xFFECE6F0)
+private val md_surfaceContainerHighest_light = Color(0xFFE6E0E9)
 
-private object LightColors {
-    val primary              = Color(0xFF6750A4)
-    val onPrimary            = Color(0xFFFFFFFF)
-    val primaryContainer     = Color(0xFFEADDFF)
-    val onPrimaryContainer   = Color(0xFF4F378B)
-    val secondary            = Color(0xFF625B71)
-    val onSecondary          = Color(0xFFFFFFFF)
-    val secondaryContainer   = Color(0xFFE8DEF8)
-    val onSecondaryContainer = Color(0xFF4A4458)
-    val tertiary             = Color(0xFF7D5260)
-    val onTertiary           = Color(0xFFFFFFFF)
-    val tertiaryContainer    = Color(0xFFFFD8E4)
-    val onTertiaryContainer  = Color(0xFF633B48)
-    val error                = Color(0xFFB3261E)
-    val onError              = Color(0xFFFFFFFF)
-    val errorContainer       = Color(0xFFF9DEDC)
-    val onErrorContainer     = Color(0xFF8C1D18)
-    val surface              = Color(0xFFFEF7FF)
-    val onSurface            = Color(0xFF1D1B20)
-    val surfaceVariant       = Color(0xFFE7E0EC)
-    val onSurfaceVariant     = Color(0xFF49454F)
-    val outline              = Color(0xFF79747E)
-    val outlineVariant       = Color(0xFFCAC4D0)
-    val inverseSurface       = Color(0xFF322F35)
-    val inverseOnSurface     = Color(0xFFF5EFF7)
-    val surfaceContainer        = Color(0xFFF3EDF7)
-    val surfaceContainerLow     = Color(0xFFF7F2FA)
-    val surfaceContainerHigh    = Color(0xFFECE6F0)
-    val surfaceContainerHighest = Color(0xFFE6E0E9)
-}
-
-private object DarkColors {
-    val primary              = Color(0xFFD0BCFF)
-    val onPrimary            = Color(0xFF381E72)
-    val primaryContainer     = Color(0xFF4F378B)
-    val onPrimaryContainer   = Color(0xFFEADDFF)
-    val secondary            = Color(0xFFCCC2DC)
-    val onSecondary          = Color(0xFF332D41)
-    val secondaryContainer   = Color(0xFF4A4458)
-    val onSecondaryContainer = Color(0xFFE8DEF8)
-    val tertiary             = Color(0xFFEFB8C8)
-    val onTertiary           = Color(0xFF492532)
-    val tertiaryContainer    = Color(0xFF633B48)
-    val onTertiaryContainer  = Color(0xFFFFD8E4)
-    val error                = Color(0xFFF2B8B5)
-    val onError              = Color(0xFF601410)
-    val errorContainer       = Color(0xFF8C1D18)
-    val onErrorContainer     = Color(0xFFF9DEDC)
-    val surface              = Color(0xFF141218)
-    val onSurface            = Color(0xFFE6E0E9)
-    val surfaceVariant       = Color(0xFF49454F)
-    val onSurfaceVariant     = Color(0xFFCAC4D0)
-    val outline              = Color(0xFF938F99)
-    val outlineVariant       = Color(0xFF49454F)
-    val inverseSurface       = Color(0xFFE6E0E9)
-    val inverseOnSurface     = Color(0xFF322F35)
-    val surfaceContainer        = Color(0xFF211F26)
-    val surfaceContainerLow     = Color(0xFF1D1B20)
-    val surfaceContainerHigh    = Color(0xFF2B2930)
-    val surfaceContainerHighest = Color(0xFF36343B)
-}
+private val md_primary_dark = Color(0xFFD0BCFF)
+private val md_onPrimary_dark = Color(0xFF381E72)
+private val md_primaryContainer_dark = Color(0xFF4F378B)
+private val md_onPrimaryContainer_dark = Color(0xFFEADDFF)
+private val md_secondary_dark = Color(0xFFCCC2DC)
+private val md_onSecondary_dark = Color(0xFF332D41)
+private val md_secondaryContainer_dark = Color(0xFF4A4458)
+private val md_onSecondaryContainer_dark = Color(0xFFE8DEF8)
+private val md_tertiary_dark = Color(0xFFEFB8C8)
+private val md_onTertiary_dark = Color(0xFF492532)
+private val md_tertiaryContainer_dark = Color(0xFF633B48)
+private val md_onTertiaryContainer_dark = Color(0xFFFFD8E4)
+private val md_error_dark = Color(0xFFF2B8B5)
+private val md_onError_dark = Color(0xFF601410)
+private val md_errorContainer_dark = Color(0xFF8C1D18)
+private val md_onErrorContainer_dark = Color(0xFFF9DEDC)
+private val md_surface_dark = Color(0xFF141218)
+private val md_onSurface_dark = Color(0xFFE6E0E9)
+private val md_surfaceVariant_dark = Color(0xFF49454F)
+private val md_onSurfaceVariant_dark = Color(0xFFCAC4D0)
+private val md_outline_dark = Color(0xFF938F99)
+private val md_outlineVariant_dark = Color(0xFF49454F)
+private val md_inverseSurface_dark = Color(0xFFE6E0E9)
+private val md_inverseOnSurface_dark = Color(0xFF322F35)
+private val md_surfaceContainer_dark = Color(0xFF211F26)
+private val md_surfaceContainerLow_dark = Color(0xFF1D1B20)
+private val md_surfaceContainerHigh_dark = Color(0xFF2B2930)
+private val md_surfaceContainerHighest_dark = Color(0xFF36343B)
 
 private val LightColorScheme = lightColorScheme(
-    primary                 = LightColors.primary,
-    onPrimary               = LightColors.onPrimary,
-    primaryContainer        = LightColors.primaryContainer,
-    onPrimaryContainer      = LightColors.onPrimaryContainer,
-    secondary               = LightColors.secondary,
-    onSecondary             = LightColors.onSecondary,
-    secondaryContainer      = LightColors.secondaryContainer,
-    onSecondaryContainer    = LightColors.onSecondaryContainer,
-    tertiary                = LightColors.tertiary,
-    onTertiary              = LightColors.onTertiary,
-    tertiaryContainer       = LightColors.tertiaryContainer,
-    onTertiaryContainer     = LightColors.onTertiaryContainer,
-    error                   = LightColors.error,
-    onError                 = LightColors.onError,
-    errorContainer          = LightColors.errorContainer,
-    onErrorContainer        = LightColors.onErrorContainer,
-    surface                 = LightColors.surface,
-    onSurface               = LightColors.onSurface,
-    surfaceVariant          = LightColors.surfaceVariant,
-    onSurfaceVariant        = LightColors.onSurfaceVariant,
-    outline                 = LightColors.outline,
-    outlineVariant          = LightColors.outlineVariant,
-    inverseSurface          = LightColors.inverseSurface,
-    inverseOnSurface        = LightColors.inverseOnSurface,
-    surfaceContainer        = LightColors.surfaceContainer,
-    surfaceContainerLow     = LightColors.surfaceContainerLow,
-    surfaceContainerHigh    = LightColors.surfaceContainerHigh,
-    surfaceContainerHighest = LightColors.surfaceContainerHighest,
+    primary = md_primary_light,
+    onPrimary = md_onPrimary_light,
+    primaryContainer = md_primaryContainer_light,
+    onPrimaryContainer = md_onPrimaryContainer_light,
+    secondary = md_secondary_light,
+    onSecondary = md_onSecondary_light,
+    secondaryContainer = md_secondaryContainer_light,
+    onSecondaryContainer = md_onSecondaryContainer_light,
+    tertiary = md_tertiary_light,
+    onTertiary = md_onTertiary_light,
+    tertiaryContainer = md_tertiaryContainer_light,
+    onTertiaryContainer = md_onTertiaryContainer_light,
+    error = md_error_light,
+    onError = md_onError_light,
+    errorContainer = md_errorContainer_light,
+    onErrorContainer = md_onErrorContainer_light,
+    surface = md_surface_light,
+    onSurface = md_onSurface_light,
+    surfaceVariant = md_surfaceVariant_light,
+    onSurfaceVariant = md_onSurfaceVariant_light,
+    outline = md_outline_light,
+    outlineVariant = md_outlineVariant_light,
+    inverseSurface = md_inverseSurface_light,
+    inverseOnSurface = md_inverseOnSurface_light,
+    surfaceContainer = md_surfaceContainer_light,
+    surfaceContainerLow = md_surfaceContainerLow_light,
+    surfaceContainerHigh = md_surfaceContainerHigh_light,
+    surfaceContainerHighest = md_surfaceContainerHighest_light,
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary                 = DarkColors.primary,
-    onPrimary               = DarkColors.onPrimary,
-    primaryContainer        = DarkColors.primaryContainer,
-    onPrimaryContainer      = DarkColors.onPrimaryContainer,
-    secondary               = DarkColors.secondary,
-    onSecondary             = DarkColors.onSecondary,
-    secondaryContainer      = DarkColors.secondaryContainer,
-    onSecondaryContainer    = DarkColors.onSecondaryContainer,
-    tertiary                = DarkColors.tertiary,
-    onTertiary              = DarkColors.onTertiary,
-    tertiaryContainer       = DarkColors.tertiaryContainer,
-    onTertiaryContainer     = DarkColors.onTertiaryContainer,
-    error                   = DarkColors.error,
-    onError                 = DarkColors.onError,
-    errorContainer          = DarkColors.errorContainer,
-    onErrorContainer        = DarkColors.onErrorContainer,
-    surface                 = DarkColors.surface,
-    onSurface               = DarkColors.onSurface,
-    surfaceVariant          = DarkColors.surfaceVariant,
-    onSurfaceVariant        = DarkColors.onSurfaceVariant,
-    outline                 = DarkColors.outline,
-    outlineVariant          = DarkColors.outlineVariant,
-    inverseSurface          = DarkColors.inverseSurface,
-    inverseOnSurface        = DarkColors.inverseOnSurface,
-    surfaceContainer        = DarkColors.surfaceContainer,
-    surfaceContainerLow     = DarkColors.surfaceContainerLow,
-    surfaceContainerHigh    = DarkColors.surfaceContainerHigh,
-    surfaceContainerHighest = DarkColors.surfaceContainerHighest,
+    primary = md_primary_dark,
+    onPrimary = md_onPrimary_dark,
+    primaryContainer = md_primaryContainer_dark,
+    onPrimaryContainer = md_onPrimaryContainer_dark,
+    secondary = md_secondary_dark,
+    onSecondary = md_onSecondary_dark,
+    secondaryContainer = md_secondaryContainer_dark,
+    onSecondaryContainer = md_onSecondaryContainer_dark,
+    tertiary = md_tertiary_dark,
+    onTertiary = md_onTertiary_dark,
+    tertiaryContainer = md_tertiaryContainer_dark,
+    onTertiaryContainer = md_onTertiaryContainer_dark,
+    error = md_error_dark,
+    onError = md_onError_dark,
+    errorContainer = md_errorContainer_dark,
+    onErrorContainer = md_onErrorContainer_dark,
+    surface = md_surface_dark,
+    onSurface = md_onSurface_dark,
+    surfaceVariant = md_surfaceVariant_dark,
+    onSurfaceVariant = md_onSurfaceVariant_dark,
+    outline = md_outline_dark,
+    outlineVariant = md_outlineVariant_dark,
+    inverseSurface = md_inverseSurface_dark,
+    inverseOnSurface = md_inverseOnSurface_dark,
+    surfaceContainer = md_surfaceContainer_dark,
+    surfaceContainerLow = md_surfaceContainerLow_dark,
+    surfaceContainerHigh = md_surfaceContainerHigh_dark,
+    surfaceContainerHighest = md_surfaceContainerHighest_dark,
 )
 
 @Composable
@@ -147,11 +139,11 @@ fun AetherTheme(
             if (darkTheme) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
         }
         darkTheme -> DarkColorScheme
-        else      -> LightColorScheme
+        else -> LightColorScheme
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        content     = content
+        content = content
     )
 }
