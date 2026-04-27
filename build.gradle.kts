@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
-    id("com.google.gms.google-services") version "4.4.4" apply false
 }
 
 subprojects {
@@ -18,13 +17,9 @@ subprojects {
             force("androidx.navigation:navigation-compose:2.9.0")
             force("androidx.navigation:navigation-runtime-ktx:2.9.0")
             force("androidx.navigation:navigation-common-ktx:2.9.0")
+            // Ktor: paksa engine yang stabil, blok alpha transitive
             force("io.ktor:ktor-client-android:3.1.3")
             force("io.ktor:ktor-client-core:3.1.3")
-            // FIX INTI: paksa semua transitive dep pakai stdlib yg sama
-            // sehingga compose-charts tidak bisa bawa stdlib 2.3.x
-            force("org.jetbrains.kotlin:kotlin-stdlib:2.1.21")
-            force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.21")
-            force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.21")
         }
     }
 }
