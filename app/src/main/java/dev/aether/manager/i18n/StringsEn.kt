@@ -1,7 +1,6 @@
 package dev.aether.manager.i18n
 
-private object StringsEnHolder {
-    val value = AppStrings(
+val StringsEn = AppStrings(
     navHome  = "Home",
     navTweak = "Tweaks",
     navApps  = "Apps",
@@ -120,9 +119,6 @@ private object StringsEnHolder {
     tweakGpuFreqLock = "GPU Freq Lock",
     tweakGpuFreqLockDesc = "Lock GPU to a specific frequency level",
     tweakGpuFreqMax = "GPU Max Freq",
-    premiumLabel = "✦  PREMIUM",
-    premiumLockedDesc = "This feature is only available for Premium users.\nActivate a license to unlock",
-    premiumUpgradeBtn = "Upgrade to Premium",
     tweakTouchBoost = "Touch Response Boost",
     tweakTouchBoostDesc = "Boost touchscreen responsiveness & polling",
     tweakTouchSampleRate = "Sample Rate",
@@ -164,6 +160,7 @@ private object StringsEnHolder {
     adBlockInfoCard = "Ads are our primary revenue source to keep AetherManager free. By disabling AdBlock, you help support development of this app.",
     adBlockSafeLabel = "Ads are displayed safely and contain no malware.",
     adBlockBtnDisable = "Disable AdBlock",
+    adBlockBtnLater = "Maybe Later",
 
     updateAvailable = "Update Available",
     updateTabDesc = "Description",
@@ -376,5 +373,3 @@ private object StringsEnHolder {
     serviceNotifChannelDesc = "Background service",
     serviceNotifText = "Tweaks active",
 )
-}
-val StringsEn: AppStrings get() = StringsEnHolder.value

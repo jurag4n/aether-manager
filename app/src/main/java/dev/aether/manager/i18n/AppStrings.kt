@@ -135,11 +135,6 @@ data class AppStrings(
     val tweakGpuFreqLockDesc: String,
     val tweakGpuFreqMax: String,
 
-    // ── Premium Lock ──────────────────────────────────────────
-    val premiumLabel: String,
-    val premiumLockedDesc: String,
-    val premiumUpgradeBtn: String,
-
     // ── Touch Boost ───────────────────────────────────────────
     val tweakTouchBoost: String,
     val tweakTouchBoostDesc: String,
@@ -187,6 +182,7 @@ data class AppStrings(
     val adBlockInfoCard: String,
     val adBlockSafeLabel: String,
     val adBlockBtnDisable: String,
+    val adBlockBtnLater: String,
 
     // ── Update dialog ────────────────────────────────────────
     val updateAvailable: String,

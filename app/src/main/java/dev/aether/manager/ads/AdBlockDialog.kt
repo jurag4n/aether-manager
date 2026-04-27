@@ -27,11 +27,13 @@ import dev.aether.manager.i18n.LocalStrings
 /**
  * Dialog yang muncul ketika adblock terdeteksi.
  *
- * @param onDisableAds   Dipanggil ketika user menekan "Nonaktifkan AdBlock" (intent ke settings).
+ * @param onDisableAds  Dipanggil ketika user menekan "Nonaktifkan AdBlock" (intent ke settings).
+ * @param onDismiss     Dipanggil ketika user menekan "Nanti" — dialog ditutup sementara.
  */
 @Composable
 fun AdBlockDetectedDialog(
-    onDisableAds: () -> Unit
+    onDisableAds: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val strings = LocalStrings.current
 
@@ -47,9 +49,9 @@ fun AdBlockDetectedDialog(
     )
 
     AlertDialog(
-        onDismissRequest = { /* Non-dismissible dengan back/tap luar */ },
+        onDismissRequest = onDismiss,
         properties = DialogProperties(
-            dismissOnBackPress    = false,
+            dismissOnBackPress    = true,
             dismissOnClickOutside = false
         ),
         icon = {
@@ -142,13 +144,24 @@ fun AdBlockDetectedDialog(
         },
         confirmButton = {
             Button(
-                onClick = onDisableAds,
+                onClick  = onDisableAds,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
+                colors   = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text(strings.adBlockBtnDisable, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick  = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text  = strings.adBlockBtnLater,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         shape = RoundedCornerShape(24.dp)

@@ -6,22 +6,27 @@ import kotlinx.coroutines.*
 
 object AdScheduler {
 
-    var startDelayMs: Long  = 60L           // langsung tampil saat app buka
-    var intervalMs: Long    = 120 * 1_000L
-    var minIntervalMs: Long = 90 * 1_000L
-    var crossAdGapMs: Long = 60 * 1_000L
+    // ── Timing config ──────────────────────────────────────────────────────
+    // startDelayMs  : jeda setelah ON_RESUME sebelum iklan pertama tampil
+    // intervalMs    : jeda antar iklan dalam satu sesi
+    // minIntervalMs : jeda minimum antar dua tampilan iklan (guard tryShow)
+    // sessionCooldownMs : jeda minimum setelah resume sebelum tryShow boleh jalan
+    var startDelayMs: Long      = 60 * 1_000L      // 60 s  (was 45 s)
+    var intervalMs: Long        = 5 * 60 * 1_000L  // 5 min (was 2 min)
+    var minIntervalMs: Long     = 4 * 60 * 1_000L  // 4 min (was 90 s)
+    var sessionCooldownMs: Long = 60 * 1_000L      // 60 s cooldown setelah ON_RESUME
 
     private var job: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    @Volatile private var lastShownMs: Long = 0L
-    @Volatile private var lastUnityShownMs: Long = 0L
-    @Volatile private var lastAdmobShownMs: Long = 0L
-    @Volatile private var nextIsUnity: Boolean = true
+    @Volatile private var lastShownMs: Long    = 0L
+    @Volatile private var sessionStartMs: Long = 0L
+
     @Volatile private var activityProvider: (() -> Activity?)? = null
 
     fun start(provider: () -> Activity?) {
         activityProvider = provider
+        sessionStartMs   = System.currentTimeMillis()
         if (job?.isActive == true) return
         job = scope.launch {
             delay(startDelayMs)
@@ -38,8 +43,13 @@ object AdScheduler {
         activityProvider = null
     }
 
+    /**
+     * Panggil hanya pada event navigasi yang signifikan (bukan tiap ganti tab).
+     * Guard: sessionCooldownMs + minIntervalMs harus terpenuhi keduanya.
+     */
     fun tryShow() {
         val now = System.currentTimeMillis()
+        if (now - sessionStartMs < sessionCooldownMs) return
         if (lastShownMs > 0L && now - lastShownMs < minIntervalMs) return
         showNow()
     }
@@ -48,49 +58,7 @@ object AdScheduler {
         val activity = activityProvider?.invoke()
         if (activity == null || activity.isFinishing || activity.isDestroyed) return
         if (LicenseManager.isActive(activity)) return
-
-        val now = System.currentTimeMillis()
-
-        if (nextIsUnity) {
-            val gapFromAdmob = now - lastAdmobShownMs
-            if (lastAdmobShownMs > 0L && gapFromAdmob < crossAdGapMs) {
-                // Jarak dari AdMob belum cukup — coba AdMob dulu
-                showAdmob(activity, now)
-                return
-            }
-            showUnity(activity, now)
-        } else {
-            val gapFromUnity = now - lastUnityShownMs
-            if (lastUnityShownMs > 0L && gapFromUnity < crossAdGapMs) {
-                // Jarak dari Unity belum cukup — coba Unity dulu
-                showUnity(activity, now)
-                return
-            }
-            showAdmob(activity, now)
-        }
-    }
-
-    private fun showUnity(activity: Activity, now: Long) {
-        if (!InterstitialAdManager.isReady()) {
-            InterstitialAdManager.preload(activity)
-            // Fallback ke AdMob kalau Unity belum siap
-            showAdmob(activity, now)
-            return
-        }
-        lastShownMs = now
-        lastUnityShownMs = now
-        nextIsUnity = false  // giliran berikutnya: AdMob
+        lastShownMs = System.currentTimeMillis()
         InterstitialAdManager.showIfReady(activity)
-    }
-
-    private fun showAdmob(activity: Activity, now: Long) {
-        if (!AdmobInterstitialManager.isReady()) {
-            AdmobInterstitialManager.preload(activity)
-            return
-        }
-        lastShownMs = now
-        lastAdmobShownMs = now
-        nextIsUnity = true   // giliran berikutnya: Unity
-        AdmobInterstitialManager.showIfReady(activity)
     }
 }

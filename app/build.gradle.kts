@@ -18,18 +18,22 @@ val gitHash: String by lazy {
 }
 
 android {
-    namespace  = "dev.aether.manager"
-    compileSdk = 36
+    namespace   = "dev.aether.manager"
+    compileSdk  = 36
 
     defaultConfig {
         applicationId = "dev.aether.manager"
-        minSdk        = 30
+        minSdk        = 26
         targetSdk     = 36
         versionCode   = 250
         versionName   = "2.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // ── NDK / CMake config ──────────────────────────────────────────────
         ndk {
+            // arm64-v8a  = semua device modern (flagship & mid-range)
+            // armeabi-v7a = device lama 32-bit
+            // x86_64     = emulator/Chromebook
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
         }
 
@@ -44,9 +48,10 @@ android {
         }
     }
 
+    // ── CMake — libprotect.so ───────────────────────────────────────────────
     externalNativeBuild {
         cmake {
-            path    = file("src/main/cpp/CMakeLists.txt")
+            path   = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
     }
@@ -54,13 +59,11 @@ android {
     signingConfigs {
         create("release") {
             storeFile     = rootProject.file("aether.jks")
-            storePassword = System.getenv("STORE_PASSWORD") ?: "aether"
-            keyAlias      = System.getenv("KEY_ALIAS")      ?: "aether"
-            keyPassword   = System.getenv("KEY_PASSWORD")   ?: "aether"
+            storePassword = System.getenv("STORE_PASSWORD") ?: ""
+            keyAlias      = System.getenv("KEY_ALIAS")      ?: ""
+            keyPassword   = System.getenv("KEY_PASSWORD")   ?: ""
             enableV1Signing = true
             enableV2Signing = true
-            enableV3Signing = false
-            enableV4Signing = false
         }
     }
 
@@ -68,7 +71,7 @@ android {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
-            signingConfig     = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -120,12 +123,11 @@ android {
     packaging {
         resources {
             excludes += setOf(
-                "/META-INF/{AL2.0,LGPL2.1}",
-                "/META-INF/MANIFEST.MF",
-                "**.proto",
-                "META-INF/com/**"
+                "/META-INF/{AL2.0,LGPL2.1}", "/META-INF/*.kotlin_module",
+                "/META-INF/MANIFEST.MF", "**.proto", "kotlin/**", "META-INF/com/**"
             )
         }
+        // Pastikan libprotect.so tidak di-compress (agar bisa langsung di-mmap)
         jniLibs {
             useLegacyPackaging = false
         }
@@ -154,7 +156,6 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.unity.ads)
-    implementation("com.google.android.gms:play-services-ads:23.3.0")
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
     implementation(libs.libsu.io)
@@ -169,13 +170,16 @@ dependencies {
     implementation(libs.lottie.compose)
     implementation(libs.timber)
     implementation(libs.androidx.biometric)
+    // ── Networking ────────────────────────────────────────────────────────
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content)
     implementation(libs.ktor.serialization)
+    // ── UI extras ─────────────────────────────────────────────────────────
     implementation(libs.shimmer)
     implementation(libs.compose.charts)
+    // ── Lifecycle / background ────────────────────────────────────────────
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.startup)
     debugImplementation(libs.leakcanary.android)
