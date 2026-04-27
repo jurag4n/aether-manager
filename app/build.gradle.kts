@@ -19,12 +19,13 @@ val gitHash: String by lazy {
 }
 
 android {
-    namespace   = "dev.aether.manager"
-    compileSdk  = 36
+    namespace  = "dev.aether.manager"
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "dev.aether.manager"
-        minSdk        = 26
+        // FIX: minSdk 30 = Android 11 sesuai requirement user
+        minSdk        = 30
         targetSdk     = 36
         versionCode   = 250
         versionName   = "2.5"
@@ -47,15 +48,15 @@ android {
 
     externalNativeBuild {
         cmake {
-            path   = file("src/main/cpp/CMakeLists.txt")
+            path    = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
     }
 
     signingConfigs {
         create("release") {
-            val ks = rootProject.file("aether.jks")
-            val isCI = System.getenv("CI") == "true"
+            val ks    = rootProject.file("aether.jks")
+            val isCI  = System.getenv("CI") == "true"
             if (ks.exists() && !isCI) {
                 storeFile     = ks
                 storePassword = System.getenv("STORE_PASSWORD") ?: ""
@@ -109,6 +110,8 @@ android {
         compilerOptions {
             jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
             optIn.add("kotlin.RequiresOptIn")
+            // FIX: suppress compileSdk 36 warning (AGP masih di 8.9.x)
+            freeCompilerArgs.add("-Xsuppress-version-warnings")
         }
     }
 
@@ -126,8 +129,12 @@ android {
         resources {
             excludes += setOf(
                 "/META-INF/{AL2.0,LGPL2.1}",
-                "/META-INF/*.kotlin_module",
-                "/META-INF/MANIFEST.MF", "**.proto", "kotlin/**", "META-INF/com/**"
+                // FIX: JANGAN exclude *.kotlin_module secara global!
+                // Itu menyebabkan Kotlin reflection/inline functions gagal saat runtime.
+                // Hanya exclude yang benar-benar konflik:
+                "/META-INF/MANIFEST.MF",
+                "**.proto",
+                "META-INF/com/**"
             )
         }
         jniLibs {
