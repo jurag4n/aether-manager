@@ -260,6 +260,9 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
         }
     }
 
+    // FIX #3: Storage page di-skip di API >= 33 karena READ_EXTERNAL_STORAGE sudah dicabut
+    val includeStorage = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+
     // "Selesai" = root wajib granted + permission opsional sudah ada keputusan
     // (GRANTED atau DENIED/skip — yang penting bukan IDLE/CHECKING)
     val rootOk    = rootState    == PermState.GRANTED
@@ -277,9 +280,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val onSecContainer     = MaterialTheme.colorScheme.onSecondaryContainer
     val terContainer       = MaterialTheme.colorScheme.tertiaryContainer
     val onTerContainer     = MaterialTheme.colorScheme.onTertiaryContainer
-
-    // FIX #3: Storage page di-skip di API >= 33 karena READ_EXTERNAL_STORAGE sudah dicabut
-    val includeStorage = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
 
     val pages = buildList {
         add(SetupPage(
