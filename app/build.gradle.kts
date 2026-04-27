@@ -55,14 +55,10 @@ android {
 
     signingConfigs {
         create("release") {
-            val ks    = rootProject.file("aether.jks")
-            val isCI  = System.getenv("CI") == "true"
-            if (ks.exists() && !isCI) {
-                storeFile     = ks
-                storePassword = System.getenv("STORE_PASSWORD") ?: ""
-                keyAlias      = System.getenv("KEY_ALIAS")      ?: ""
-                keyPassword   = System.getenv("KEY_PASSWORD")   ?: ""
-            }
+            storeFile     = rootProject.file("aether.jks")
+            storePassword = System.getenv("STORE_PASSWORD") ?: ""
+            keyAlias      = System.getenv("KEY_ALIAS")      ?: ""
+            keyPassword   = System.getenv("KEY_PASSWORD")   ?: ""
         }
     }
 
@@ -70,8 +66,7 @@ android {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
-            val isCI = System.getenv("CI") == "true"
-            signingConfig = if (isCI) null else signingConfigs.getByName("release")
+            signingConfig     = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

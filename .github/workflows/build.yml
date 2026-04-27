@@ -100,35 +100,19 @@ jobs:
             -Dorg.gradle.daemon=false \
             -Dorg.gradle.jvmargs="-Xmx4g"
 
-      - name: Sign Release APK
-        env:
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      - name: Locate APK
         run: |
-          UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*.apk" | grep -v signed | head -1)
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
 
-          if [ -z "$UNSIGNED_APK" ]; then
+          if [ -z "$RELEASE_APK" ]; then
             echo "ERROR: APK tidak ditemukan"
             exit 1
           fi
 
-          BASENAME=$(basename "${UNSIGNED_APK%.apk}")
-          SIGNED_APK="app/build/outputs/apk/release/${BASENAME}-signed.apk"
-
-          apksigner sign \
-            --ks aether.jks \
-            --ks-key-alias "$KEY_ALIAS" \
-            --ks-pass "pass:$STORE_PASSWORD" \
-            --key-pass "pass:$KEY_PASSWORD" \
-            --out "$SIGNED_APK" \
-            "$UNSIGNED_APK"
-
-          apksigner verify --print-certs "$SIGNED_APK"
-
-          echo "RELEASE_APK=$SIGNED_APK" >> $GITHUB_ENV
-          echo "APK_SIZE=$(du -h "$SIGNED_APK" | cut -f1)" >> $GITHUB_ENV
-          echo "APK_NAME=${BASENAME}-signed" >> $GITHUB_ENV
+          BASENAME=$(basename "${RELEASE_APK%.apk}")
+          echo "RELEASE_APK=$RELEASE_APK" >> $GITHUB_ENV
+          echo "APK_SIZE=$(du -h "$RELEASE_APK" | cut -f1)" >> $GITHUB_ENV
+          echo "APK_NAME=${BASENAME}" >> $GITHUB_ENV
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
