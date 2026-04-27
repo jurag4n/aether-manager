@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    name: Build Aplikasi
+    name: Build Aether Manager
     runs-on: ubuntu-latest
 
     permissions:
@@ -111,8 +111,29 @@ jobs:
 
           BASENAME=$(basename "${RELEASE_APK%.apk}")
           echo "RELEASE_APK=$RELEASE_APK" >> $GITHUB_ENV
-          echo "APK_SIZE=$(du -h "$RELEASE_APK" | cut -f1)" >> $GITHUB_ENV
-          echo "APK_NAME=${BASENAME}" >> $GITHUB_ENV
+          echo "APK_BASENAME=${BASENAME}" >> $GITHUB_ENV
+
+      - name: Sign APK
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          SIGNED_APK="app/build/outputs/apk/release/${APK_BASENAME}-signed.apk"
+
+          apksigner sign \
+            --ks aether.jks \
+            --ks-pass "pass:${STORE_PASSWORD}" \
+            --ks-key-alias "${KEY_ALIAS}" \
+            --key-pass "pass:${KEY_PASSWORD}" \
+            --out "${SIGNED_APK}" \
+            "${RELEASE_APK}"
+
+          apksigner verify --verbose "${SIGNED_APK}"
+
+          echo "RELEASE_APK=${SIGNED_APK}" >> $GITHUB_ENV
+          echo "APK_NAME=${APK_BASENAME}-signed" >> $GITHUB_ENV
+          echo "APK_SIZE=$(du -h "${SIGNED_APK}" | cut -f1)" >> $GITHUB_ENV
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
