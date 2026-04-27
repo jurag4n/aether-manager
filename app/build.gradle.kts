@@ -57,6 +57,10 @@ android {
             storePassword = System.getenv("STORE_PASSWORD") ?: "aether"
             keyAlias      = System.getenv("KEY_ALIAS")      ?: "aether"
             keyPassword   = System.getenv("KEY_PASSWORD")   ?: "aether"
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = false
+            enableV4Signing = false
         }
     }
 
