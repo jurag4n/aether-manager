@@ -1,168 +1,91 @@
-# ============================================================
-# AE Manager - proguard-rules.pro
-# compileSdk 36 / targetSdk 36 / minSdk 30
-# ============================================================
+# Add project specific ProGuard rules here.
+# You can control the set of applied configuration files using the
+# proguardFiles setting in build.gradle.
+#
+# For more details, see
+#   http://developer.android.com/guide/developing/tools/proguard.html
 
--keepattributes *Annotation*
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
+
+# Uncomment this to preserve the line number information for
+# debugging stack traces.
+#-keepattributes SourceFile,LineNumberTable
+
+# If you keep the line number information, uncomment this to
+# hide the original source file name.
+#-renamesourcefileattribute SourceFile
+
+##---------------Begin: proguard configuration for Gson  ----------
+# Gson uses generic type information stored in a class file when working with fields. Proguard
+# removes such information by default, so configure it to keep all of it.
 -keepattributes Signature
--keepattributes Exceptions
--keepattributes InnerClasses
--keepattributes EnclosingMethod
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
 
-# ============================================================
-# KOTLIN
-# ============================================================
--keep class kotlin.Metadata { *; }
--dontwarn kotlin.**
--keepclassmembers class **$WhenMappings { <fields>; }
--keepclassmembers class * {
-    @kotlin.jvm.JvmStatic <methods>;
-    @kotlin.jvm.JvmField <fields>;
-}
+# For using GSON @Expose annotation
+-keepattributes *Annotation*
 
-# Kotlin Serialization
--keepattributes RuntimeVisibleAnnotations,AnnotationDefault
--dontnote kotlinx.serialization.**
--keepclassmembers class kotlinx.serialization.json.** { *** *; }
--keep,includedescriptorclasses class dev.aether.manager.**$$serializer { *; }
--keepclassmembers class dev.aether.manager.** {
-    *** Companion;
-}
--keepclasseswithmembers class dev.aether.manager.** {
-    kotlinx.serialization.KSerializer serializer(...);
-}
+# Gson specific classes
+-dontwarn sun.misc.**
+#-keep class com.google.gson.stream.** { *; }
 
-# Coroutines
--keepclassmembernames class kotlinx.** { volatile <fields>; }
--dontwarn kotlinx.coroutines.**
+# Application classes that will be serialized/deserialized over Gson
+-keep class com.google.gson.examples.android.model.** { <fields>; }
 
-# ============================================================
-# ANDROIDX / COMPOSE
-# ============================================================
--keep class androidx.compose.** { *; }
--dontwarn androidx.compose.**
+# Prevent proguard from stripping interface information from TypeAdapter, TypeAdapterFactory,
+# JsonSerializer, JsonDeserializer instances (so they can be used in @JsonAdapter)
+-keep class * extends com.google.gson.TypeAdapter
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
 
-# Navigation
--keep class androidx.navigation.** { *; }
-
-# Lifecycle / ViewModel
--keep class * extends androidx.lifecycle.ViewModel { *; }
--keep class * extends androidx.lifecycle.AndroidViewModel { *; }
-
-# DataStore
--keep class androidx.datastore.** { *; }
-
-# WorkManager
--keep class * extends androidx.work.Worker { *; }
--keep class * extends androidx.work.ListenableWorker {
-    public <init>(android.content.Context, androidx.work.WorkerParameters);
-}
--keep class androidx.work.** { *; }
-
-# Biometric
--keep class androidx.biometric.** { *; }
-
-# Startup
--keep class * extends androidx.startup.Initializer { *; }
-
-# Splash screen
--keep class androidx.core.splashscreen.** { *; }
-
-# ============================================================
-# ROOM
-# ============================================================
--keep class * extends androidx.room.RoomDatabase { *; }
--keep @androidx.room.Entity class * { *; }
--keep @androidx.room.Dao interface * { *; }
--dontwarn androidx.room.paging.**
-
-# ============================================================
-# OKHTTP / RETROFIT
-# ============================================================
--dontwarn okhttp3.**
--dontwarn okio.**
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
--keep class retrofit2.** { *; }
--dontwarn retrofit2.**
-
-# Gson (retrofit converter)
--keep class com.google.gson.** { *; }
+# Prevent R8 from leaving Data object members always null
 -keepclassmembers,allowobfuscation class * {
-    @com.google.gson.annotations.SerializedName <fields>;
+  @com.google.gson.annotations.SerializedName <fields>;
 }
+
+# Retain generic signatures of TypeToken and its subclasses with R8 version 3.0 and higher.
 -keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
 -keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
 
-# ============================================================
-# KTOR
-# ============================================================
--dontwarn io.ktor.**
--keep class io.ktor.** { *; }
--keepclassmembers class io.ktor.** { volatile <fields>; }
+##---------------End: proguard configuration for Gson  ----------
 
-# ============================================================
-# LIBSU (root shell)
-# ============================================================
--keep class com.topjohnwu.superuser.** { *; }
--dontwarn com.topjohnwu.superuser.**
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
 
-# ============================================================
-# MMKV
-# ============================================================
--keep class com.tencent.mmkv.** { *; }
--keepclasseswithmembernames class * { native <methods>; }
+-keepnames class * implements android.os.Parcelable
 
-# ============================================================
-# COIL
-# ============================================================
--dontwarn coil.**
--keep class coil.** { *; }
 
-# ============================================================
-# LOTTIE
-# ============================================================
--dontwarn com.airbnb.lottie.**
--keep class com.airbnb.lottie.** { *; }
-
-# ============================================================
-# TIMBER
-# ============================================================
--dontwarn org.jetbrains.annotations.**
--keep class timber.log.Timber { *; }
-
-# ============================================================
-# FIREBASE / GMS ADS
-# ============================================================
--keep class com.google.firebase.** { *; }
--dontwarn com.google.firebase.**
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.android.gms.**
-
-# Unity Ads
--keep class com.unity3d.ads.** { *; }
--dontwarn com.unity3d.ads.**
-
-# ============================================================
-# ZSTD / SQLITE
-# ============================================================
--dontwarn com.github.luben.zstd.**
--keep class com.github.luben.zstd.** { *; }
--keep class org.sqlite.** { *; }
--dontwarn org.sqlite.**
-
-# ============================================================
-# APP MODEL CLASSES (sesuaikan package)
-# ============================================================
--keep class dev.aether.manager.data.model.** { *; }
--keep class dev.aether.manager.data.entity.** { *; }
-
-# ============================================================
-# NATIVE (CMake / JNI)
-# ============================================================
--keepclasseswithmembernames class * {
+-keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
--keep class dev.aether.manager.native.** { *; }
+
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+	public static void check*(...);
+	public static void throw*(...);
+}
+
+-assumenosideeffects class java.util.Objects{
+    ** requireNonNull(...);
+}
+
+#-keep class com.frb.engine.Starter {
+#    public static void main(java.lang.String[]);
+#}
+
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# AdMob — wajib ada, tanpa ini R8 strip internal class dan FC
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.google.ads.** { *; }
+-dontwarn com.google.android.gms.ads.**
+-keep class com.google.android.gms.ads.interstitial.** { *; }
+-keep class com.google.android.gms.ads.initialization.** { *; }
+-keepclassmembers class * implements com.google.android.gms.ads.initialization.OnInitializationCompleteListener {
+    public void onInitializationComplete(com.google.android.gms.ads.initialization.InitializationStatus);
+}
