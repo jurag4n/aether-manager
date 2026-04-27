@@ -1,6 +1,7 @@
 package dev.aether.manager.i18n
 
-val StringsEn = AppStrings(
+private object StringsEnHolder {
+    val value = AppStrings(
     navHome  = "Home",
     navTweak = "Tweaks",
     navApps  = "Apps",
@@ -375,3 +376,5 @@ val StringsEn = AppStrings(
     serviceNotifChannelDesc = "Background service",
     serviceNotifText = "Tweaks active",
 )
+}
+val StringsEn: AppStrings get() = StringsEnHolder.value

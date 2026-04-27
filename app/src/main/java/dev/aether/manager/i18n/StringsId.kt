@@ -1,6 +1,7 @@
 package dev.aether.manager.i18n
 
-val StringsId = AppStrings(
+private object StringsIdHolder {
+    val value = AppStrings(
     navHome  = "Beranda",
     navTweak = "Tweak",
     navApps  = "Aplikasi",
@@ -375,3 +376,5 @@ val StringsId = AppStrings(
     serviceNotifChannelDesc = "Layanan background",
     serviceNotifText = "Tweak aktif",
 )
+}
+val StringsId: AppStrings get() = StringsIdHolder.value
