@@ -126,6 +126,7 @@ android {
         resources {
             excludes += setOf(
                 "/META-INF/{AL2.0,LGPL2.1}",
+                "/META-INF/*.kotlin_module",
                 "/META-INF/MANIFEST.MF", "**.proto", "kotlin/**", "META-INF/com/**"
             )
         }

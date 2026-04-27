@@ -1,11 +1,14 @@
-# Add project specific ProGuard rules here.
+# ─────────────────────────────────────────────────────────────────────────────
+# Aether Manager — ProGuard / R8 Rules
+# ─────────────────────────────────────────────────────────────────────────────
 
+# ── Attributes ───────────────────────────────────────────────────────────────
+-keepattributes Signature
+-keepattributes *Annotation*
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
-##---------------Begin: proguard configuration for Gson  ----------
--keepattributes Signature
--keepattributes *Annotation*
+# ── Gson ─────────────────────────────────────────────────────────────────────
 -dontwarn sun.misc.**
 -keep class com.google.gson.examples.android.model.** { <fields>; }
 -keep class * extends com.google.gson.TypeAdapter
@@ -13,29 +16,27 @@
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
 -keepclassmembers,allowobfuscation class * {
-  @com.google.gson.annotations.SerializedName <fields>;
+    @com.google.gson.annotations.SerializedName <fields>;
 }
 -keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
 -keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
-##---------------End: proguard configuration for Gson  ----------
 
+# ── Parcelable ───────────────────────────────────────────────────────────────
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
 -keepnames class * implements android.os.Parcelable
 
+# ── Unity Ads ────────────────────────────────────────────────────────────────
+-keep class com.unity3d.**    { *; }
+-keep class com.unity3d.ads.** { *; }
+
+# ── Native methods (JNI) ─────────────────────────────────────────────────────
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
 
-# ════════════════════════════════════════════════════════════════
-# FIX VerifyError — larang R8 merge class (register overflow)
-# AGP 8.13.2 + Kotlin 2.3.x: class merging pada Compose composable
-# menghasilkan <clinit> >77 argument registers → crash di runtime
-# ════════════════════════════════════════════════════════════════
--optimizations !class/merging/*
-
-# ── JNI bridges ──────────────────────────────────────────────────
+# ── JNI bridges ──────────────────────────────────────────────────────────────
 -keep class dev.aether.manager.NativeAether {
     public static *** tryLoad();
     native <methods>;
@@ -45,33 +46,75 @@
     public static *** isAvailable();
     native <methods>;
 }
--keepclasseswithmembernames,includedescriptorclasses class * {
-    native <methods>;
+
+# ── Kotlin intrinsics (reduce size) ──────────────────────────────────────────
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+    public static void check*(...);
+    public static void throw*(...);
+}
+-assumenosideeffects class java.util.Objects {
+    ** requireNonNull(...);
 }
 
-# ── App core ─────────────────────────────────────────────────────
+# ── Kotlin Coroutines ─────────────────────────────────────────────────────────
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembernames class kotlinx.** {
+    volatile <fields>;
+}
+
+# ── App core ──────────────────────────────────────────────────────────────────
 -keep class dev.aether.manager.AetherApplication { *; }
 -keep class dev.aether.manager.service.AetherService { *; }
 -keep class dev.aether.manager.service.BootReceiver { *; }
 
-# ── Room ─────────────────────────────────────────────────────────
+# ── Room ──────────────────────────────────────────────────────────────────────
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
 -keepclassmembers @androidx.room.Entity class * { *; }
 
-# ── Kotlin serialization ─────────────────────────────────────────
--keepclassmembers class * {
-    @kotlinx.serialization.SerialName <fields>;
-}
-
-# ── Libraries ────────────────────────────────────────────────────
--keep class com.topjohnwu.superuser.** { *; }
--keep class com.tencent.mmkv.** { *; }
--keep class com.unity3d.** { *; }
--keep class com.airbnb.lottie.** { *; }
--keep class io.github.ehsannarmani.** { *; }
--keep class com.facebook.shimmer.** { *; }
+# ── OkHttp / Retrofit ────────────────────────────────────────────────────────
 -dontwarn okhttp3.**
 -dontwarn okio.**
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
+-keepclasseswithmembers class * {
+    @retrofit2.http.* <methods>;
+}
+
+# ── Ktor ─────────────────────────────────────────────────────────────────────
 -dontwarn io.ktor.**
+
+# ── libsu ────────────────────────────────────────────────────────────────────
+-keep class com.topjohnwu.superuser.** { *; }
+
+# ── MMKV ─────────────────────────────────────────────────────────────────────
+-keep class com.tencent.mmkv.** { *; }
+
+# ── Lottie ───────────────────────────────────────────────────────────────────
+-keep class com.airbnb.lottie.** { *; }
+
+# ── compose-charts ───────────────────────────────────────────────────────────
+-keep class io.github.ehsannarmani.** { *; }
+
+# ── Shimmer ──────────────────────────────────────────────────────────────────
+-keep class com.facebook.shimmer.** { *; }
+
+# ── Coil ─────────────────────────────────────────────────────────────────────
 -dontwarn coil.**
+
+# ── Kotlin serialization ──────────────────────────────────────────────────────
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class * {
+    @kotlinx.serialization.SerialName <fields>;
+    @kotlinx.serialization.Transient <fields>;
+}
+
+# ── Suppress common warnings ──────────────────────────────────────────────────
+-dontwarn java.lang.invoke.**
+-dontwarn **$$Lambda$*
+-dontwarn javax.annotation.**
