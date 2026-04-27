@@ -1,6 +1,7 @@
 package dev.aether.manager.i18n
 
-val StringsId = AppStrings(
+private object StringsIdHolder {
+    val value = AppStrings(
     navHome  = "Beranda",
     navTweak = "Tweak",
     navApps  = "Aplikasi",
@@ -41,25 +42,6 @@ val StringsId = AppStrings(
     setupBtnBack         = "Kembali",
     setupBtnRetry        = "Coba Lagi",
     setupBtnSkip         = "Lewati",
-    setupStepOf          = "Langkah %d dari %d",
-    setupBrandLabel      = "AE Manager",
-    setupGrantedSub      = "Izin berhasil diberikan",
-    setupMissingTapHint  = "Tap item di bawah untuk kembali ke langkah tersebut:",
-    setupChipRootFull    = "Akses Sistem Penuh",
-    setupChipRootShell   = "Shell Commands",
-    setupChipRootRequired = "Wajib Diizinkan",
-    setupWarnRoot        = "AE Manager memerlukan root untuk mengelola sistem Android secara mendalam. Tanpa izin ini, aplikasi tidak bisa berjalan.",
-    setupChipNotifStatus = "Status Operasi",
-    setupChipNotifConfirm = "Konfirmasi Tweak",
-    setupChipOptional    = "Opsional",
-    setupChipWriteModify = "Ubah System Settings",
-    setupChipWriteFeatures = "Auto Brightness dll",
-    setupWarnWrite       = "Diperlukan untuk fitur yang memodifikasi pengaturan sistem seperti kecerahan, rotasi, dan animasi.",
-    setupChipStorageRead = "Baca File Config",
-    setupChipStorageExport = "Export / Import",
-    setupChipWelcomeMgr  = "System Manager",
-    setupChipWelcomePerf = "Performance Tweaks",
-    setupChipWelcomeRoot = "Root Control",
 
     homeSystemStatus = "Perangkat",
     homeMonitor = "Monitor",
@@ -138,6 +120,9 @@ val StringsId = AppStrings(
     tweakGpuFreqLock = "GPU Freq Lock",
     tweakGpuFreqLockDesc = "Kunci frekuensi GPU ke level tertentu",
     tweakGpuFreqMax = "GPU Max Freq",
+    premiumLabel = "✦  PREMIUM",
+    premiumLockedDesc = "Fitur ini hanya tersedia untuk pengguna Premium.\nAktifkan lisensi untuk membuka",
+    premiumUpgradeBtn = "Upgrade ke Premium",
     tweakTouchBoost = "Touch Response Boost",
     tweakTouchBoostDesc = "Tingkatkan responsivitas layar sentuh",
     tweakTouchSampleRate = "Sample Rate",
@@ -391,3 +376,5 @@ val StringsId = AppStrings(
     serviceNotifChannelDesc = "Layanan background",
     serviceNotifText = "Tweak aktif",
 )
+}
+val StringsId: AppStrings get() = StringsIdHolder.value

@@ -1,6 +1,7 @@
 package dev.aether.manager.i18n
 
-val StringsEn = AppStrings(
+private object StringsEnHolder {
+    val value = AppStrings(
     navHome  = "Home",
     navTweak = "Tweaks",
     navApps  = "Apps",
@@ -41,25 +42,6 @@ val StringsEn = AppStrings(
     setupBtnBack         = "Back",
     setupBtnRetry        = "Retry",
     setupBtnSkip         = "Skip",
-    setupStepOf          = "Step %d of %d",
-    setupBrandLabel      = "AE Manager",
-    setupGrantedSub      = "Permission granted successfully",
-    setupMissingTapHint  = "Tap an item below to go back to that step:",
-    setupChipRootFull    = "Full System Access",
-    setupChipRootShell   = "Shell Commands",
-    setupChipRootRequired = "Required",
-    setupWarnRoot        = "AE Manager needs root to deeply manage your Android system. Without this permission, the app cannot function.",
-    setupChipNotifStatus = "Operation Status",
-    setupChipNotifConfirm = "Tweak Confirmation",
-    setupChipOptional    = "Optional",
-    setupChipWriteModify = "Modify System Settings",
-    setupChipWriteFeatures = "Auto Brightness etc",
-    setupWarnWrite       = "Required for features that modify system settings such as brightness, rotation, and animations.",
-    setupChipStorageRead = "Read Config Files",
-    setupChipStorageExport = "Export / Import",
-    setupChipWelcomeMgr  = "System Manager",
-    setupChipWelcomePerf = "Performance Tweaks",
-    setupChipWelcomeRoot = "Root Control",
 
     homeSystemStatus = "Device",
     homeMonitor = "Monitor",
@@ -138,6 +120,9 @@ val StringsEn = AppStrings(
     tweakGpuFreqLock = "GPU Freq Lock",
     tweakGpuFreqLockDesc = "Lock GPU to a specific frequency level",
     tweakGpuFreqMax = "GPU Max Freq",
+    premiumLabel = "✦  PREMIUM",
+    premiumLockedDesc = "This feature is only available for Premium users.\nActivate a license to unlock",
+    premiumUpgradeBtn = "Upgrade to Premium",
     tweakTouchBoost = "Touch Response Boost",
     tweakTouchBoostDesc = "Boost touchscreen responsiveness & polling",
     tweakTouchSampleRate = "Sample Rate",
@@ -391,3 +376,5 @@ val StringsEn = AppStrings(
     serviceNotifChannelDesc = "Background service",
     serviceNotifText = "Tweaks active",
 )
+}
+val StringsEn: AppStrings get() = StringsEnHolder.value

@@ -68,6 +68,8 @@ class SetupActivity : ComponentActivity() {
                 ProvideStrings {
                     SetupScreen(
                         onDone = { rootWasGranted ->
+                            // FIX #4: hanya simpan setup_done dan markGranted
+                            // kalau root memang sudah granted (divalidasi dari caller)
                             val prefs = getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
                             prefs.edit().putBoolean("setup_done", true).apply()
                             if (rootWasGranted) RootManager.markGranted()
@@ -91,13 +93,11 @@ private data class SetupPage(
     val desc: String,
     val permissionType: String? = null,
     val ctaLabel: String? = null,
+    // FIX #6: flag apakah permission ini wajib atau bisa di-skip
     val required: Boolean = true,
-    // Info chips baru untuk menjelaskan detail permission
-    val infoChips: List<Pair<ImageVector, String>> = emptyList(),
-    val warningNote: String? = null,
 )
 
-// ── Animated Icon Box ──────────────────────────────────────────────────────────
+// ── Icon box ──────────────────────────────────────────────────────────────────
 @Composable
 private fun AnimatedIconBox(
     icon: ImageVector,
@@ -107,52 +107,30 @@ private fun AnimatedIconBox(
     modifier: Modifier = Modifier
 ) {
     val glowAlpha by animateFloatAsState(
-        targetValue   = if (granted) 0.60f else 0.30f,
+        targetValue   = if (granted) 0.55f else 0.28f,
         animationSpec = tween(500, easing = FastOutSlowInEasing),
         label         = "glow_alpha"
     )
     val scale by animateFloatAsState(
-        targetValue   = if (granted) 1.08f else 1f,
+        targetValue   = if (granted) 1.07f else 1f,
         animationSpec = spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium),
         label         = "icon_scale"
     )
-    val ringScale by animateFloatAsState(
-        targetValue   = if (granted) 1.18f else 1f,
-        animationSpec = spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow),
-        label         = "ring_scale"
-    )
 
-    Box(contentAlignment = Alignment.Center, modifier = modifier.size(130.dp)) {
-        // Outer glow ring
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier.size(120.dp)
+    ) {
         Box(
             modifier = Modifier
-                .size(126.dp)
-                .scale(ringScale)
+                .size(110.dp)
                 .clip(CircleShape)
                 .background(
                     Brush.radialGradient(
-                        listOf(iconTint.copy(alpha = glowAlpha * 0.3f), Color.Transparent)
+                        listOf(iconTint.copy(alpha = glowAlpha * 0.45f), Color.Transparent)
                     )
                 )
         )
-        // Middle ring (border pulse)
-        Box(
-            modifier = Modifier
-                .size(112.dp)
-                .clip(CircleShape)
-                .border(
-                    width = if (granted) 1.5.dp else 1.dp,
-                    brush = Brush.sweepGradient(
-                        listOf(
-                            iconTint.copy(alpha = glowAlpha * 0.4f),
-                            iconTint.copy(alpha = 0.05f),
-                            iconTint.copy(alpha = glowAlpha * 0.4f),
-                        )
-                    ),
-                    shape = CircleShape
-                )
-        )
-        // Icon container
         Box(
             modifier = Modifier
                 .size(96.dp)
@@ -180,7 +158,7 @@ private fun AnimatedIconBox(
     }
 }
 
-// ── Step Progress Bar ─────────────────────────────────────────────────────────
+// ── Step progress indicator ───────────────────────────────────────────────────
 @Composable
 private fun StepProgressBar(total: Int, current: Int, modifier: Modifier = Modifier) {
     val primary = MaterialTheme.colorScheme.primary
@@ -188,7 +166,7 @@ private fun StepProgressBar(total: Int, current: Int, modifier: Modifier = Modif
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 32.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(total) { i ->
@@ -202,7 +180,7 @@ private fun StepProgressBar(total: Int, current: Int, modifier: Modifier = Modif
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(if (isCurr) 4.dp else 3.dp)
+                    .height(3.dp)
                     .clip(CircleShape)
                     .background(primary.copy(alpha = 0.12f))
             ) {
@@ -213,7 +191,7 @@ private fun StepProgressBar(total: Int, current: Int, modifier: Modifier = Modif
                         .clip(CircleShape)
                         .background(
                             if (isCurr) Brush.horizontalGradient(
-                                listOf(primary.copy(alpha = 0.6f), primary)
+                                listOf(primary.copy(alpha = 0.5f), primary)
                             ) else Brush.horizontalGradient(listOf(primary, primary))
                         )
                 )
@@ -222,57 +200,8 @@ private fun StepProgressBar(total: Int, current: Int, modifier: Modifier = Modif
     }
 }
 
-// ── Info Chip ─────────────────────────────────────────────────────────────────
-@Composable
-private fun InfoChip(icon: ImageVector, label: String, accent: Color) {
-    Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = accent.copy(alpha = 0.08f),
-        border = BorderStroke(0.5.dp, accent.copy(alpha = 0.2f))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(13.dp))
-            Text(label, color = accent.copy(alpha = 0.9f), fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-        }
-    }
-}
-
-// ── Warning Note ──────────────────────────────────────────────────────────────
-@Composable
-private fun WarningNote(text: String) {
-    val color = MaterialTheme.colorScheme.error
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = color.copy(alpha = 0.07f),
-        border = BorderStroke(0.5.dp, color.copy(alpha = 0.18f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                Icons.Outlined.ErrorOutline, null,
-                tint = color,
-                modifier = Modifier.size(15.dp).padding(top = 1.dp)
-            )
-            Text(
-                text,
-                color = color.copy(alpha = 0.85f),
-                fontSize = 11.5.sp,
-                lineHeight = 17.sp
-            )
-        }
-    }
-}
-
-// ── Lifecycle Resume Observer ─────────────────────────────────────────────────
+// ── Lifecycle resume observer ─────────────────────────────────────────────────
+// FIX #7: recheck permission saat app di-resume dari Settings
 @Composable
 private fun OnLifecycleResume(onResume: () -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -285,9 +214,9 @@ private fun OnLifecycleResume(onResume: () -> Unit) {
     }
 }
 
-// ── Main Setup Screen ─────────────────────────────────────────────────────────
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
+// FIX #4: onDone sekarang menerima rootWasGranted: Boolean
 fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val ctx     = LocalContext.current
     val scope   = rememberCoroutineScope()
@@ -310,6 +239,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
             PermState.GRANTED else PermState.DENIED
     }
 
+    // FIX #7: recheck permission on resume (user balik dari Settings)
     OnLifecycleResume {
         if (notifState != PermState.IDLE) {
             val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
@@ -330,12 +260,16 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
         }
     }
 
+    // FIX #3: Storage page di-skip di API >= 33 karena READ_EXTERNAL_STORAGE sudah dicabut
     val includeStorage = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
 
-    val rootOk        = rootState    == PermState.GRANTED
-    val notifOk       = notifState   == PermState.GRANTED || notifState   == PermState.DENIED
-    val writeOk       = writeState   == PermState.GRANTED || writeState   == PermState.DENIED
-    val storageOk     = !includeStorage || storageState == PermState.GRANTED || storageState == PermState.DENIED
+    // "Selesai" = root wajib granted + permission opsional sudah ada keputusan
+    // (GRANTED atau DENIED/skip — yang penting bukan IDLE/CHECKING)
+    val rootOk    = rootState    == PermState.GRANTED
+    val notifOk   = notifState   == PermState.GRANTED || notifState   == PermState.DENIED
+    val writeOk   = writeState   == PermState.GRANTED || writeState   == PermState.DENIED
+    val storageOk = !includeStorage ||
+                    storageState == PermState.GRANTED || storageState == PermState.DENIED
     val allPermsGranted = rootOk && notifOk && writeOk && storageOk
 
     val primaryContainer   = MaterialTheme.colorScheme.primaryContainer
@@ -348,90 +282,41 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val onTerContainer     = MaterialTheme.colorScheme.onTertiaryContainer
 
     val pages = buildList {
-        // ── Welcome ──
         add(SetupPage(
-            icon     = Icons.Outlined.Rocket,
-            iconBg   = primaryContainer,
-            iconTint = onPrimaryContainer,
-            title    = s.setupWelcomeTitle,
-            desc     = s.setupWelcomeDesc,
-            infoChips = listOf(
-                Icons.Outlined.Shield      to s.setupChipWelcomeMgr,
-                Icons.Outlined.Speed       to s.setupChipWelcomePerf,
-                Icons.Outlined.BugReport   to s.setupChipWelcomeRoot,
-            )
+            icon = Icons.Outlined.Rocket, iconBg = primaryContainer, iconTint = onPrimaryContainer,
+            title = s.setupWelcomeTitle, desc = s.setupWelcomeDesc
         ))
-        // ── Root ──
         add(SetupPage(
-            icon           = Icons.Outlined.AdminPanelSettings,
-            iconBg         = errContainer,
-            iconTint       = onErrContainer,
-            title          = s.setupRootTitle,
-            desc           = s.setupRootDesc,
-            permissionType = "ROOT",
-            ctaLabel       = s.setupRootCta,
-            required       = true,
-            infoChips      = listOf(
-                Icons.Outlined.Lock       to s.setupChipRootFull,
-                Icons.Outlined.Terminal   to s.setupChipRootShell,
-                Icons.Outlined.Security   to s.setupChipRootRequired,
-            ),
-            warningNote = s.setupWarnRoot
+            icon = Icons.Outlined.AdminPanelSettings, iconBg = errContainer, iconTint = onErrContainer,
+            title = s.setupRootTitle, desc = s.setupRootDesc,
+            permissionType = "ROOT", ctaLabel = s.setupRootCta,
+            required = true
         ))
-        // ── Notifikasi ──
         add(SetupPage(
-            icon           = Icons.Outlined.Notifications,
-            iconBg         = secContainer,
-            iconTint       = onSecContainer,
-            title          = s.setupNotifTitle,
-            desc           = s.setupNotifDesc,
-            permissionType = "NOTIFICATION",
-            ctaLabel       = s.setupNotifCta,
-            required       = false,
-            infoChips      = listOf(
-                Icons.Outlined.NotificationsActive to s.setupChipNotifStatus,
-                Icons.Outlined.CheckCircle         to s.setupChipNotifConfirm,
-                Icons.Outlined.Info                to s.setupChipOptional,
-            )
+            icon = Icons.Outlined.Notifications, iconBg = secContainer, iconTint = onSecContainer,
+            title = s.setupNotifTitle, desc = s.setupNotifDesc,
+            permissionType = "NOTIFICATION", ctaLabel = s.setupNotifCta,
+            required = false
         ))
-        // ── Write Settings ──
         add(SetupPage(
-            icon           = Icons.Outlined.Tune,
-            iconBg         = terContainer,
-            iconTint       = onTerContainer,
-            title          = s.setupWriteTitle,
-            desc           = s.setupWriteDesc,
-            permissionType = "WRITE_SETTINGS",
-            ctaLabel       = s.setupWriteCta,
-            required       = false,
-            infoChips      = listOf(
-                Icons.Outlined.SettingsSuggest to s.setupChipWriteModify,
-                Icons.Outlined.Bolt            to s.setupChipWriteFeatures,
-                Icons.Outlined.Info            to s.setupChipOptional,
-            ),
-            warningNote = s.setupWarnWrite
+            icon = Icons.Outlined.Tune, iconBg = terContainer, iconTint = onTerContainer,
+            title = s.setupWriteTitle, desc = s.setupWriteDesc,
+            permissionType = "WRITE_SETTINGS", ctaLabel = s.setupWriteCta,
+            required = false
         ))
-        // ── Storage ── (API < 33 only)
         if (includeStorage) {
             add(SetupPage(
-                icon           = Icons.Outlined.FolderOpen,
-                iconBg         = secContainer,
-                iconTint       = onSecContainer,
-                title          = s.setupStorageTitle,
-                desc           = s.setupStorageDesc,
-                permissionType = "STORAGE",
-                ctaLabel       = s.setupStorageCta,
-                required       = false,
-                infoChips      = listOf(
-                    Icons.Outlined.Storage    to s.setupChipStorageRead,
-                    Icons.Outlined.Download   to s.setupChipStorageExport,
-                    Icons.Outlined.Info       to s.setupChipOptional,
-                )
+                icon = Icons.Outlined.FolderOpen, iconBg = secContainer, iconTint = onSecContainer,
+                title = s.setupStorageTitle, desc = s.setupStorageDesc,
+                permissionType = "STORAGE", ctaLabel = s.setupStorageCta,
+                required = false
             ))
         }
-        // ── Done placeholder ──
+        // FIX Bug 2: last page pakai placeholder — icon/title/desc-nya ditentukan
+        // secara langsung di dalam pager berdasarkan allPermsGranted yang reaktif,
+        // bukan dari pages list yang di-build sekali saat composable pertama jalan
         add(SetupPage(
-            icon     = Icons.Outlined.CheckCircle,
+            icon     = Icons.Outlined.CheckCircle, // placeholder, override di pager
             iconBg   = Color.Transparent,
             iconTint = Color.Transparent,
             title    = "",
@@ -443,6 +328,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val currentPage = pagerState.currentPage
     val isLast      = currentPage == pages.size - 1
 
+    // Auto-check saat landing di halaman permission
     LaunchedEffect(currentPage) {
         val pg = pages[currentPage]
         when (pg.permissionType) {
@@ -475,12 +361,16 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
         else             -> PermState.IDLE
     }
 
+    // FIX #2: canProceed mempertimbangkan required vs opsional
+    // Required: harus GRANTED. Opsional: GRANTED atau DENIED (sudah keputusan user) bisa lanjut
     val canProceed = when {
-        isLast -> rootState == PermState.GRANTED
+        isLast -> rootState == PermState.GRANTED // last page hanya butuh root
         currentPageData.permissionType == null -> true
         currentPageData.required -> permState == PermState.GRANTED
         else -> permState == PermState.GRANTED || permState == PermState.DENIED
     }
+
+    // FIX #2: swipe hanya diizinkan kalau canProceed atau tidak ada permission di page ini
     val swipeEnabled = canProceed || currentPageData.permissionType == null
 
     fun nextPage() { scope.launch { pagerState.animateScrollToPage(currentPage + 1) } }
@@ -500,36 +390,22 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
                 .graphicsLayer(
-                    alpha        = screenAlpha.value,
+                    alpha = screenAlpha.value,
+                    // FIX #1: convert dp → px via density, bukan .dp.value double-convert
                     translationY = with(density) { screenSlideY.value.dp.toPx() }
                 )
         ) {
-            // Background gradient orb
+            // Background glow
             Box(
                 modifier = Modifier
-                    .size(320.dp)
+                    .size(280.dp)
                     .align(Alignment.TopEnd)
-                    .offset(x = 80.dp, y = (-40).dp)
+                    .offset(x = 60.dp, y = (-20).dp)
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
                             listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.07f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(220.dp)
-                    .align(Alignment.BottomStart)
-                    .offset(x = (-60).dp, y = 60.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                                 Color.Transparent
                             )
                         )
@@ -541,7 +417,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ── Top: App brand + step progress ────────────────────
+                // ── Top: step progress ─────────────────────────────────
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -549,25 +425,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                         .padding(top = 36.dp)
                         .padding(bottom = 4.dp)
                 ) {
-                    // App label kecil
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.Android, null,
-                            tint     = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            s.setupBrandLabel,
-                            style         = MaterialTheme.typography.labelSmall,
-                            color         = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                            letterSpacing = 1.5.sp,
-                            fontWeight    = FontWeight.SemiBold
-                        )
-                    }
                     AnimatedContent(
                         targetState = currentPage,
                         transitionSpec = {
@@ -581,10 +438,10 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                         label = "step_counter"
                     ) { page ->
                         Text(
-                            text          = s.setupStepOf.format(page + 1, pages.size),
+                            text          = "Setup  ${page + 1} / ${pages.size}",
                             style         = MaterialTheme.typography.labelSmall,
-                            color         = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                            letterSpacing = 0.8.sp
+                            color         = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            letterSpacing = 1.sp
                         )
                     }
                     StepProgressBar(total = pages.size, current = currentPage)
@@ -592,14 +449,15 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 
                 // ── Pager ──────────────────────────────────────────────
                 HorizontalPager(
-                    state                   = pagerState,
-                    pageSize                = PageSize.Fill,
+                    state = pagerState,
+                    pageSize = PageSize.Fill,
                     beyondViewportPageCount = 1,
-                    modifier                = Modifier
+                    modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    userScrollEnabled        = swipeEnabled,
-                    pageSpacing              = 0.dp,
+                    // FIX #2: swipe dikunci kalau permission required belum granted
+                    userScrollEnabled = swipeEnabled,
+                    pageSpacing = 0.dp,
                 ) { idx ->
                     val pg = pages[idx]
                     val pagePermState = when (pg.permissionType) {
@@ -612,6 +470,8 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                     val isGrantedPage = pagePermState == PermState.GRANTED
                     val isLastPage    = idx == pages.size - 1
 
+                    // FIX Bug 2: last page icon/title/desc dihitung langsung
+                    // dari allPermsGranted yang reaktif, bukan dari pages[] yang stale
                     val effectivePg = if (isLastPage) pg.copy(
                         icon     = if (allPermsGranted) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
                         iconBg   = if (allPermsGranted) Color(0xFF1B5E20).copy(alpha = 0.2f) else errContainer,
@@ -624,12 +484,12 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 26.dp)
-                            .padding(top = 12.dp, bottom = 8.dp)
+                            .padding(horizontal = 28.dp)
+                            .padding(top = 16.dp, bottom = 8.dp)
                             .graphicsLayer {
                                 translationX = pageOffset * size.width * 0.22f
                                 val absOffset = kotlin.math.abs(pageOffset)
@@ -638,7 +498,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                 scaleY = lerp(1f, 0.93f, absOffset.coerceIn(0f, 1f))
                             }
                     ) {
-                        // Icon
                         AnimatedIconBox(
                             icon     = effectivePg.icon,
                             iconBg   = effectivePg.iconBg,
@@ -646,10 +505,9 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             granted  = isGrantedPage || (isLastPage && allPermsGranted)
                         )
 
-                        // Title + Desc
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             AnimatedContent(
                                 targetState = effectivePg.title,
@@ -675,43 +533,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             )
                         }
 
-                        // Info Chips
-                        if (effectivePg.infoChips.isNotEmpty() && !isLastPage) {
-                            val chipColor = when (effectivePg.permissionType) {
-                                "ROOT"           -> onErrContainer
-                                "NOTIFICATION"   -> onSecContainer
-                                "WRITE_SETTINGS" -> onTerContainer
-                                "STORAGE"        -> onSecContainer
-                                else             -> onPrimaryContainer
-                            }
-                            Row(
-                                modifier              = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment     = Alignment.CenterVertically
-                            ) {
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                                    verticalArrangement   = Arrangement.spacedBy(6.dp),
-                                    modifier              = Modifier.fillMaxWidth()
-                                ) {
-                                    effectivePg.infoChips.forEach { (icon, label) ->
-                                        InfoChip(icon = icon, label = label, accent = chipColor)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Warning note (jika ada)
-                        if (effectivePg.warningNote != null && pagePermState != PermState.GRANTED) {
-                            AnimatedVisibility(
-                                visible = true,
-                                enter   = fadeIn(tween(400)) + slideInVertically { it / 3 }
-                            ) {
-                                WarningNote(effectivePg.warningNote)
-                            }
-                        }
-
-                        // All Granted Badge (last page)
                         AnimatedVisibility(
                             visible = isLastPage && allPermsGranted,
                             enter   = scaleIn(spring(Spring.DampingRatioLowBouncy)) + fadeIn(),
@@ -720,13 +541,14 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             AllGrantedBadge()
                         }
 
-                        // Missing Perms Summary (last page)
                         AnimatedVisibility(
                             visible = isLastPage && !allPermsGranted,
                             enter   = slideInVertically { it / 2 } + fadeIn(),
                             exit    = slideOutVertically { it / 2 } + fadeOut()
                         ) {
                             MissingPermsSummary(
+                                // Hanya tampil sebagai "missing" kalau benar-benar belum diputuskan
+                                // DENIED = user skip = bukan missing, hanya root yang wajib
                                 rootMissing    = rootState != PermState.GRANTED,
                                 notifMissing   = notifState == PermState.IDLE || notifState == PermState.CHECKING,
                                 writeMissing   = writeState == PermState.IDLE || writeState == PermState.CHECKING,
@@ -737,7 +559,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             )
                         }
 
-                        // Permission Action Block
                         if (effectivePg.permissionType != null) {
                             PermissionBlock(
                                 permType = effectivePg.permissionType,
@@ -801,12 +622,12 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                     }
                 }
 
-                // ── Bottom Controls ────────────────────────────────────
+                // ── Bottom controls ────────────────────────────────────
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier
-                        .padding(horizontal = 26.dp)
+                        .padding(horizontal = 28.dp)
                         .padding(bottom = 32.dp)
                 ) {
                     val btnScale = remember { Animatable(1f) }
@@ -816,13 +637,13 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             btnScale.animateTo(1f, spring(Spring.DampingRatioLowBouncy))
                         }
                     }
-
                     Button(
                         onClick = {
                             scope.launch {
                                 btnScale.animateTo(0.96f, tween(80))
                                 btnScale.animateTo(1f, spring(Spring.DampingRatioLowBouncy))
                             }
+                            // FIX #4: pass root state ke onDone
                             if (isLast) onDone(rootState == PermState.GRANTED)
                             else nextPage()
                         },
@@ -844,48 +665,22 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             },
                             label = "btn_label"
                         ) { label ->
-                            Row(
-                                verticalAlignment     = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                                if (!isLast) {
-                                    Icon(
-                                        Icons.Outlined.ChevronRight, null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        Icons.Outlined.RocketLaunch, null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
+                            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                         }
                     }
 
-                    // Error hint kalau required belum granted
+                    // Pesan error — hanya tampil kalau permission required dan belum granted
                     AnimatedVisibility(
                         visible = !canProceed &&
                                 currentPageData.permissionType != null &&
                                 currentPageData.required
                     ) {
-                        Row(
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                Icons.Outlined.Lock, null,
-                                tint     = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                s.setupRootRequired,
-                                color     = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                                fontSize  = 12.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                        Text(
+                            s.setupRootRequired,
+                            color     = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                            fontSize  = 12.sp,
+                            textAlign = TextAlign.Center
+                        )
                     }
 
                     Row(
@@ -910,7 +705,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     }
 }
 
-// ── All Granted Badge ─────────────────────────────────────────────────────────
+// ── All granted badge ─────────────────────────────────────────────────────────
 @Composable
 private fun AllGrantedBadge() {
     val infiniteTransition = rememberInfiniteTransition(label = "badge_glow")
@@ -922,11 +717,11 @@ private fun AllGrantedBadge() {
     )
     Surface(
         shape  = RoundedCornerShape(50),
-        color  = Color(0xFF4CAF50).copy(alpha = 0.12f),
-        border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = glowAlpha * 0.45f))
+        color  = Color(0xFF4CAF50).copy(alpha = 0.15f),
+        border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = glowAlpha * 0.4f))
     ) {
         Row(
-            modifier              = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+            modifier              = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment     = Alignment.CenterVertically
         ) {
@@ -946,7 +741,7 @@ private fun AllGrantedBadge() {
     }
 }
 
-// ── Missing Perms Summary ─────────────────────────────────────────────────────
+// ── Missing perms summary ─────────────────────────────────────────────────────
 @Composable
 private fun MissingPermsSummary(
     rootMissing: Boolean,
@@ -956,7 +751,9 @@ private fun MissingPermsSummary(
     strings: AppStrings,
     onGoToPage: (Int) -> Unit
 ) {
-    var pageIdx      = 1
+    // FIX #8: hitung page index dari list yang aktual bukan hardcoded
+    // Page 0 = welcome, 1 = root, 2 = notif, 3 = write, 4 = storage (opsional), last = done
+    var pageIdx = 1 // mulai dari root page
     val rootPageIdx    = pageIdx++
     val notifPageIdx   = pageIdx++
     val writePageIdx   = pageIdx++
@@ -964,24 +761,24 @@ private fun MissingPermsSummary(
 
     Surface(
         shape  = RoundedCornerShape(20.dp),
-        color  = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f),
+        color  = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier              = Modifier.padding(bottom = 4.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
                     Icons.Outlined.Warning, null,
                     tint     = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
+                // FIX #8: gunakan string yang lebih generik untuk judul summary
                 Text(
                     strings.setupIncompleteTitle,
                     color      = MaterialTheme.colorScheme.onErrorContainer,
@@ -989,12 +786,6 @@ private fun MissingPermsSummary(
                     fontSize   = 13.sp
                 )
             }
-            Text(
-                strings.setupMissingTapHint,
-                color    = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.6f),
-                fontSize = 11.sp
-            )
-            Spacer(Modifier.height(2.dp))
             if (rootMissing)    MissingPermRow(strings.setupRootTitle,    rootPageIdx,    onGoToPage)
             if (notifMissing)   MissingPermRow(strings.setupNotifTitle,   notifPageIdx,   onGoToPage)
             if (writeMissing)   MissingPermRow(strings.setupWriteTitle,   writePageIdx,   onGoToPage)
@@ -1020,15 +811,15 @@ private fun MissingPermRow(label: String, pageIdx: Int, onGoToPage: (Int) -> Uni
     }
 }
 
-// ── Permission Block ──────────────────────────────────────────────────────────
+// ── Permission block ──────────────────────────────────────────────────────────
 @Composable
 private fun PermissionBlock(
     permType: String,
     ctaLabel: String,
     state: PermState,
     strings: AppStrings,
-    canSkip: Boolean,
-    onSkip: () -> Unit,
+    canSkip: Boolean,      // FIX #6
+    onSkip: () -> Unit,    // FIX #6
     onAction: () -> Unit,
     onRetry: () -> Unit
 ) {
@@ -1042,6 +833,7 @@ private fun PermissionBlock(
     ) { s ->
         when (s) {
             PermState.IDLE -> {
+                // Animasi glow infinite untuk tombol CTA
                 val btnGlow = remember { Animatable(0.5f) }
                 LaunchedEffect(Unit) {
                     while (true) {
@@ -1051,13 +843,15 @@ private fun PermissionBlock(
                 }
                 val primary = MaterialTheme.colorScheme.primary
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // FIX #5: hapus Modifier.blur() pada glow layer button,
+                    // ganti ke alpha-only background — lebih ringan, tidak per-frame costly
                     Box(contentAlignment = Alignment.Center) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp)
                                 .clip(RoundedCornerShape(18.dp))
-                                .background(primary.copy(alpha = btnGlow.value * 0.10f))
+                                .background(primary.copy(alpha = btnGlow.value * 0.12f))
                         )
                         FilledTonalButton(
                             onClick   = onAction,
@@ -1079,6 +873,8 @@ private fun PermissionBlock(
                             Text(ctaLabel, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         }
                     }
+
+                    // FIX #6: skip button untuk permission opsional
                     if (canSkip) {
                         TextButton(
                             onClick  = onSkip,
@@ -1086,7 +882,7 @@ private fun PermissionBlock(
                         ) {
                             Text(
                                 strings.setupBtnSkip,
-                                color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                 fontSize = 13.sp
                             )
                         }
@@ -1095,6 +891,14 @@ private fun PermissionBlock(
             }
 
             PermState.CHECKING -> {
+                val infiniteTransition = rememberInfiniteTransition(label = "checking")
+                val dotAlpha1 by infiniteTransition.animateFloat(0f, 1f,
+                    infiniteRepeatable(tween(400), RepeatMode.Reverse), label = "d1")
+                val dotAlpha2 by infiniteTransition.animateFloat(0f, 1f,
+                    infiniteRepeatable(tween(400, delayMillis = 133), RepeatMode.Reverse), label = "d2")
+                val dotAlpha3 by infiniteTransition.animateFloat(0f, 1f,
+                    infiniteRepeatable(tween(400, delayMillis = 266), RepeatMode.Reverse), label = "d3")
+
                 Surface(
                     shape    = RoundedCornerShape(18.dp),
                     color    = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -1116,6 +920,16 @@ private fun PermissionBlock(
                             color      = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
+                        Spacer(Modifier.width(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            listOf(dotAlpha1, dotAlpha2, dotAlpha3).forEach { alpha ->
+                                Text(
+                                    "•",
+                                    color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1127,8 +941,8 @@ private fun PermissionBlock(
                 }
                 Surface(
                     shape    = RoundedCornerShape(18.dp),
-                    color    = Color(0xFF1B5E20).copy(alpha = 0.10f),
-                    border   = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.30f)),
+                    color    = Color(0xFF1B5E20).copy(alpha = 0.12f),
+                    border   = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.35f)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .scale(scaleAnim.value)
@@ -1143,24 +957,17 @@ private fun PermissionBlock(
                             tint     = Color(0xFF4CAF50),
                             modifier = Modifier.size(24.dp)
                         )
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                when (permType) {
-                                    "ROOT"           -> strings.setupRootGranted
-                                    "NOTIFICATION"   -> strings.setupNotifGranted
-                                    "WRITE_SETTINGS" -> strings.setupWriteGranted
-                                    else             -> strings.setupStorageGranted
-                                },
-                                color      = Color(0xFF4CAF50),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize   = 15.sp
-                            )
-                            Text(
-                                strings.setupGrantedSub,
-                                color    = Color(0xFF4CAF50).copy(alpha = 0.6f),
-                                fontSize = 11.5.sp
-                            )
-                        }
+                        Text(
+                            when (permType) {
+                                "ROOT"           -> strings.setupRootGranted
+                                "NOTIFICATION"   -> strings.setupNotifGranted
+                                "WRITE_SETTINGS" -> strings.setupWriteGranted
+                                else             -> strings.setupStorageGranted
+                            },
+                            color      = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize   = 15.sp
+                        )
                     }
                 }
             }
@@ -1168,8 +975,8 @@ private fun PermissionBlock(
             PermState.DENIED -> {
                 Surface(
                     shape    = RoundedCornerShape(18.dp),
-                    color    = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.75f),
-                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.25f)),
+                    color    = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -1204,7 +1011,7 @@ private fun PermissionBlock(
                             if (sub != null) {
                                 Text(
                                     sub,
-                                    color      = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.65f),
+                                    color      = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
                                     fontSize   = 11.5.sp,
                                     lineHeight = 16.sp
                                 )
@@ -1216,15 +1023,9 @@ private fun PermissionBlock(
                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
                                     border         = BorderStroke(
                                         1.dp,
-                                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.35f)
+                                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.4f)
                                     )
                                 ) {
-                                    Icon(
-                                        Icons.Outlined.Refresh, null,
-                                        modifier = Modifier.size(13.dp),
-                                        tint     = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                    Spacer(Modifier.width(5.dp))
                                     Text(
                                         strings.setupBtnRetry,
                                         fontSize = 12.sp,
