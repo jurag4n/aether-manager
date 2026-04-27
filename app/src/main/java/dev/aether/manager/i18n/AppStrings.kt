@@ -49,6 +49,31 @@ data class AppStrings(
     val setupBtnBack: String,
     val setupBtnRetry: String,
     val setupBtnSkip: String,
+    // ── Setup: extra info strings ─────────────────────────────
+    val setupStepOf: String,              // "Langkah %d dari %d" / "Step %d of %d"
+    val setupBrandLabel: String,          // "AE Manager"
+    val setupGrantedSub: String,          // "Izin berhasil diberikan" / "Permission granted successfully"
+    val setupMissingTapHint: String,      // "Tap item di bawah..." / "Tap below to go back to that step"
+    // Root chips
+    val setupChipRootFull: String,        // "Akses Sistem Penuh" / "Full System Access"
+    val setupChipRootShell: String,       // "Shell Commands"
+    val setupChipRootRequired: String,    // "Wajib Diizinkan" / "Required"
+    val setupWarnRoot: String,            // warning note Root
+    // Notif chips
+    val setupChipNotifStatus: String,     // "Status Operasi" / "Operation Status"
+    val setupChipNotifConfirm: String,    // "Konfirmasi Tweak" / "Tweak Confirmation"
+    val setupChipOptional: String,        // "Opsional" / "Optional"
+    // Write chips
+    val setupChipWriteModify: String,     // "Ubah System Settings" / "Modify System Settings"
+    val setupChipWriteFeatures: String,   // "Auto Brightness dll" / "Auto Brightness etc"
+    val setupWarnWrite: String,           // warning note Write Settings
+    // Storage chips
+    val setupChipStorageRead: String,     // "Baca File Config" / "Read Config Files"
+    val setupChipStorageExport: String,   // "Export / Import"
+    // Welcome chips
+    val setupChipWelcomeMgr: String,      // "System Manager"
+    val setupChipWelcomePerf: String,     // "Performance Tweaks"
+    val setupChipWelcomeRoot: String,     // "Root Control"
 
     // ── Home ─────────────────────────────────────────────────
     val homeSystemStatus: String,
