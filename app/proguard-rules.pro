@@ -1,12 +1,5 @@
 # Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
@@ -36,49 +29,13 @@
 }
 
 # ════════════════════════════════════════════════════════════════
-# FIX VerifyError — R8 AGP 8.x merge/inline Compose lambdas → bytecode
-# invalid (>77 argument registers) → ditolak Android Runtime verifier
+# FIX VerifyError — larang R8 merge class (register overflow)
+# AGP 8.13.2 + Kotlin 2.3.x: class merging pada Compose composable
+# menghasilkan <clinit> >77 argument registers → crash di runtime
 # ════════════════════════════════════════════════════════════════
-
-# Disable optimization & preverification sepenuhnya
--dontoptimize
--dontpreverify
-
-# CRITICAL: Larang R8 merge class ke satu <clinit> — ini penyebab utama
-# register overflow di AGP 8.7+ dengan Compose
 -optimizations !class/merging/*
--optimizations !code/simplification/arithmetic
--optimizations !code/simplification/cast
--optimizations !field/*
--optimizations !class/unboxing/enum
 
-# ── Compose: jangan disentuh R8 sama sekali ──────────────────────
--keep class androidx.compose.** { *; }
--keep class androidx.compose.runtime.** { *; }
--keep class androidx.compose.runtime.internal.** { *; }
--keep class androidx.compose.ui.** { *; }
--keep class androidx.compose.material3.** { *; }
--keep class androidx.compose.animation.** { *; }
--keep class androidx.compose.foundation.** { *; }
--keepclassmembers class * {
-    @androidx.compose.runtime.Composable <methods>;
-}
-# Jangan inline ComposableLambda — ini sumber register overflow
--keep class androidx.compose.runtime.internal.ComposableLambda* { *; }
--keep class androidx.compose.runtime.internal.ComposableLambdaImpl { *; }
-
-# ── Kotlin lambda/function classes — R8 inlining = register overflow
--keep class kotlin.jvm.functions.** { *; }
--keep class kotlin.coroutines.** { *; }
--keep class kotlin.coroutines.jvm.internal.** { *; }
--keepclassmembers class * implements kotlin.jvm.functions.Function* { *; }
-
-# ── Kotlin companion objects — jangan di-merge
--keepclassmembers class * {
-    public static ** Companion;
-}
-
-# ── JNI bridges (CRITICAL — app crash tanpa ini) ─────────────────
+# ── JNI bridges ──────────────────────────────────────────────────
 -keep class dev.aether.manager.NativeAether {
     public static *** tryLoad();
     native <methods>;
@@ -96,9 +53,6 @@
 -keep class dev.aether.manager.AetherApplication { *; }
 -keep class dev.aether.manager.service.AetherService { *; }
 -keep class dev.aether.manager.service.BootReceiver { *; }
-# Jaga semua Activity dari obfuscation yang agresif
--keep class dev.aether.manager.*Activity { *; }
--keep class dev.aether.manager.ui.** { *; }
 
 # ── Room ─────────────────────────────────────────────────────────
 -keep class * extends androidx.room.RoomDatabase
