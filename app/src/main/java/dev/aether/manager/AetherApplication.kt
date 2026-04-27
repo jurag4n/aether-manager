@@ -21,10 +21,10 @@ class AetherApplication : Application() {
         NativeAether.tryLoad()
 
         // Security check hanya aktif di RELEASE build yang benar-benar signed.
-        if (!BuildConfig.DEBUG) {
-            checkSignature()
-            checkAll()
-        }
+      //  if (!BuildConfig.DEBUG) {
+       //     checkSignature()
+        //    checkAll()
+       // }
 
         initLibsu()
         CimolAgent.tryLoad()

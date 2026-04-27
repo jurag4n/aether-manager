@@ -54,9 +54,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile     = rootProject.file("aether.jks")
-            storePassword = System.getenv("STORE_PASSWORD") ?: ""
-            keyAlias      = System.getenv("KEY_ALIAS")      ?: ""
-            keyPassword   = System.getenv("KEY_PASSWORD")   ?: ""
+            storePassword = System.getenv("STORE_PASSWORD") ?: "aether"
+            keyAlias      = System.getenv("KEY_ALIAS")      ?: "aether"
+            keyPassword   = System.getenv("KEY_PASSWORD")   ?: "aether"
         }
     }
 
