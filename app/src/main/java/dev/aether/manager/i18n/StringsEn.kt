@@ -160,7 +160,6 @@ val StringsEn = AppStrings(
     adBlockInfoCard = "Ads are our primary revenue source to keep AetherManager free. By disabling AdBlock, you help support development of this app.",
     adBlockSafeLabel = "Ads are displayed safely and contain no malware.",
     adBlockBtnDisable = "Disable AdBlock",
-    adBlockBtnLater = "Maybe Later",
 
     updateAvailable = "Update Available",
     updateTabDesc = "Description",

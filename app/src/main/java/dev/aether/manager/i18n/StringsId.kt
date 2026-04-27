@@ -160,7 +160,6 @@ val StringsId = AppStrings(
     adBlockInfoCard = "Iklan adalah sumber pendapatan utama kami untuk menjaga AetherManager tetap gratis. Dengan menonaktifkan AdBlock, kamu membantu pengembangan app ini.",
     adBlockSafeLabel = "Iklan ditampilkan dengan aman, tidak mengandung malware.",
     adBlockBtnDisable = "Nonaktifkan AdBlock",
-    adBlockBtnLater = "Nanti",
 
     updateAvailable = "Update Tersedia",
     updateTabDesc = "Deskripsi",

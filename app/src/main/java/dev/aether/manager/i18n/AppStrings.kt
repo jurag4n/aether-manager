@@ -182,7 +182,6 @@ data class AppStrings(
     val adBlockInfoCard: String,
     val adBlockSafeLabel: String,
     val adBlockBtnDisable: String,
-    val adBlockBtnLater: String,
 
     // ── Update dialog ────────────────────────────────────────
     val updateAvailable: String,

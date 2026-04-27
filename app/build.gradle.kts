@@ -25,8 +25,8 @@ android {
         applicationId = "dev.aether.manager"
         minSdk        = 26
         targetSdk     = 36
-        versionCode   = 240
-        versionName   = "2.4"
+        versionCode   = 250
+        versionName   = "2.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // ── NDK / CMake config ──────────────────────────────────────────────
