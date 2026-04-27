@@ -6,7 +6,7 @@ val StringsId = AppStrings(
     navApps  = "Aplikasi",
 
     setupWelcomeTitle    = "Selamat Datang di Aether Manager",
-    setupWelcomeDesc     = "Mari siapkan beberapa hal sebelum memulai.",
+    setupWelcomeDesc = "Aether Manager adalah tool optimasi sistem Android yang dirancang untuk meningkatkan performa, mengelola penggunaan memori, dan menerapkan berbagai tweak sistem. Dengan kontrol yang mudah, kamu bisa membuat perangkat lebih cepat, stabil, dan responsif.",
     setupRootTitle       = "Akses Root",
     setupRootDesc        = "Aether Manager membutuhkan akses root untuk menerapkan tweak sistem.",
     setupRootCta         = "Izinkan Root",

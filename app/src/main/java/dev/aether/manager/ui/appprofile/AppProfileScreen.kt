@@ -135,85 +135,70 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
         state.profiles.values.count { it.enabled }
     }
 
-    val totalCount = state.apps.size
-
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        // ── Section header ────────────────────────────────────────────
-        TabSectionTitle(
-            icon  = Icons.Outlined.Apps,
-            title = s.appProfileTitle,
-            trailing = {
-                    val monitorBg by animateColorAsState(
-                        if (state.monitorRunning) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant,
-                        label = "monitor_bg"
-                    )
-                    val monitorFg by animateColorAsState(
-                        if (state.monitorRunning) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        label = "monitor_fg"
-                    )
-                    Surface(
-                        onClick = { vm.toggleMonitor(!state.monitorRunning) },
-                        shape = RoundedCornerShape(50),
-                        color = monitorBg,
-                        border = if (!state.monitorRunning)
-                            BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                        else null,
-                    ) {
-                        Row(
-                            Modifier.padding(start = 8.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        // ── Header + Search (fixed, tidak scroll) ─────────────────────
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            TabSectionTitle(
+                icon  = Icons.Outlined.Apps,
+                title = s.appProfileTitle,
+                trailing = {
+                        val monitorBg by animateColorAsState(
+                            if (state.monitorRunning) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                            label = "monitor_bg"
+                        )
+                        val monitorFg by animateColorAsState(
+                            if (state.monitorRunning) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = "monitor_fg"
+                        )
+                        Surface(
+                            onClick = { vm.toggleMonitor(!state.monitorRunning) },
+                            shape = RoundedCornerShape(50),
+                            color = monitorBg,
+                            border = if (!state.monitorRunning)
+                                BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            else null,
                         ) {
-                            Box(
-                                Modifier.size(6.dp).clip(CircleShape).background(monitorFg)
-                            )
-                            Text(
-                                if (state.monitorRunning) s.appProfileMonitorOn else s.appProfileMonitorOff,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = monitorFg,
-                            )
+                            Row(
+                                Modifier.padding(start = 8.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            ) {
+                                Box(Modifier.size(6.dp).clip(CircleShape).background(monitorFg))
+                                Text(
+                                    if (state.monitorRunning) s.appProfileMonitorOn else s.appProfileMonitorOff,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = monitorFg,
+                                )
+                            }
                         }
                     }
-                }
-            )
+                )
 
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            AppStatChip(
-                icon  = Icons.Outlined.PhoneAndroid,
-                label = s.appProfileAppsCount.format(totalCount),
-                modifier = Modifier.weight(1f),
-            )
-            AppStatChip(
-                icon   = Icons.Outlined.Tune,
-                label  = s.appProfileActiveCount.format(activeCount),
-                active = activeCount > 0,
-                modifier = Modifier.weight(1f),
-            )
+            SearchFilterBar(query = searchQuery, onQueryChange = { searchQuery = it })
+
+            // "4 selected" hint mirip TrickyStore
+            AnimatedVisibility(visible = activeCount > 0) {
+                Text(
+                    text = s.appProfileActiveCount.format(activeCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 2.dp, top = 2.dp, bottom = 6.dp),
+                )
+            }
         }
-
-        // ── Search / Filter bar ──────────────────────────────────────
-        SearchFilterBar(
-            query          = searchQuery,
-            onQueryChange  = { searchQuery = it },
-        )
 
         if (filtered.isEmpty()) {
             EmptyListHint(searchQuery.isNotEmpty())
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(filtered, key = { it.packageName }) { app ->
@@ -231,44 +216,7 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
     }
 }
 
-// ─── Stat chip ────────────────────────────────────────────────────────────────
 
-@Composable
-private fun AppStatChip(
-    icon: ImageVector,
-    label: String,
-    active: Boolean = false,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape    = RoundedCornerShape(12.dp),
-        color    = if (active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                   else MaterialTheme.colorScheme.surfaceContainer,
-        border   = if (active) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-                   else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
-    ) {
-        Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Icon(
-                icon, null,
-                modifier = Modifier.size(15.dp),
-                tint = if (active) MaterialTheme.colorScheme.primary
-                       else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                color = if (active) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
 
 // ─── Search / Filter bar ──────────────────────────────────────────────────────
 
@@ -393,7 +341,7 @@ private fun EmptyListHint(isSearch: Boolean) {
     }
 }
 
-// ─── App List Item ────────────────────────────────────────────────────────────
+// ─── App List Item (TrickyStore style) ───────────────────────────────────────
 
 @Composable
 private fun AppListItem(
@@ -412,52 +360,101 @@ private fun AppListItem(
         }
     }
 
-    Surface(
-        onClick  = onClick,
-        shape    = RoundedCornerShape(14.dp),
-        color    = if (isEnabled)
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        else MaterialTheme.colorScheme.surfaceContainer,
-        border   = if (isEnabled) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)) else null,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    // Chip data: hanya tampilkan setting non-default
+    val chips = remember(profile) {
+        buildList {
+            val gov = profile?.cpuGovernor ?: "default"
+            val rr  = profile?.refreshRate  ?: "default"
+            val extra = profile?.extraTweaks
+            if (gov != "default") add(Pair(gov.replaceFirstChar { it.uppercase() }, Icons.Filled.Memory))
+            if (rr  != "default") add(Pair("${rr}Hz", Icons.Filled.DisplaySettings))
+            if (extra?.gpuBoost == true)    add(Pair("GPU", Icons.Outlined.Videocam))
+            if (extra?.disableDoze == true) add(Pair("Doze", Icons.Outlined.BatterySaver))
+            if (extra?.ioLatency  == true)  add(Pair("IO", Icons.Outlined.Storage))
+        }
+    }
+
+    Column {
         Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 4.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            AppIconView(bitmap = iconBitmap, label = app.label, isEnabled = isEnabled, size = 44.dp, cornerSize = 12.dp)
+            // App icon
+            AppIconView(bitmap = iconBitmap, label = app.label, isEnabled = isEnabled, size = 46.dp, cornerSize = 12.dp)
 
+            // Name + package + chips
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(app.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(app.packageName, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (hasProfile && isEnabled) {
-                    val gov = profile!!.cpuGovernor
-                    val rr  = profile.refreshRate
+                Text(
+                    app.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    app.packageName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (chips.isNotEmpty()) {
+                    Spacer(Modifier.height(3.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (gov != "default") ProfileBadge(gov.replaceFirstChar { it.uppercase() }, Icons.Filled.Memory)
-                        if (rr  != "default") ProfileBadge("$rr Hz", Icons.Filled.DisplaySettings)
+                        chips.forEach { (label, icon) ->
+                            AppChip(label = label, icon = icon, active = isEnabled)
+                        }
                     }
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (isEnabled) {
-                    Icon(Icons.Filled.CheckCircle, null,
-                        tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            // Checkbox (mirip TrickyStore checked state)
+            val checkColor by animateColorAsState(
+                targetValue = if (isEnabled) MaterialTheme.colorScheme.primary
+                              else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                animationSpec = tween(200),
+                label = "check_color"
+            )
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        if (isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else Color.Transparent
+                    )
+                    .border(
+                        width = 1.5.dp,
+                        color = checkColor,
+                        shape = RoundedCornerShape(6.dp),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                AnimatedVisibility(
+                    visible = isEnabled,
+                    enter = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(),
+                    exit  = scaleOut(tween(150)) + fadeOut(),
+                ) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(15.dp),
+                    )
                 }
-                if (onDelete != null) {
-                    IconButton(onClick = { showDeleteDialog = true }, modifier = Modifier.size(30.dp)) {
-                        Icon(Icons.Outlined.DeleteOutline, null, modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f))
-                    }
-                }
-                Icon(Icons.Filled.ChevronRight, null, modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
             }
         }
+
+        // Thin divider antar item
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 62.dp),
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+        )
     }
 
     if (showDeleteDialog) {
@@ -476,6 +473,30 @@ private fun AppListItem(
                 TextButton(onClick = { showDeleteDialog = false }) { Text(s.appProfileBtnCancel) }
             }
         )
+    }
+}
+
+// ─── App chip (TrickyStore style: Auto / Gov / Tweaks) ───────────────────────
+
+@Composable
+private fun AppChip(label: String, icon: ImageVector, active: Boolean) {
+    val bg = if (active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+             else MaterialTheme.colorScheme.surfaceVariant
+    val fg = if (active) MaterialTheme.colorScheme.primary
+             else MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = bg,
+        border = BorderStroke(0.5.dp, fg.copy(alpha = 0.25f)),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Icon(icon, null, modifier = Modifier.size(10.dp), tint = fg)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = fg, fontSize = 10.sp)
+        }
     }
 }
 
@@ -501,19 +522,7 @@ private fun AppIconView(bitmap: Bitmap?, label: String, isEnabled: Boolean, size
     }
 }
 
-// ─── Profile badge ────────────────────────────────────────────────────────────
 
-@Composable
-private fun ProfileBadge(text: String, icon: ImageVector) {
-    Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)) {
-        Row(Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Icon(icon, null, modifier = Modifier.size(10.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(text, style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary, fontSize = 10.sp)
-        }
-    }
-}
 
 // ─── Bottom Sheet Editor ──────────────────────────────────────────────────────
 
