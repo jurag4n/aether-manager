@@ -102,12 +102,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
-            optIn.add("kotlin.RequiresOptIn")
-            freeCompilerArgs.add("-Xsuppress-version-warnings")
-        }
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs += listOf("-opt-in=kotlin.RequiresOptIn")
     }
 
     buildFeatures {
