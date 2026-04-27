@@ -7,7 +7,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
-    id("com.google.gms.google-services")
 }
 
 val gitHash: String by lazy {
@@ -24,7 +23,6 @@ android {
 
     defaultConfig {
         applicationId = "dev.aether.manager"
-        // FIX: minSdk 30 = Android 11 sesuai requirement user
         minSdk        = 30
         targetSdk     = 36
         versionCode   = 250
@@ -104,7 +102,6 @@ android {
         compilerOptions {
             jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
             optIn.add("kotlin.RequiresOptIn")
-            // FIX: suppress compileSdk 36 warning (AGP masih di 8.9.x)
             freeCompilerArgs.add("-Xsuppress-version-warnings")
         }
     }
@@ -123,9 +120,6 @@ android {
         resources {
             excludes += setOf(
                 "/META-INF/{AL2.0,LGPL2.1}",
-                // FIX: JANGAN exclude *.kotlin_module secara global!
-                // Itu menyebabkan Kotlin reflection/inline functions gagal saat runtime.
-                // Hanya exclude yang benar-benar konflik:
                 "/META-INF/MANIFEST.MF",
                 "**.proto",
                 "META-INF/com/**"
@@ -183,8 +177,6 @@ dependencies {
     implementation(libs.compose.charts)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.startup)
-    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
-    implementation("com.google.firebase:firebase-analytics")
     debugImplementation(libs.leakcanary.android)
     debugImplementation(libs.androidx.ui.tooling)
 }
