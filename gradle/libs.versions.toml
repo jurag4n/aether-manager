@@ -1,6 +1,6 @@
 [versions]
 # VERIFIED dari Maven Central — jangan diubah lagi
-agp    = "8.7.3"
+agp    = "8.6.1"
 kotlin = "2.1.21"
 ksp    = "2.1.21-2.0.2"
 
