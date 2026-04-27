@@ -2,262 +2,156 @@ package dev.aether.manager.i18n
 
 import androidx.compose.runtime.staticCompositionLocalOf
 
-/**
- * All UI strings in one data class.
- * Add new strings here, then provide values in StringsId and StringsEn.
- */
-data class AppStrings(
-    // ── Navigation ───────────────────────────────────────────
-    val navHome: String,
-    val navTweak: String,
-    val navApps: String,
+data class NavStrings(
+    val home: String,
+    val tweak: String,
+    val apps: String,
+)
 
-    // ── Setup ────────────────────────────────────────────────
-    val setupWelcomeTitle: String,
-    val setupWelcomeDesc: String,
-    val setupRootTitle: String,
-    val setupRootDesc: String,
-    val setupRootCta: String,
-    val setupRootRequired: String,
-    val setupRootChecking: String,
-    val setupRootGranted: String,
-    val setupRootDenied: String,
-    val setupRootDeniedSub: String,
-    val setupNotifTitle: String,
-    val setupNotifDesc: String,
-    val setupNotifCta: String,
-    val setupNotifGranted: String,
-    val setupNotifDenied: String,
-    val setupWriteTitle: String,
-    val setupWriteDesc: String,
-    val setupWriteCta: String,
-    val setupWriteGranted: String,
-    val setupWriteDenied: String,
-    val setupWriteDeniedSub: String,
-    val setupStorageTitle: String,
-    val setupStorageDesc: String,
-    val setupStorageCta: String,
-    val setupStorageGranted: String,
-    val setupStorageDenied: String,
-    val setupDoneTitle: String,
-    val setupDoneDesc: String,
-    val setupIncompleteTitle: String,
-    val setupIncompleteDesc: String,
-    val setupAllPermsGranted: String,
-    val setupBtnStart: String,
-    val setupBtnNext: String,
-    val setupBtnBack: String,
-    val setupBtnRetry: String,
-    val setupBtnSkip: String,
-    // ── Setup: extra info strings ─────────────────────────────
-    val setupStepOf: String,              // "Langkah %d dari %d" / "Step %d of %d"
-    val setupBrandLabel: String,          // "AE Manager"
-    val setupGrantedSub: String,          // "Izin berhasil diberikan" / "Permission granted successfully"
-    val setupMissingTapHint: String,      // "Tap item di bawah..." / "Tap below to go back to that step"
-    // Root chips
-    val setupChipRootFull: String,        // "Akses Sistem Penuh" / "Full System Access"
-    val setupChipRootShell: String,       // "Shell Commands"
-    val setupChipRootRequired: String,    // "Wajib Diizinkan" / "Required"
-    val setupWarnRoot: String,            // warning note Root
-    // Notif chips
-    val setupChipNotifStatus: String,     // "Status Operasi" / "Operation Status"
-    val setupChipNotifConfirm: String,    // "Konfirmasi Tweak" / "Tweak Confirmation"
-    val setupChipOptional: String,        // "Opsional" / "Optional"
-    // Write chips
-    val setupChipWriteModify: String,     // "Ubah System Settings" / "Modify System Settings"
-    val setupChipWriteFeatures: String,   // "Auto Brightness dll" / "Auto Brightness etc"
-    val setupWarnWrite: String,           // warning note Write Settings
-    // Storage chips
-    val setupChipStorageRead: String,     // "Baca File Config" / "Read Config Files"
-    val setupChipStorageExport: String,   // "Export / Import"
-    // Welcome chips
-    val setupChipWelcomeMgr: String,      // "System Manager"
-    val setupChipWelcomePerf: String,     // "Performance Tweaks"
-    val setupChipWelcomeRoot: String,     // "Root Control"
+data class SetupStrings(
+    val welcomeTitle: String,
+    val welcomeDesc: String,
+    val rootTitle: String,
+    val rootDesc: String,
+    val rootCta: String,
+    val rootRequired: String,
+    val rootChecking: String,
+    val rootGranted: String,
+    val rootDenied: String,
+    val rootDeniedSub: String,
+    val notifTitle: String,
+    val notifDesc: String,
+    val notifCta: String,
+    val notifGranted: String,
+    val notifDenied: String,
+    val writeTitle: String,
+    val writeDesc: String,
+    val writeCta: String,
+    val writeGranted: String,
+    val writeDenied: String,
+    val writeDeniedSub: String,
+    val storageTitle: String,
+    val storageDesc: String,
+    val storageCta: String,
+    val storageGranted: String,
+    val storageDenied: String,
+    val doneTitle: String,
+    val doneDesc: String,
+    val incompleteTitle: String,
+    val incompleteDesc: String,
+    val allPermsGranted: String,
+    val btnStart: String,
+    val btnNext: String,
+    val btnBack: String,
+    val btnRetry: String,
+    val btnSkip: String,
+    val stepOf: String,           // "%d dari %d" / "%d of %d"
+    val brandLabel: String,
+    val grantedSub: String,
+    val missingTapHint: String,
+    val chipRootFull: String,
+    val chipRootShell: String,
+    val chipRootRequired: String,
+    val warnRoot: String,
+    val chipNotifStatus: String,
+    val chipNotifConfirm: String,
+    val chipOptional: String,
+    val chipWriteModify: String,
+    val chipWriteFeatures: String,
+    val warnWrite: String,
+    val chipStorageRead: String,
+    val chipStorageExport: String,
+    val chipWelcomeMgr: String,
+    val chipWelcomePerf: String,
+    val chipWelcomeRoot: String,
+)
 
-    // ── Home ─────────────────────────────────────────────────
-    val homeSystemStatus: String,
-    val homeMonitor: String,
-    val homeRetry: String,
-    val homeLabelOs: String,
-    val homeLabelKernel: String,
-    val homeLabelSoc: String,
-    val homeLabelGovernor: String,
-    val homeLabelUptime: String,
-    val homeTempCpu: String,
-    val homeTempBat: String,
-    val homeSelinux: String,
-    val homeBatCurrent: String,      // label "Arus"
-    val homeBatVoltage: String,      // label "Tegangan"
-    val homeBatCharging: String,     // label "Mengisi"
-    val homeBatDischarging: String,  // label "Discharge"
-    val homeBatFull: String,         // label "Penuh"
-    val homeBatNotCharging: String,  // label "Tidak Mengisi"
-    val homeBatStatusLabel: String,  // label header row
+data class HomeStrings(
+    val systemStatus: String,
+    val monitor: String,
+    val retry: String,
+    val labelOs: String,
+    val labelKernel: String,
+    val labelSoc: String,
+    val labelGovernor: String,
+    val labelUptime: String,
+    val tempCpu: String,
+    val tempBat: String,
+    val selinux: String,
+    val batCurrent: String,
+    val batVoltage: String,
+    val batCharging: String,
+    val batDischarging: String,
+    val batFull: String,
+    val batNotCharging: String,
+    val batStatusLabel: String,
+)
 
-    // ── Tweak ────────────────────────────────────────────────
-    val tweakPerformanceProfile: String,
-    val tweakSectionCpu: String,
-    val tweakSectionMemory: String,
-    val tweakSectionIo: String,
-    val tweakSectionNetwork: String,
-    val tweakSectionBattery: String,
-    val tweakSchedBoost: String,
-    val tweakSchedBoostDesc: String,
-    val tweakCpuBoost: String,
-    val tweakCpuBoostDesc: String,
-    val tweakGpuThrottle: String,
-    val tweakGpuThrottleDesc: String,
-    val tweakCpusetOpt: String,
-    val tweakCpusetOptDesc: String,
-    val tweakMtkBoost: String,
-    val tweakMtkBoostDesc: String,
-    val tweakLmk: String,
-    val tweakLmkDesc: String,
-    val tweakZram: String,
-    val tweakZramDesc: String,
-    val tweakVmDirty: String,
-    val tweakVmDirtyDesc: String,
-    val tweakIoLatency: String,
-    val tweakIoLatencyDesc: String,
-    val tweakTcpBbr: String,
-    val tweakTcpBbrDesc: String,
-    val tweakDoh: String,
-    val tweakDohDesc: String,
-    val tweakNetBuffer: String,
-    val tweakNetBufferDesc: String,
-    val tweakDoze: String,
-    val tweakDozeDesc: String,
-    val tweakClearCache: String,
-    val tweakClearCacheDesc: String,
-    val tweakFastAnim: String,
-    val tweakFastAnimDesc: String,
-    val tweakEntropy: String,
-    val tweakEntropyDesc: String,
-    val tweakZramSize: String,
-    val tweakZramAlgo: String,
-    val tweakIoScheduler: String,
-
-    // ── CPU Freq Limiter ──────────────────────────────────────
-    val tweakSectionCpuFreq: String,
-    val tweakCpuFreqEnable: String,
-    val tweakCpuFreqEnableDesc: String,
-    val tweakCpuClusterPrime: String,
-    val tweakCpuClusterGold: String,
-    val tweakCpuClusterSilver: String,
-    val tweakCpuFreqMin: String,
-    val tweakCpuFreqMax: String,
-
-    // ── Thermal Control ───────────────────────────────────────
-    val tweakThermalProfile: String,
-    val tweakThermalDefault: String,
-    val tweakThermalPerformance: String,
-    val tweakThermalExtreme: String,
-    val tweakThermalDesc: String,
-
-    // ── GPU Freq Lock ─────────────────────────────────────────
-    val tweakGpuFreqLock: String,
-    val tweakGpuFreqLockDesc: String,
-    val tweakGpuFreqMax: String,
-
-    // ── Touch Boost ───────────────────────────────────────────
-    val tweakTouchBoost: String,
-    val tweakTouchBoostDesc: String,
-    val tweakTouchSampleRate: String,
-
-    // ── KSM ──────────────────────────────────────────────────
-    val tweakKsm: String,
-    val tweakKsmDesc: String,
-    val tweakKsmAggressive: String,
-    val tweakKsmAggressiveDesc: String,
-
-    // ── Log / Reboot sheet ───────────────────────────────────
-    val logRebootOptions: String,
-    val logRebootSystem: String,
-    val logRebootSystemDesc: String,
-    val logRebootRecovery: String,
-    val logRebootRecoveryDesc: String,
-    val logReloadUi: String,
-    val logReloadUiDesc: String,
-    val logBtnCancel: String,
-
-    // ── Settings / Backup screen ─────────────────────────────
-    val settingsTitle: String,
-    val settingsSectionBackup: String,
-    val settingsBtnBackup: String,
-    val settingsBtnBackupNow: String,
-    val settingsBtnResetDefault: String,
-    val settingsBtnResetAll: String,
-    val settingsNoBackup: String,
-    val settingsBackupSaved: String,
-    val settingsResetTitle: String,
-    val settingsResetDesc: String,
-    val settingsResetConfirm: String,
-    val settingsBtnCancel: String,
-    val settingsBtnBack: String,
-    val settingsRestoreTitle: String,
-    val settingsRestoreDesc: String,
-    val settingsRestoreConfirm: String,
-    val settingsBackupProfile: String,   // "Profile: %s"
-    val settingsBtnDelete: String,
-
-    // ── AdBlock dialog ───────────────────────────────────────
-    val adBlockTitle: String,
-    val adBlockBody: String,
-    val adBlockInfoCard: String,
-    val adBlockSafeLabel: String,
-    val adBlockBtnDisable: String,
-
-    // ── Update dialog ────────────────────────────────────────
-    val updateAvailable: String,
-    val updateTabDesc: String,
-    val updateTabChangelog: String,
-    val updateBtnDownload: String,
-    val updateBtnLater: String,
-    val updateBtnRetry: String,
-    val updateBtnBrowser: String,
-    val updateInstalling: String,
-    val updateFailed: String,          // "Failed: %s"
-    val updateDownloadDone: String,
-    val updateDownloading: String,
-    val updateAboutTitle: String,
-    val updateAboutDesc: String,
-    val updateChangelogLoading: String,
-    val updateChangelogEmpty: String,
-
-    // ── App Profile screen ───────────────────────────────────
-    val appProfileTitle: String,
-    val appProfileMonitorOn: String,
-    val appProfileMonitorOff: String,
-    val appProfileAppsCount: String,    // "%d Aplikasi"
-    val appProfileActiveCount: String,  // "%d Profile Aktif"
-    val appProfileSearchHint: String,
-    val appProfileNoResults: String,
-    val appProfileEmpty: String,
-    val appProfileDeleteTitle: String,
-    val appProfileDeleteDesc: String,   // "Profile \"%s\" akan dihapus permanen."
-    val appProfileDeleteConfirm: String,
-    val appProfileBtnCancel: String,
-    val appProfileLoading: String,
-    val appProfileRetry: String,
-    val appProfileEditorActive: String,
-    val appProfileEditorInactive: String,
-    val appProfileCpuGovernor: String,
-    val appProfileRefreshRate: String,
-    val appProfileExtraTweaks: String,
-    val appProfileSaveBtn: String,
-    val appProfileDisableDoze: String,
-    val appProfileDisableDozeDesc: String,
-    val appProfileLockCpuMin: String,
-    val appProfileLockCpuMinDesc: String,
-    val appProfileKillBg: String,
-    val appProfileKillBgDesc: String,
-    val appProfileGpuBoost: String,
-    val appProfileGpuBoostDesc: String,
-    val appProfileIoLatency: String,
-    val appProfileIoLatencyDesc: String,
-
-    // ── CPU Governor descriptions ─────────────────────────────
+data class TweakStrings(
+    val performanceProfile: String,
+    val sectionCpu: String,
+    val sectionMemory: String,
+    val sectionIo: String,
+    val sectionNetwork: String,
+    val sectionBattery: String,
+    val schedBoost: String,
+    val schedBoostDesc: String,
+    val cpuBoost: String,
+    val cpuBoostDesc: String,
+    val gpuThrottle: String,
+    val gpuThrottleDesc: String,
+    val cpusetOpt: String,
+    val cpusetOptDesc: String,
+    val mtkBoost: String,
+    val mtkBoostDesc: String,
+    val lmk: String,
+    val lmkDesc: String,
+    val zram: String,
+    val zramDesc: String,
+    val vmDirty: String,
+    val vmDirtyDesc: String,
+    val ioLatency: String,
+    val ioLatencyDesc: String,
+    val tcpBbr: String,
+    val tcpBbrDesc: String,
+    val doh: String,
+    val dohDesc: String,
+    val netBuffer: String,
+    val netBufferDesc: String,
+    val doze: String,
+    val dozeDesc: String,
+    val clearCache: String,
+    val clearCacheDesc: String,
+    val fastAnim: String,
+    val fastAnimDesc: String,
+    val entropy: String,
+    val entropyDesc: String,
+    val zramSize: String,
+    val zramAlgo: String,
+    val ioScheduler: String,
+    val sectionCpuFreq: String,
+    val cpuFreqEnable: String,
+    val cpuFreqEnableDesc: String,
+    val cpuClusterPrime: String,
+    val cpuClusterGold: String,
+    val cpuClusterSilver: String,
+    val cpuFreqMin: String,
+    val cpuFreqMax: String,
+    val thermalProfile: String,
+    val thermalDefault: String,
+    val thermalPerformance: String,
+    val thermalExtreme: String,
+    val thermalDesc: String,
+    val gpuFreqLock: String,
+    val gpuFreqLockDesc: String,
+    val gpuFreqMax: String,
+    val touchBoost: String,
+    val touchBoostDesc: String,
+    val touchSampleRate: String,
+    val ksm: String,
+    val ksmDesc: String,
+    val ksmAggressive: String,
+    val ksmAggressiveDesc: String,
     val govDescDefault: String,
     val govDescPerformance: String,
     val govDescPowersave: String,
@@ -265,184 +159,250 @@ data class AppStrings(
     val govDescConservative: String,
     val govDescSchedutil: String,
     val govDescInteractive: String,
+)
 
-    // ── Backup screen — reset app profile & monitor ──────────
-    val settingsBtnResetProfiles: String,
-    val settingsResetProfilesTitle: String,
-    val settingsResetProfilesDesc: String,
-    val settingsBtnResetMonitor: String,
-    val settingsResetMonitorTitle: String,
-    val settingsResetMonitorDesc: String,
+data class LogStrings(
+    val rebootOptions: String,
+    val rebootSystem: String,
+    val rebootSystemDesc: String,
+    val rebootRecovery: String,
+    val rebootRecoveryDesc: String,
+    val reloadUi: String,
+    val reloadUiDesc: String,
+    val btnCancel: String,
+)
 
-    // ── Settings — Appearance ─────────────────────────────────
-    val settingsSectionAppearance: String,
-    val settingsLanguage: String,
-    val settingsDarkMode: String,
-    val settingsDarkModeDesc: String,
-    val settingsDynamicColor: String,
-    val settingsDynamicColorDesc: String,
+data class SettingsStrings(
+    val title: String,
+    val sectionBackup: String,
+    val btnBackup: String,
+    val btnBackupNow: String,
+    val btnResetDefault: String,
+    val btnResetAll: String,
+    val noBackup: String,
+    val backupSaved: String,
+    val resetTitle: String,
+    val resetDesc: String,
+    val resetConfirm: String,
+    val btnCancel: String,
+    val btnBack: String,
+    val restoreTitle: String,
+    val restoreDesc: String,
+    val restoreConfirm: String,
+    val backupProfile: String,   // "Profile: %s"
+    val btnDelete: String,
+    val btnResetProfiles: String,
+    val resetProfilesTitle: String,
+    val resetProfilesDesc: String,
+    val btnResetMonitor: String,
+    val resetMonitorTitle: String,
+    val resetMonitorDesc: String,
+    val sectionAppearance: String,
+    val language: String,
+    val darkMode: String,
+    val darkModeDesc: String,
+    val dynamicColor: String,
+    val dynamicColorDesc: String,
+    val sectionGeneral: String,
+    val autoBackup: String,
+    val autoBackupDesc: String,
+    val applyOnBoot: String,
+    val applyOnBootDesc: String,
+    val notifications: String,
+    val notificationsDesc: String,
+    val sectionAdvanced: String,
+    val rootMethod: String,
+    val debugLog: String,
+    val debugLogDesc: String,
+    val clearCache: String,
+    val clearCacheDesc: String,
+    val sectionAbout: String,
+    val version: String,
+    val sourceCode: String,
+    val sourceCodeDesc: String,
+    val license: String,
+    val licenseDesc: String,
+)
 
-    // ── Settings — General ────────────────────────────────────
-    val settingsSectionGeneral: String,
-    val settingsAutoBackup: String,
-    val settingsAutoBackupDesc: String,
-    val settingsApplyOnBoot: String,
-    val settingsApplyOnBootDesc: String,
-    val settingsNotifications: String,
-    val settingsNotificationsDesc: String,
+data class BackupStrings(
+    val successCreate: String,
+    val successRestore: String,
+    val successDelete: String,
+    val successReset: String,
+    val successResetProfiles: String,
+    val successResetMonitor: String,
+    val failCreate: String,
+    val failRestore: String,
+    val failReset: String,
+    val noProfiles: String,
+    val monitorInactive: String,
+    val subtitleBackup: String,
+    val subtitleReset: String,
+    val subtitleResetProfiles: String,
+    val subtitleResetMonitor: String,
+)
 
-    // ── Settings — Advanced ───────────────────────────────────
-    val settingsSectionAdvanced: String,
-    val settingsRootMethod: String,
-    val settingsDebugLog: String,
-    val settingsDebugLogDesc: String,
-    val settingsClearCache: String,
-    val settingsClearCacheDesc: String,
+data class AdBlockStrings(
+    val title: String,
+    val body: String,
+    val infoCard: String,
+    val safeLabel: String,
+    val btnDisable: String,
+)
 
-    // ── Settings — About App ──────────────────────────────────
-    val settingsSectionAbout: String,
-    val settingsVersion: String,
-    val settingsSourceCode: String,
-    val settingsSourceCodeDesc: String,
-    val settingsLicense: String,
-    val settingsLicenseDesc: String,
+data class UpdateStrings(
+    val available: String,
+    val tabDesc: String,
+    val tabChangelog: String,
+    val btnDownload: String,
+    val btnLater: String,
+    val btnRetry: String,
+    val btnBrowser: String,
+    val installing: String,
+    val failed: String,       // "Failed: %s"
+    val downloadDone: String,
+    val downloading: String,
+    val aboutTitle: String,
+    val aboutDesc: String,
+    val changelogLoading: String,
+    val changelogEmpty: String,
+)
 
-    // ── Backup — success toasts ───────────────────────────────
-    val backupSuccessCreate: String,
-    val backupSuccessRestore: String,
-    val backupSuccessDelete: String,
-    val backupSuccessReset: String,
-    val backupSuccessResetProfiles: String,
-    val backupSuccessResetMonitor: String,
-    val backupFailCreate: String,
-    val backupFailRestore: String,
-    val backupFailReset: String,
+data class AppProfileStrings(
+    val title: String,
+    val monitorOn: String,
+    val monitorOff: String,
+    val appsCount: String,        // "%d Aplikasi"
+    val activeCount: String,      // "%d Profile Aktif"
+    val searchHint: String,
+    val noResults: String,
+    val empty: String,
+    val deleteTitle: String,
+    val deleteDesc: String,       // "Profile \"%s\" akan dihapus permanen."
+    val deleteConfirm: String,
+    val btnCancel: String,
+    val loading: String,
+    val retry: String,
+    val editorActive: String,
+    val editorInactive: String,
+    val cpuGovernor: String,
+    val refreshRate: String,
+    val extraTweaks: String,
+    val saveBtn: String,
+    val disableDoze: String,
+    val disableDozeDesc: String,
+    val lockCpuMin: String,
+    val lockCpuMinDesc: String,
+    val killBg: String,
+    val killBgDesc: String,
+    val gpuBoost: String,
+    val gpuBoostDesc: String,
+    val ioLatency: String,
+    val ioLatencyDesc: String,
+)
 
-    // ── Backup — empty-state info chips ──────────────────────
-    val backupNoProfiles: String,
-    val backupMonitorInactive: String,
-    val backupSubtitleBackup: String,
-    val backupSubtitleReset: String,
-    val backupSubtitleResetProfiles: String,
-    val backupSubtitleResetMonitor: String,
+data class LicenseStrings(
+    val screenTitle: String,
+    val invoiceHistoryIcon: String,
+    val premiumActive: String,
+    val premiumValidUntil: String,    // "Berlaku hingga %s"
+    val daysLeft: String,             // "%d hari"
+    val yourBenefits: String,
+    val keyLabel: String,
+    val keyCopied: String,
+    val expiringSoon: String,
+    val deactivateBtn: String,
+    val freeTitle: String,
+    val freeDesc: String,
+    val upgradeTitle: String,
+    val upgradeDesc: String,
+    val price1Month: String,
+    val price: String,
+    val buyBtn: String,
+    val pendingTitle: String,
+    val continuePaymentBtn: String,
+    val haveKeyTitle: String,
+    val keyInputLabel: String,
+    val activateBtn: String,
+    val deactivateDialogTitle: String,
+    val deactivateDialogBody: String,
+    val deactivateConfirmBtn: String,
+    val deactivateCancelBtn: String,
+    val pollingWaiting: String,
+    val pollingDesc: String,
+    val buySheetTitle: String,
+    val buySheetSubtitle: String,
+    val buySheetFormDesc: String,
+    val buySheetNameLabel: String,
+    val buySheetPhoneLabel: String,
+    val buySheetPhoneHint: String,
+    val buySheetCreateInvoiceBtn: String,
+    val payDetailTitle: String,
+    val payDetailSubtitle: String,
+    val orderIdLabel: String,
+    val orderIdCopied: String,
+    val orderIdWarning: String,
+    val totalLabel: String,
+    val duration1Month: String,
+    val importantLabel: String,
+    val importantBody: String,        // "Transfer Rp %s..."
+    val afterTransferLabel: String,
+    val verifyNowBtn: String,
+    val cancelBtn: String,
+    val payTypeEwallet: String,
+    val payTypeBank: String,
+    val payTypeInternational: String,
+    val contactWhatsApp: String,
+    val contactTelegram: String,
+    val numberCopied: String,         // "Nomor %s disalin"
+    val copyLabel: String,
+    val invoiceHistoryTitle: String,
+    val invoiceHistoryEmpty: String,
+    val invoiceStatusPaid: String,
+    val invoiceStatusExpired: String,
+    val invoiceStatusPending: String,
+    val invoiceContinueBtn: String,
+    val invoiceDeleteBtn: String,
+    val successTitle: String,
+    val successBody: String,
+    val successKeyLabel: String,
+    val successValidUntil: String,    // "Berlaku hingga %s"
+    val successSaveHint: String,
+    val successBenefits: List<String>,
+    val successStartBtn: String,
+    val expireLifetime: String,
+    val benefitDeviceLocked: String,
+    val stepNoteOrderId: String,
+    val stepTransferExact: String,
+    val stepTapPaid: String,
+    val stepWaitAdmin: String,
+    val selectPayMethod: String,
+)
 
-    // ── License / Premium screen ──────────────────────────────
-    val licenseScreenTitle: String,
-    val licenseInvoiceHistoryIcon: String,          // content desc icon riwayat invoice
+data class ServiceStrings(
+    val notifChannelName: String,
+    val notifChannelDesc: String,
+    val notifText: String,
+)
 
-    // Status card — active
-    val licensePremiumActive: String,
-    val licensePremiumValidUntil: String,           // "Berlaku hingga %s"
-    val licenseDaysLeft: String,                    // "%d hari"
-    val licenseYourBenefits: String,
-    val licenseKeyLabel: String,
-    val licenseKeyCopied: String,                   // toast
-    val licenseExpiringSoon: String,                // "Premium kamu hampir habis! Perpanjang sebelum %s."
-    val licenseDeactivateBtn: String,
-
-    // Status card — free
-    val licenseFreeTitle: String,
-    val licenseFreeDesc: String,
-
-    // Benefit card (upgrade prompt)
-    val licenseUpgradeTitle: String,
-    val licenseUpgradeDesc: String,
-    val licensePrice1Month: String,
-    val licensePrice: String,                       // "Rp 25.000"
-    val licenseBuyBtn: String,
-
-    // Pending payment card
-    val licensePendingTitle: String,
-    val licenseContinuePaymentBtn: String,
-
-    // Key activation card
-    val licenseHaveKeyTitle: String,
-    val licenseKeyInputLabel: String,
-    val licenseActivateBtn: String,
-
-    // Deactivate dialog
-    val licenseDeactivateDialogTitle: String,
-    val licenseDeactivateDialogBody: String,
-    val licenseDeactivateConfirmBtn: String,
-    val licenseDeactivateCancelBtn: String,
-
-    // Polling card
-    val licensePollingWaiting: String,
-    val licensePollingDesc: String,
-
-    // Buy sheet
-    val licenseBuySheetTitle: String,
-    val licenseBuySheetSubtitle: String,
-    val licenseBuySheetFormDesc: String,
-    val licenseBuySheetNameLabel: String,
-    val licenseBuySheetPhoneLabel: String,
-    val licenseBuySheetPhoneHint: String,
-    val licenseBuySheetCreateInvoiceBtn: String,
-
-    // Payment detail sheet
-    val licensePayDetailTitle: String,
-    val licensePayDetailSubtitle: String,
-    val licenseOrderIdLabel: String,
-    val licenseOrderIdCopied: String,               // toast
-    val licenseOrderIdWarning: String,
-    val licenseTotalLabel: String,
-    val licenseDuration1Month: String,
-    val licenseImportantLabel: String,
-    val licenseImportantBody: String,               // "Transfer Rp %s. Jangan sampai salah nominal…"
-    val licenseAfterTransferLabel: String,
-    val licenseVerifyNowBtn: String,
-    val licenseCancelBtn: String,
-
-    // Payment method type labels
-    val licensePayTypeEwallet: String,              // "E-Wallet"
-    val licensePayTypeBank: String,                 // "Transfer Bank"
-    val licensePayTypeInternational: String,        // "International"
-
-    // Contact admin row
-    val licenseContactWhatsApp: String,
-    val licenseContactTelegram: String,
-
-    // Copy number row
-    val licenseNumberCopied: String,                // "Nomor %s disalin"
-    val licenseCopyLabel: String,                   // "Salin"
-
-    // Invoice history sheet
-    val licenseInvoiceHistoryTitle: String,
-    val licenseInvoiceHistoryEmpty: String,
-    val licenseInvoiceStatusPaid: String,
-    val licenseInvoiceStatusExpired: String,
-    val licenseInvoiceStatusPending: String,
-    val licenseInvoiceContinueBtn: String,
-    val licenseInvoiceDeleteBtn: String,
-
-    // Success dialog
-    val licenseSuccessTitle: String,
-    val licenseSuccessBody: String,                 // "Terima kasih…"
-    val licenseSuccessKeyLabel: String,             // "License Key kamu"
-    val licenseSuccessValidUntil: String,           // "Berlaku hingga %s"
-    val licenseSuccessSaveHint: String,
-    val licenseSuccessBenefits: List<String>,
-    val licenseSuccessStartBtn: String,
-
-    // Lifetime label (expiry == -1)
-    val licenseExpireLifetime: String,
-
-    // Device-locked benefit item (shown in active card & benefit card)
-    val licenseBenefitDeviceLocked: String,
-
-    // Transfer instruction steps (shown in TransferInstructionContent)
-    val licenseStepNoteOrderId: String,
-    val licenseStepTransferExact: String,
-    val licenseStepTapPaid: String,
-    val licenseStepWaitAdmin: String,
-
-    // ── License — payment method selection ───────────────────
-    val licenseSelectPayMethod: String,             // "Pilih Metode Pembayaran"
-
-    // ── Service / Notification ───────────────────────────────
-    val serviceNotifChannelName: String,            // "Aether Manager Service"
-    val serviceNotifChannelDesc: String,            // "Background service"
-    val serviceNotifText: String,                   // "Tweaks active"
+/**
+ * Root holder — satu instance per bahasa.
+ * Tiap screen/feature punya sub-class sendiri,
+ * sehingga constructor AppStrings cukup 9 parameter (jauh di bawah batas DEX verifier).
+ */
+data class AppStrings(
+    val nav: NavStrings,
+    val setup: SetupStrings,
+    val home: HomeStrings,
+    val tweak: TweakStrings,
+    val log: LogStrings,
+    val settings: SettingsStrings,
+    val backup: BackupStrings,
+    val adBlock: AdBlockStrings,
+    val update: UpdateStrings,
+    val appProfile: AppProfileStrings,
+    val license: LicenseStrings,
+    val service: ServiceStrings,
 )
 
 val LocalStrings = staticCompositionLocalOf<AppStrings> {
