@@ -36,14 +36,21 @@
 }
 
 # ════════════════════════════════════════════════════════════════
-# FIX VerifyError — R8 fullMode=false + rules ini wajib semua
-# Root cause: R8 AGP 8.7.x merge/inline Compose lambdas → bytecode
+# FIX VerifyError — R8 AGP 8.x merge/inline Compose lambdas → bytecode
 # invalid (>77 argument registers) → ditolak Android Runtime verifier
 # ════════════════════════════════════════════════════════════════
 
 # Disable optimization & preverification sepenuhnya
 -dontoptimize
 -dontpreverify
+
+# CRITICAL: Larang R8 merge class ke satu <clinit> — ini penyebab utama
+# register overflow di AGP 8.7+ dengan Compose
+-optimizations !class/merging/*
+-optimizations !code/simplification/arithmetic
+-optimizations !code/simplification/cast
+-optimizations !field/*
+-optimizations !class/unboxing/enum
 
 # ── Compose: jangan disentuh R8 sama sekali ──────────────────────
 -keep class androidx.compose.** { *; }
@@ -52,9 +59,13 @@
 -keep class androidx.compose.ui.** { *; }
 -keep class androidx.compose.material3.** { *; }
 -keep class androidx.compose.animation.** { *; }
+-keep class androidx.compose.foundation.** { *; }
 -keepclassmembers class * {
     @androidx.compose.runtime.Composable <methods>;
 }
+# Jangan inline ComposableLambda — ini sumber register overflow
+-keep class androidx.compose.runtime.internal.ComposableLambda* { *; }
+-keep class androidx.compose.runtime.internal.ComposableLambdaImpl { *; }
 
 # ── Kotlin lambda/function classes — R8 inlining = register overflow
 -keep class kotlin.jvm.functions.** { *; }
@@ -85,6 +96,9 @@
 -keep class dev.aether.manager.AetherApplication { *; }
 -keep class dev.aether.manager.service.AetherService { *; }
 -keep class dev.aether.manager.service.BootReceiver { *; }
+# Jaga semua Activity dari obfuscation yang agresif
+-keep class dev.aether.manager.*Activity { *; }
+-keep class dev.aether.manager.ui.** { *; }
 
 # ── Room ─────────────────────────────────────────────────────────
 -keep class * extends androidx.room.RoomDatabase

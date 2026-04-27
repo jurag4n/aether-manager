@@ -75,7 +75,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            multiDexEnabled = false
+            multiDexEnabled = true
         }
         debug {
             isMinifyEnabled = false
