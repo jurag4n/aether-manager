@@ -10,13 +10,14 @@ import com.unity3d.ads.UnityAds
 import dev.aether.manager.ads.AdManager
 import dev.aether.manager.ads.AdMobInterstitialManager
 import dev.aether.manager.ads.InterstitialAdManager
+import dev.aether.manager.notification.NotificationHelper
+import dev.aether.manager.notification.NotificationScheduler
 
 class AetherApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
 
-        // Load libaether.so selalu — dibutuhkan update checker + security checks
         NativeAether.tryLoad()
 
         if (!BuildConfig.DEBUG) {
@@ -28,9 +29,10 @@ class AetherApplication : Application() {
         CimolAgent.tryLoad()
         initUnityAds()
         initAdMob()
-    }
 
-    // ─── Security checks ──────────────────────────────────────────────────────
+        NotificationHelper.createChannels(this)
+        NotificationScheduler.schedule(this)
+    }
 
     private fun checkSignature() {
         if (!NativeAether.isLoaded) return
@@ -68,8 +70,6 @@ class AetherApplication : Application() {
         }
     }
 
-    // ─── libsu ────────────────────────────────────────────────────────────────
-
     private fun initLibsu() {
         Shell.enableVerboseLogging = false
         Shell.setDefaultBuilder(
@@ -79,12 +79,9 @@ class AetherApplication : Application() {
         )
     }
 
-    // ─── Unity Ads ────────────────────────────────────────────────────────────
-
     private fun initUnityAds() {
         val gameId = AdManager.GAME_ID
         if (gameId.isEmpty()) {
-            // .so tidak tersedia — skip Unity, AdMob tetap jalan
             AdMobInterstitialManager.preload(this)
             return
         }
@@ -114,7 +111,6 @@ class AetherApplication : Application() {
                     ) {
                         checkUnityIntact()
                     }
-                    // Unity gagal init → AdMob tetap jalan sendiri
                 }
             }
         )
@@ -128,8 +124,6 @@ class AetherApplication : Application() {
             NativeAether.nativeKillProcess()
         }
     }
-
-    // ─── AdMob ────────────────────────────────────────────────────────────────
 
     private fun initAdMob() {
         MobileAds.initialize(this) {
