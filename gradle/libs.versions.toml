@@ -15,6 +15,7 @@ coroutines               = "1.10.2"
 datastorePrefs = "1.1.4"
 accompanist    = "0.36.0"
 unity-ads = "4.12.4"
+admob      = "23.6.0"
 coreSplashscreen = "1.0.1"
 coil           = "2.7.0"
 okhttp  = "4.12.0"
@@ -58,6 +59,7 @@ kotlinx-coroutines-android           = { group = "org.jetbrains.kotlinx",      n
 androidx-datastore-preferences       = { group = "androidx.datastore",          name = "datastore-preferences",          version.ref = "datastorePrefs" }
 accompanist-systemuicontroller       = { group = "com.google.accompanist",      name = "accompanist-systemuicontroller", version.ref = "accompanist" }
 unity-ads                            = { group = "com.unity3d.ads",             name = "unity-ads",                      version.ref = "unity-ads" }
+play-services-ads                    = { group = "com.google.android.gms",      name = "play-services-ads",              version.ref = "admob" }
 androidx-core-splashscreen           = { group = "androidx.core",               name = "core-splashscreen",              version.ref = "coreSplashscreen" }
 coil-compose                         = { group = "io.coil-kt",                  name = "coil-compose",                   version.ref = "coil" }
 okhttp                               = { group = "com.squareup.okhttp3",        name = "okhttp",                         version.ref = "okhttp" }

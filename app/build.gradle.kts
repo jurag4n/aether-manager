@@ -166,6 +166,7 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.unity.ads)
+    implementation(libs.play.services.ads)
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
     implementation(libs.libsu.io)

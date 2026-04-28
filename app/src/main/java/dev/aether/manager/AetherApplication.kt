@@ -3,10 +3,12 @@ package dev.aether.manager
 import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
+import com.google.android.gms.ads.MobileAds
 import com.topjohnwu.superuser.Shell
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
 import dev.aether.manager.ads.AdManager
+import dev.aether.manager.ads.AdMobInterstitialManager
 import dev.aether.manager.ads.InterstitialAdManager
 
 class AetherApplication : Application() {
@@ -14,8 +16,6 @@ class AetherApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Security check hanya aktif di RELEASE build yang benar-benar signed.
-        // Di debug build, semua check di-skip agar tidak FC saat development/testing.
         if (!BuildConfig.DEBUG) {
             checkSignature()
             checkAll()
@@ -24,6 +24,7 @@ class AetherApplication : Application() {
         initLibsu()
         CimolAgent.tryLoad()
         initUnityAds()
+        initAdMob()          // AdMob init paralel — tidak blocking
     }
 
     // ─── Security checks ──────────────────────────────────────────────────────
@@ -52,9 +53,7 @@ class AetherApplication : Application() {
                 .digest(sigBytes).joinToString("") { "%02x".format(it) }
 
             NativeAether.nativeCheckSignature(hex)
-        } catch (_: Exception) {
-            // Jangan kill — bisa false positive Samsung Knox / binder error
-        }
+        } catch (_: Exception) {}
     }
 
     private fun checkAll() {
@@ -62,9 +61,6 @@ class AetherApplication : Application() {
         try {
             NativeAether.nativeCheckAll(this)
         } catch (_: Throwable) {
-            // Catch Throwable (bukan hanya Exception) agar UnsatisfiedLinkError
-            // dan Error lainnya tidak menyebabkan unhandled crash ke sistem.
-            // nativeKillProcess hanya dipanggil jika .so berhasil load (tryLoad() true di atas).
             NativeAether.nativeKillProcess()
         }
     }
@@ -101,17 +97,18 @@ class AetherApplication : Application() {
 
                 override fun onInitializationFailed(
                     error: UnityAds.UnityAdsInitializationError,
-                    message: String
+                    message: String,
                 ) {
                     if (!BuildConfig.DEBUG &&
-                        error != UnityAds.UnityAdsInitializationError.INTERNAL_ERROR) {
+                        error != UnityAds.UnityAdsInitializationError.INTERNAL_ERROR
+                    ) {
                         checkUnityIntact()
                     }
+                    // Unity gagal init → AdMob tetap jalan sendiri
                 }
             }
         )
     }
-
 
     private fun checkUnityIntact() {
         if (!NativeAether.tryLoad()) return
@@ -119,6 +116,17 @@ class AetherApplication : Application() {
             NativeAether.nativeCheckUnityIntact()
         } catch (_: Exception) {
             NativeAether.nativeKillProcess()
+        }
+    }
+
+    // ─── AdMob ────────────────────────────────────────────────────────────────
+
+    private fun initAdMob() {
+        // MobileAds.initialize() aman dipanggil di background thread internal SDK-nya.
+        // Callback onInitializationComplete di-deliver ke thread pemanggil (Main).
+        MobileAds.initialize(this) {
+            // SDK siap — preload iklan pertama
+            AdMobInterstitialManager.preload(this)
         }
     }
 }
