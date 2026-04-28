@@ -10,14 +10,21 @@ package dev.aether.manager
  */
 object NativeAether {
 
+    @Volatile private var loaded = false
+
     /**
      * Load libaether.so. Dipanggil sekali di AetherApplication.onCreate().
+     * Idempotent — aman dipanggil berkali-kali, library hanya di-load sekali.
      * @return true jika berhasil dimuat, false jika tidak tersedia.
      */
-    fun tryLoad(): Boolean = runCatching {
-        System.loadLibrary("aether")
-        true
-    }.getOrDefault(false)
+    fun tryLoad(): Boolean {
+        if (loaded) return true
+        return runCatching {
+            System.loadLibrary("aether")
+            loaded = true
+            true
+        }.getOrDefault(false)
+    }
 
     // ── Integrity ────────────────────────────────────────────────────────────
 

@@ -15,6 +15,14 @@ class AetherApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Load libaether.so PERTAMA — sebelum apapun yang depend ke NativeAether.
+        // Wajib eksplisit di sini karena checkAll() hanya dipanggil di RELEASE build.
+        // Tanpa ini, di RELEASE build pun urutan eksekusi:
+        //   checkAll() → tryLoad() [load] → initUnityAds() → GAME_ID → tryLoad() [sudah loaded, ok]
+        // sudah benar karena tryLoad() sekarang idempotent. Tapi eksplisit lebih aman
+        // dan memastikan library ready sebelum checkAll() dipanggil.
+        NativeAether.tryLoad()
+
         // Security check hanya aktif di RELEASE build yang benar-benar signed.
         // Di debug build, semua check di-skip agar tidak FC saat development/testing.
         // checkSignature() DIHAPUS — sudah inline di dalam nativeCheckAll() di C,
