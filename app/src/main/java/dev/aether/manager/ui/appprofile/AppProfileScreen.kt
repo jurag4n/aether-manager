@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -402,11 +404,13 @@ private fun AppListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // App icon
-            AppIconView(bitmap = iconBitmap, label = app.label, isEnabled = isEnabled, size = 46.dp, cornerSize = 12.dp)
+            // App icon — nudge down 2dp to align with text baseline
+            Box(modifier = Modifier.padding(top = 2.dp)) {
+                AppIconView(bitmap = iconBitmap, label = app.label, isEnabled = isEnabled, size = 44.dp, cornerSize = 11.dp)
+            }
 
             // Name + package + chips
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -425,8 +429,12 @@ private fun AppListItem(
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (chips.isNotEmpty()) {
-                    Spacer(Modifier.height(3.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Spacer(Modifier.height(4.dp))
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         chips.forEach { (label, icon) ->
                             AppChip(label = label, icon = icon, active = isEnabled)
                         }
@@ -443,6 +451,7 @@ private fun AppListItem(
             )
             Box(
                 modifier = Modifier
+                    .padding(top = 2.dp)
                     .size(24.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(
@@ -491,26 +500,47 @@ private fun AppListItem(
     }
 }
 
-// ─── App chip (TrickyStore style: Auto / Gov / Tweaks) ───────────────────────
+// ─── App chip — M3 AssistChip style ──────────────────────────────────────────
 
 @Composable
 private fun AppChip(label: String, icon: ImageVector, active: Boolean) {
-    val bg = if (active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-             else MaterialTheme.colorScheme.surfaceVariant
-    val fg = if (active) MaterialTheme.colorScheme.primary
-             else MaterialTheme.colorScheme.onSurfaceVariant
+    val bg = if (active)
+        MaterialTheme.colorScheme.primaryContainer
+    else
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    val fg = if (active)
+        MaterialTheme.colorScheme.onPrimaryContainer
+    else
+        MaterialTheme.colorScheme.onSurfaceVariant
+    val borderColor = if (active)
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+    else
+        MaterialTheme.colorScheme.outlineVariant
+
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(8.dp),
         color = bg,
-        border = BorderStroke(0.5.dp, fg.copy(alpha = 0.25f)),
+        border = BorderStroke(0.5.dp, borderColor),
+        modifier = Modifier.height(22.dp),
     ) {
         Row(
-            Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Icon(icon, null, modifier = Modifier.size(10.dp), tint = fg)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = fg, fontSize = 10.sp)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(11.dp),
+                tint = fg,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = fg,
+                fontSize = 10.sp,
+                maxLines = 1,
+            )
         }
     }
 }
