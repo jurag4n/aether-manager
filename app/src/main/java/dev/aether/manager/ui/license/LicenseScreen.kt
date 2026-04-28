@@ -8,7 +8,6 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.ui.window.Dialog
 import dev.aether.manager.payment.PaymentManager
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -40,6 +39,8 @@ import dev.aether.manager.payment.InvoicePrefs
 import dev.aether.manager.payment.PaymentViewModel
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -890,7 +891,7 @@ private fun SelectedMethodDetail(method: PaymentManager.PaymentMethod, ctx: Cont
                         fontFamily = FontFamily.Monospace
                     )
                     Text(
-                        ${method.holderName},
+                        "${method.holderName}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
