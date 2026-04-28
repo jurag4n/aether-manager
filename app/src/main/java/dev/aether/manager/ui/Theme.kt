@@ -14,91 +14,94 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 // =====================================================
-// AETHER MATERIAL 3 COLOR PALETTE  –  v3.0
-// Theme   : Deep Violet / Indigo (Premium Dark-first)
+// AETHER MATERIAL 3 COLOR PALETTE  –  v3.1
+// Theme   : Azure Blue / Sky (Clean Blue-first)
 // Spec    : Material Design 3 — Tone-based color system
 //
 // Dynamic color: Android 12+ gunakan seed dari Monet
 // wallpaper via WallpaperColors, lalu tonal palette
 // di-derive manual agar saturasi tetap sesuai M3 spec.
+// Fallback: Static Azure Blue palette jika API < 31
+//           atau WallpaperColors tidak tersedia.
 // =====================================================
 
 // ──────────────────────────────────────────────────────
 //  STATIC FALLBACK PALETTE  (non-dynamic / API < 31)
+//  Seed: #1A73E8  (Google Blue / Azure)
 // ──────────────────────────────────────────────────────
 
-private val PrimaryLight                 = Color(0xFF5B4CDB)
+private val PrimaryLight                 = Color(0xFF1A6DC4)
 private val OnPrimaryLight               = Color(0xFFFFFFFF)
-private val PrimaryContainerLight        = Color(0xFFE6E0FF)
-private val OnPrimaryContainerLight      = Color(0xFF160065)
-private val SecondaryLight               = Color(0xFF5C5C8A)
+private val PrimaryContainerLight        = Color(0xFFD3E4FF)
+private val OnPrimaryContainerLight      = Color(0xFF001D3D)
+private val SecondaryLight               = Color(0xFF506B8A)
 private val OnSecondaryLight             = Color(0xFFFFFFFF)
-private val SecondaryContainerLight      = Color(0xFFE2E0FF)
-private val OnSecondaryContainerLight    = Color(0xFF181842)
-private val TertiaryLight                = Color(0xFF7B4E82)
+private val SecondaryContainerLight      = Color(0xFFD3E5F5)
+private val OnSecondaryContainerLight    = Color(0xFF0C2032)
+private val TertiaryLight                = Color(0xFF2D6B8A)
 private val OnTertiaryLight              = Color(0xFFFFFFFF)
-private val TertiaryContainerLight       = Color(0xFFF8D8FF)
-private val OnTertiaryContainerLight     = Color(0xFF300839)
+private val TertiaryContainerLight       = Color(0xFFBFE3F7)
+private val OnTertiaryContainerLight     = Color(0xFF00202E)
 private val ErrorLight                   = Color(0xFFBA1A1A)
 private val OnErrorLight                 = Color(0xFFFFFFFF)
 private val ErrorContainerLight          = Color(0xFFFFDAD6)
 private val OnErrorContainerLight        = Color(0xFF410002)
-private val BackgroundLight              = Color(0xFFFBF8FF)
-private val OnBackgroundLight            = Color(0xFF1B1B21)
-private val SurfaceLight                 = Color(0xFFFBF8FF)
-private val OnSurfaceLight               = Color(0xFF1B1B21)
-private val SurfaceVariantLight          = Color(0xFFE5E0F3)
-private val OnSurfaceVariantLight        = Color(0xFF47464F)
-private val SurfaceDimLight              = Color(0xFFDDD8E9)
-private val SurfaceBrightLight           = Color(0xFFFBF8FF)
+private val BackgroundLight              = Color(0xFFF6F9FF)
+private val OnBackgroundLight            = Color(0xFF101D2C)
+private val SurfaceLight                 = Color(0xFFF6F9FF)
+private val OnSurfaceLight               = Color(0xFF101D2C)
+private val SurfaceVariantLight          = Color(0xFFDDE4EF)
+private val OnSurfaceVariantLight        = Color(0xFF42474F)
+private val SurfaceDimLight              = Color(0xFFD5DCE8)
+private val SurfaceBrightLight           = Color(0xFFF6F9FF)
 private val SurfaceContainerLowestLight  = Color(0xFFFFFFFF)
-private val SurfaceContainerLowLight     = Color(0xFFF5F1FF)
-private val SurfaceContainerLight        = Color(0xFFEFEBF9)
-private val SurfaceContainerHighLight    = Color(0xFFE9E5F3)
-private val SurfaceContainerHighestLight = Color(0xFFE4DFEE)
-private val OutlineLight                 = Color(0xFF787680)
-private val OutlineVariantLight          = Color(0xFFC9C5D4)
-private val InverseSurfaceLight          = Color(0xFF303037)
-private val InverseOnSurfaceLight        = Color(0xFFF3EFF9)
-private val InversePrimaryLight          = Color(0xFFC7BFFF)
-private val SurfaceTintLight             = Color(0xFF5B4CDB)
+private val SurfaceContainerLowLight     = Color(0xFFEFF3FB)
+private val SurfaceContainerLight        = Color(0xFFE9EDF5)
+private val SurfaceContainerHighLight    = Color(0xFFE3E8F0)
+private val SurfaceContainerHighestLight = Color(0xFFDDE2EA)
+private val OutlineLight                 = Color(0xFF72787F)
+private val OutlineVariantLight          = Color(0xFFC1C8D3)
+private val InverseSurfaceLight          = Color(0xFF2B3240)
+private val InverseOnSurfaceLight        = Color(0xFFEDF1FA)
+private val InversePrimaryLight          = Color(0xFFA3C8FF)
+private val SurfaceTintLight             = Color(0xFF1A6DC4)
 private val ScrimLight                   = Color(0xFF000000)
 
-private val PrimaryDark                  = Color(0xFFC7BFFF)
-private val OnPrimaryDark                = Color(0xFF2C1E7F)
-private val PrimaryContainerDark         = Color(0xFF4336C0)
-private val OnPrimaryContainerDark       = Color(0xFFE6E0FF)
-private val SecondaryDark                = Color(0xFFC5C3F5)
-private val OnSecondaryDark              = Color(0xFF2D2D5B)
-private val SecondaryContainerDark       = Color(0xFF444473)
-private val OnSecondaryContainerDark     = Color(0xFFE2E0FF)
-private val TertiaryDark                 = Color(0xFFEDB6F5)
-private val OnTertiaryDark               = Color(0xFF4B1F52)
-private val TertiaryContainerDark        = Color(0xFF62376A)
-private val OnTertiaryContainerDark      = Color(0xFFF8D8FF)
+private val PrimaryDark                  = Color(0xFFA3C8FF)
+private val OnPrimaryDark                = Color(0xFF003667)
+private val PrimaryContainerDark         = Color(0xFF0D52A0)
+private val OnPrimaryContainerDark       = Color(0xFFD3E4FF)
+private val SecondaryDark                = Color(0xFFB0CAE0)
+private val OnSecondaryDark              = Color(0xFF203548)
+private val SecondaryContainerDark       = Color(0xFF385265)
+private val OnSecondaryContainerDark     = Color(0xFFD3E5F5)
+private val TertiaryDark                 = Color(0xFF93CEE9)
+private val OnTertiaryDark               = Color(0xFF00374D)
+private val TertiaryContainerDark        = Color(0xFF155270)
+private val OnTertiaryContainerDark      = Color(0xFFBFE3F7)
 private val ErrorDark                    = Color(0xFFFFB4AB)
 private val OnErrorDark                  = Color(0xFF690005)
 private val ErrorContainerDark           = Color(0xFF93000A)
 private val OnErrorContainerDark         = Color(0xFFFFDAD6)
-private val BackgroundDark               = Color(0xFF131318)
-private val OnBackgroundDark             = Color(0xFFE4E1EC)
-private val SurfaceDark                  = Color(0xFF131318)
-private val OnSurfaceDark                = Color(0xFFE4E1EC)
-private val SurfaceVariantDark           = Color(0xFF47464F)
-private val OnSurfaceVariantDark         = Color(0xFFC9C5D4)
-private val SurfaceDimDark               = Color(0xFF131318)
-private val SurfaceBrightDark            = Color(0xFF39383F)
-private val SurfaceContainerLowestDark   = Color(0xFF0D0D13)
-private val SurfaceContainerLowDark      = Color(0xFF1B1B21)
-private val SurfaceContainerDark         = Color(0xFF1F1F25)
-private val SurfaceContainerHighDark     = Color(0xFF29292F)
-private val SurfaceContainerHighestDark  = Color(0xFF34343A)
-private val OutlineDark                  = Color(0xFF928F9E)
-private val OutlineVariantDark           = Color(0xFF47464F)
-private val InverseSurfaceDark           = Color(0xFFE4E1EC)
-private val InverseOnSurfaceDark         = Color(0xFF303037)
-private val InversePrimaryDark           = Color(0xFF5B4CDB)
-private val SurfaceTintDark              = Color(0xFFC7BFFF)
+private val BackgroundDark               = Color(0xFF0F1923)
+private val OnBackgroundDark             = Color(0xFFDDE3EC)
+private val SurfaceDark                  = Color(0xFF0F1923)
+private val OnSurfaceDark                = Color(0xFFDDE3EC)
+private val SurfaceVariantDark           = Color(0xFF42474F)
+private val OnSurfaceVariantDark         = Color(0xFFC1C8D3)
+private val SurfaceDimDark               = Color(0xFF0F1923)
+private val SurfaceBrightDark            = Color(0xFF35404F)
+private val SurfaceContainerLowestDark   = Color(0xFF09131C)
+private val SurfaceContainerLowDark      = Color(0xFF171F2B)
+private val SurfaceContainerDark         = Color(0xFF1B232F)
+private val SurfaceContainerHighDark     = Color(0xFF252E3A)
+private val SurfaceContainerHighestDark  = Color(0xFF303945)
+private val OutlineDark                  = Color(0xFF8B9199)
+private val OutlineVariantDark           = Color(0xFF42474F)
+private val InverseSurfaceDark           = Color(0xFFDDE3EC)
+private val InverseOnSurfaceDark         = Color(0xFF2B3240)
+private val InversePrimaryDark           = Color(0xFF1A6DC4)
+private val SurfaceTintDark              = Color(0xFFA3C8FF)
 private val ScrimDark                    = Color(0xFF000000)
 
 private val LightColorScheme = lightColorScheme(
@@ -237,12 +240,10 @@ private fun buildMonetScheme(seedArgb: Int, dark: Boolean): ColorScheme {
         onTertiary              = ter(0.20f),
         tertiaryContainer       = ter(0.30f),
         onTertiaryContainer     = ter(0.90f),
-        // Error selalu fixed
         error                   = ErrorDark,
         onError                 = OnErrorDark,
         errorContainer          = ErrorContainerDark,
         onErrorContainer        = OnErrorContainerDark,
-        // Surface — neutral tinted
         background              = neu(0.08f),
         onBackground            = neu(0.90f),
         surface                 = neu(0.08f),
@@ -308,7 +309,7 @@ private fun buildMonetScheme(seedArgb: Int, dark: Boolean): ColorScheme {
 // ──────────────────────────────────────────────────────
 
 /**
- * Aether Material 3 Theme — v3.0
+ * Aether Material 3 Theme — v3.1
  *
  * Ketika [dynamicColor] = true dan Android 12+:
  *   • Seed diambil dari WallpaperColors sistem (bukan decode bitmap)
@@ -317,7 +318,7 @@ private fun buildMonetScheme(seedArgb: Int, dark: Boolean): ColorScheme {
  *   • Surface/neutral: saturation hanya 4–12% (tinted, tidak noisy)
  *   → Hasilnya serasa Google app: harmonis dengan wallpaper, tidak mencolok
  *
- * Fallback ke static Violet/Indigo palette jika:
+ * Fallback ke static Azure Blue palette jika:
  *   • [dynamicColor] = false
  *   • API < 31 (Android < 12)
  *   • WallpaperColors tidak tersedia
@@ -325,7 +326,7 @@ private fun buildMonetScheme(seedArgb: Int, dark: Boolean): ColorScheme {
 @Composable
 fun AetherTheme(
     darkTheme    : Boolean = isSystemInDarkTheme(),
-    dynamicColor : Boolean = true,
+    dynamicColor : Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
     content      : @Composable () -> Unit,
 ) {
     val context = LocalContext.current
