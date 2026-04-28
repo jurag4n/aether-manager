@@ -16,6 +16,9 @@ class AetherApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Load libaether.so selalu — dibutuhkan update checker + security checks
+        NativeAether.tryLoad()
+
         if (!BuildConfig.DEBUG) {
             checkSignature()
             checkAll()
@@ -24,13 +27,13 @@ class AetherApplication : Application() {
         initLibsu()
         CimolAgent.tryLoad()
         initUnityAds()
-        initAdMob()          // AdMob init paralel — tidak blocking
+        initAdMob()
     }
 
     // ─── Security checks ──────────────────────────────────────────────────────
 
     private fun checkSignature() {
-        if (!NativeAether.tryLoad()) return
+        if (!NativeAether.isLoaded) return
         try {
             @Suppress("DEPRECATION")
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
@@ -57,7 +60,7 @@ class AetherApplication : Application() {
     }
 
     private fun checkAll() {
-        if (!NativeAether.tryLoad()) return
+        if (!NativeAether.isLoaded) return
         try {
             NativeAether.nativeCheckAll(this)
         } catch (_: Throwable) {
@@ -79,6 +82,13 @@ class AetherApplication : Application() {
     // ─── Unity Ads ────────────────────────────────────────────────────────────
 
     private fun initUnityAds() {
+        val gameId = AdManager.GAME_ID
+        if (gameId.isEmpty()) {
+            // .so tidak tersedia — skip Unity, AdMob tetap jalan
+            AdMobInterstitialManager.preload(this)
+            return
+        }
+
         if (UnityAds.isInitialized) {
             if (!BuildConfig.DEBUG) checkUnityIntact()
             InterstitialAdManager.preload(this)
@@ -87,7 +97,7 @@ class AetherApplication : Application() {
 
         UnityAds.initialize(
             this,
-            AdManager.GAME_ID,
+            gameId,
             AdManager.isTestMode,
             object : IUnityAdsInitializationListener {
                 override fun onInitializationComplete() {
@@ -111,7 +121,7 @@ class AetherApplication : Application() {
     }
 
     private fun checkUnityIntact() {
-        if (!NativeAether.tryLoad()) return
+        if (!NativeAether.isLoaded) return
         try {
             NativeAether.nativeCheckUnityIntact()
         } catch (_: Exception) {
@@ -122,10 +132,7 @@ class AetherApplication : Application() {
     // ─── AdMob ────────────────────────────────────────────────────────────────
 
     private fun initAdMob() {
-        // MobileAds.initialize() aman dipanggil di background thread internal SDK-nya.
-        // Callback onInitializationComplete di-deliver ke thread pemanggil (Main).
         MobileAds.initialize(this) {
-            // SDK siap — preload iklan pertama
             AdMobInterstitialManager.preload(this)
         }
     }

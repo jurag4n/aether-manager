@@ -7,9 +7,9 @@ import kotlinx.coroutines.*
 object AdScheduler {
 
     // Iklan pertama muncul 40 detik setelah app dibuka
-    var startDelayMs: Long  = 40 * 1_000L
+    var startDelayMs: Long  = 20 * 1_000L
     // Interval antar iklan: 2.5 menit
-    var intervalMs: Long    = 2 * 60 * 1_000L + 30 * 1_000L
+    var intervalMs: Long    = 1 * 60 * 1_000L + 30 * 1_000L
     // Minimum jarak antar iklan (guard anti-spam)
     var minIntervalMs: Long = 2 * 60 * 1_000L
 

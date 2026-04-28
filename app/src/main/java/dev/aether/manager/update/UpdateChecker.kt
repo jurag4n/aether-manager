@@ -7,6 +7,9 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+private const val FALLBACK_GITHUB_API =
+    "https://api.github.com/repos/aetherdev01/aether-manager/releases/latest"
+
 data class ReleaseInfo(
     val latestVersion    : String,
     val latestVersionCode: Int,
@@ -23,13 +26,17 @@ sealed class UpdateResult {
 
 object UpdateChecker {
 
-    private val GITHUB_API: String
-        get() = if (NativeAether.tryLoad()) NativeAether.nativeGetGithubApi() else ""
+    private fun resolveApiUrl(): String {
+        if (NativeAether.isLoaded || NativeAether.tryLoad()) {
+            val url = runCatching { NativeAether.nativeGetGithubApi() }.getOrNull()
+            if (!url.isNullOrEmpty()) return url
+        }
+        return FALLBACK_GITHUB_API
+    }
 
     suspend fun check(currentVersionCode: Int): UpdateResult = withContext(Dispatchers.IO) {
         try {
-            val apiUrl = GITHUB_API
-            if (apiUrl.isEmpty()) return@withContext UpdateResult.Error("Native lib unavailable")
+            val apiUrl = resolveApiUrl()
 
             val conn = (URL(apiUrl).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"

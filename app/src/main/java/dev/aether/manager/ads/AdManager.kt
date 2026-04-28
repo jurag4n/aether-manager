@@ -4,8 +4,7 @@ import dev.aether.manager.NativeAether
 
 object AdManager {
     val GAME_ID: String
-        get() = if (NativeAether.tryLoad()) NativeAether.nativeGetGameId() else ""
+        get() = if (NativeAether.isLoaded) NativeAether.nativeGetGameId() else ""
 
-    // Ganti ke false untuk production build
     val isTestMode: Boolean = false
 }
