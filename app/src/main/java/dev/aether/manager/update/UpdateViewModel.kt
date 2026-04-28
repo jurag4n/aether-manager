@@ -2,6 +2,7 @@ package dev.aether.manager.update
 
 import android.app.Application
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,56 +10,70 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-sealed class UpdateUiState {
-    object Idle       : UpdateUiState()
-    object Checking   : UpdateUiState()
-    data class UpdateAvailable(val info: ReleaseInfo) : UpdateUiState()
-    object UpToDate   : UpdateUiState()
-    data class CheckError(val message: String) : UpdateUiState()
+sealed class UpdateState {
+    object Idle       : UpdateState()
+    object Checking   : UpdateState()
+    object UpToDate   : UpdateState()
+    data class Available(val info: ReleaseInfo) : UpdateState()
+    data class Error(val msg: String)           : UpdateState()
 }
 
 class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val _state = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
-    val state: StateFlow<UpdateUiState> = _state.asStateFlow()
+    private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val state: StateFlow<UpdateState> = _state.asStateFlow()
 
-    private val _dismissed = MutableStateFlow(false)
-    val dismissed: StateFlow<Boolean> = _dismissed.asStateFlow()
-
-    /** Versi app yang sedang berjalan, e.g. "v1.2" */
-    val currentVersionName: String by lazy {
+    /** versionCode APK yang sedang terinstall */
+    val installedVersionCode: Int by lazy {
         try {
-            val ctx = getApplication<Application>()
-            @Suppress("DEPRECATION")
-            ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "v?"
-        } catch (_: PackageManager.NameNotFoundException) { "v?" }
+            val pm  = app.packageManager
+            val pkg = if (Build.VERSION.SDK_INT >= 33) {
+                pm.getPackageInfo(app.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(app.packageName, 0)
+            }
+            if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode.toInt()
+            else @Suppress("DEPRECATION") pkg.versionCode
+        } catch (_: Exception) { 0 }
     }
 
-    init { checkForUpdate() }
+    /** versionName APK yang sedang terinstall */
+    val installedVersionName: String by lazy {
+        try {
+            val pm = app.packageManager
+            val pkg = if (Build.VERSION.SDK_INT >= 33) {
+                pm.getPackageInfo(app.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(app.packageName, 0)
+            }
+            pkg.versionName ?: "?"
+        } catch (_: Exception) { "?" }
+    }
 
-    fun checkForUpdate() {
+    // ─────────────────────────────────────────────────────────────────────────
+
+    fun checkUpdate() {
+        if (_state.value is UpdateState.Checking) return
+        _state.value = UpdateState.Checking
+
         viewModelScope.launch {
-            _state.value = UpdateUiState.Checking
+            val release = UpdateChecker.fetchLatest()
+            _state.value = when {
+                release == null -> UpdateState.Error("Gagal cek update — coba lagi nanti")
 
-            val currentCode = getCurrentVersionCode()
-            _state.value = when (val result = UpdateChecker.check(currentCode)) {
-                is UpdateResult.UpdateAvailable -> UpdateUiState.UpdateAvailable(result.info)
-                is UpdateResult.UpToDate        -> UpdateUiState.UpToDate
-                is UpdateResult.Error           -> UpdateUiState.CheckError(result.message)
+                // Update tersedia kalau versionCode remote > installed
+                release.versionCode > installedVersionCode ->
+                    UpdateState.Available(release)
+
+                else -> UpdateState.UpToDate
             }
         }
     }
 
-    /** User tap "Nanti" — sembunyikan dialog sampai app restart. */
     fun dismiss() {
-        if (_state.value is UpdateUiState.UpdateAvailable) {
-            _dismissed.value = true
-        }
+        // Reset ke Idle supaya bisa di-trigger ulang nanti
+        _state.value = UpdateState.Idle
     }
-
-    private fun getCurrentVersionCode(): Int = try {
-        val ctx = getApplication<Application>()
-        @Suppress("DEPRECATION")
-        ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionCode
-    } catch (_: PackageManager.NameNotFoundException) { 0 }
 }

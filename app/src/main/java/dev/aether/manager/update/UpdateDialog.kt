@@ -2,8 +2,8 @@ package dev.aether.manager.update
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,633 +11,375 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.LocalActivity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.net.toUri
-import dev.aether.manager.ads.InterstitialAdManager
-import dev.aether.manager.i18n.AppStrings
 import dev.aether.manager.i18n.LocalStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.os.Environment
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
+import java.util.concurrent.TimeUnit
 
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-
-@Composable
-fun UpdateDialogHost(viewModel: UpdateViewModel) {
-    val state     by viewModel.state.collectAsState()
-    val dismissed by viewModel.dismissed.collectAsState()
-
-    val updateInfo = (state as? UpdateUiState.UpdateAvailable)?.info ?: return
-    if (dismissed) return
-
-    UpdateDialog(
-        info           = updateInfo,
-        currentVersion = viewModel.currentVersionName,
-        onDismiss      = { viewModel.dismiss() },
-    )
-}
-
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-
-private sealed class DownloadState {
-    object Idle : DownloadState()
-    data class Progress(
-        val percent        : Int,
-        val downloadedBytes: Long = 0L,
-        val totalBytes     : Long = 0L,
-    ) : DownloadState()
-    data class Done(val apkFile: File)    : DownloadState()
-    data class Failed(val reason: String) : DownloadState()
-}
-
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// UpdateDialog
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun UpdateDialog(
-    info           : ReleaseInfo,
-    currentVersion : String,
-    onDismiss      : () -> Unit,
+    info: ReleaseInfo,
+    onDismiss: () -> Unit,
 ) {
-    val context  = LocalContext.current
-    val activity = LocalActivity.current
-    val s        = LocalStrings.current
-    val scope    = rememberCoroutineScope()
-    var dlState  by remember { mutableStateOf<DownloadState>(DownloadState.Idle) }
+    val s       = LocalStrings.current
+    val ctx     = LocalContext.current
+    val scope   = rememberCoroutineScope()
 
-    var selectedTab      by remember { mutableIntStateOf(0) }
-    var changelog        by remember { mutableStateOf(info.releaseNotes) }
-    var fetchingChangelog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(info.releasePageUrl) {
-        if (info.releaseNotes.isNotBlank()) return@LaunchedEffect
-        fetchingChangelog = true
-        val fresh = fetchChangelogFromGitHub(info.releasePageUrl)
-        if (fresh != null) changelog = fresh
-        fetchingChangelog = false
-    }
+    var tab             by remember { mutableIntStateOf(0) }  // 0=Desc, 1=Changelog
+    var downloading     by remember { mutableStateOf(false) }
+    var progress        by remember { mutableFloatStateOf(0f) }  // 0..1, -1 = indeterminate
+    var downloadDone    by remember { mutableStateOf(false) }
+    var errorMsg        by remember { mutableStateOf<String?>(null) }
+    var apkFile         by remember { mutableStateOf<File?>(null) }
 
     Dialog(
-        onDismissRequest = { /* biarkan user tutup lewat tombol */ },
-        properties = DialogProperties(
-            dismissOnBackPress      = true,
-            dismissOnClickOutside   = false,
-            usePlatformDefaultWidth = false,
-        )
+        onDismissRequest = { if (!downloading) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            modifier       = Modifier
-                .fillMaxWidth(0.90f)
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
                 .wrapContentHeight(),
-            shape          = RoundedCornerShape(24.dp),
-            tonalElevation = 3.dp,
-            color          = MaterialTheme.colorScheme.surface,
+            shape  = RoundedCornerShape(24.dp),
+            color  = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
         ) {
-            Column(
-                modifier            = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
+            Column(modifier = Modifier.padding(24.dp)) {
 
-                // ── Header icon ───────────────────────────────────
-                Surface(
-                    modifier = Modifier.size(56.dp),
-                    shape    = RoundedCornerShape(16.dp),
-                    color    = MaterialTheme.colorScheme.primaryContainer,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector        = Icons.Outlined.NewReleases,
-                            contentDescription = null,
-                            tint               = MaterialTheme.colorScheme.primary,
-                            modifier           = Modifier.size(28.dp),
-                        )
-                    }
-                }
-
-                // ── Title ─────────────────────────────────────────
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text       = s.updateAvailable,
-                        style      = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign  = TextAlign.Center,
+                // ── Header ──────────────────────────────────────────────────
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.SystemUpdate,
+                        contentDescription = null,
+                        tint   = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp),
                     )
-                    Text(
-                        text  = "v${info.latestVersion}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-
-                // ── Version chip: "versi saat ini → versi baru" ──
-                VersionArrowChip(currentVersion = currentVersion, newVersion = info.latestVersion)
-
-                // ── Tab: Deskripsi / Changelog ────────────────────
-                val tabs = listOf(s.updateTabDesc, s.updateTabChangelog)
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    modifier         = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
-                    containerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                    indicator        = { },
-                    divider          = { },
-                ) {
-                    tabs.forEachIndexed { idx, label ->
-                        val selected = selectedTab == idx
-                        Tab(
-                            selected = selected,
-                            onClick  = { selectedTab = idx },
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (selected) MaterialTheme.colorScheme.surface
-                                    else          androidx.compose.ui.graphics.Color.Transparent
-                                ),
-                        ) {
-                            Text(
-                                text       = label,
-                                style      = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                color      = if (selected) MaterialTheme.colorScheme.primary
-                                             else          MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier   = Modifier.padding(vertical = 10.dp),
-                            )
-                        }
-                    }
-                }
-
-                // ── Tab content ───────────────────────────────────
-                AnimatedContent(
-                    targetState  = selectedTab,
-                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
-                    label        = "tab_content",
-                ) { tab ->
-                    when (tab) {
-                        0    -> DescriptionBox(s)
-                        1    -> ChangelogBox(notes = changelog, loading = fetchingChangelog, s = s)
-                        else -> Unit
-                    }
-                }
-
-                // ── Buttons ───────────────────────────────────────
-                when (val dl = dlState) {
-                    is DownloadState.Idle -> {
-                        Column(
-                            Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Button(
-                                onClick  = {
-                                    if (activity != null) {
-                                        InterstitialAdManager.showIfReady(activity)
-                                    }
-                                    scope.launch {
-                                        downloadAndInstall(
-                                            context    = context,
-                                            url        = info.downloadUrl,
-                                            onProgress = { pct, dl, total ->
-                                                dlState = DownloadState.Progress(pct, dl, total)
-                                            },
-                                            onDone     = { dlState = DownloadState.Done(it) },
-                                            onFailed   = { dlState = DownloadState.Failed(it) },
-                                        )
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp),
-                                shape    = RoundedCornerShape(12.dp),
-                            ) {
-                                Icon(Icons.Outlined.Download, null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    s.updateBtnDownload,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            }
-
-                            OutlinedButton(
-                                onClick  = onDismiss,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp),
-                                shape    = RoundedCornerShape(12.dp),
-                            ) {
-                                Text(
-                                    s.updateBtnLater,
-                                    style = MaterialTheme.typography.labelLarge,
-                                )
-                            }
-                        }
-                    }
-
-                    is DownloadState.Progress -> {
-                        DownloadProgressBar(
-                                percent         = dl.percent,
-                                downloadedBytes = dl.downloadedBytes,
-                                totalBytes      = dl.totalBytes,
-                            )
-                    }
-
-                    is DownloadState.Done -> {
-                        LaunchedEffect(dl.apkFile) {
-                            if (activity != null) {
-                                InterstitialAdManager.showIfReady(activity)
-                            }
-                            installApk(context, dl.apkFile)
-                        }
-                        DownloadProgressBar(percent = 100, downloadedBytes = -1L, totalBytes = -1L)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
                         Text(
-                            s.updateInstalling,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    is DownloadState.Failed -> {
-                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape    = RoundedCornerShape(12.dp),
-                                color    = MaterialTheme.colorScheme.errorContainer,
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(12.dp)
-                                        .fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.ErrorOutline,
-                                        null,
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Text(
-                                        s.updateFailed.format(dl.reason),
-                                        style     = MaterialTheme.typography.bodySmall,
-                                        color     = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                            }
-                            OutlinedButton(
-                                onClick  = { dlState = DownloadState.Idle },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape    = RoundedCornerShape(12.dp),
-                            ) { Text(s.updateBtnRetry) }
-                            TextButton(
-                                onClick  = {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, info.releasePageUrl.toUri())
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) { Text(s.updateBtnBrowser) }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-
-/** Chip: "v1.2 → v1.5" — menunjukkan versi asal dan tujuan update */
-@Composable
-private fun VersionArrowChip(currentVersion: String, newVersion: String) {
-    Surface(
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.secondaryContainer
-    ) {
-        Row(
-            modifier              = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text       = currentVersion,
-                style      = MaterialTheme.typography.labelSmall,
-                color      = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                fontWeight = FontWeight.Medium,
-            )
-            Icon(
-                Icons.AutoMirrored.Outlined.ArrowForward, null,
-                tint     = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(12.dp)
-            )
-            Text(
-                text       = newVersion,
-                style      = MaterialTheme.typography.labelSmall,
-                color      = MaterialTheme.colorScheme.onSecondaryContainer,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DescriptionBox(s: AppStrings) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(12.dp),
-        color    = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(
-            modifier            = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment     = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Outlined.Info, null,
-                    modifier = Modifier.size(18.dp),
-                    tint     = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    s.updateAboutTitle,
-                    style      = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.primary
-                )
-            }
-            Text(
-                text      = s.updateAboutDesc,
-                style     = MaterialTheme.typography.bodySmall,
-                color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 18.sp,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ChangelogBox(notes: String, loading: Boolean, s: AppStrings) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(12.dp),
-        color    = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        if (loading) {
-            Box(Modifier
-                .fillMaxWidth()
-                .height(100.dp), contentAlignment = Alignment.Center) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(
-                        Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color       = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        s.updateChangelogLoading,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .heightIn(min = 80.dp, max = 200.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text       = notes.ifBlank { s.updateChangelogEmpty },
-                    style      = MaterialTheme.typography.bodySmall,
-                    color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 18.sp,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DownloadProgressBar(
-    percent        : Int,
-    downloadedBytes: Long,
-    totalBytes     : Long,
-) {
-    val s        = LocalStrings.current
-    val progress by animateFloatAsState(
-        targetValue   = percent / 100f,
-        animationSpec = tween(300),
-        label         = "dl_progress"
-    )
-
-    fun Long.toMb(): String = "%.1f MB".format(this / 1_048_576.0)
-
-    val hasSizeInfo = totalBytes > 0L && downloadedBytes >= 0L
-    val isComplete  = percent >= 100
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(12.dp),
-        color    = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            // ── Row atas: label kiri, size kanan ──────────────────
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically,
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                ) {
-                    if (isComplete) {
-                        Icon(
-                            Icons.Outlined.CheckCircle, null,
-                            tint     = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            s.updateDownloadDone,
-                            style  = MaterialTheme.typography.labelSmall,
-                            color  = MaterialTheme.colorScheme.primary,
+                            text  = s.updateAvailable,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
-                    } else {
-                        CircularProgressIndicator(
-                            modifier    = Modifier.size(14.dp),
-                            strokeWidth = 2.dp,
-                            color       = MaterialTheme.colorScheme.primary,
-                        )
                         Text(
-                            s.updateDownloading,
-                            style = MaterialTheme.typography.labelSmall,
+                            text  = "v${info.versionName}  (build ${info.versionCode})",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    if (!downloading) {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Outlined.Close, contentDescription = "Tutup")
+                        }
+                    }
                 }
 
-                if (hasSizeInfo) {
-                    Text(
-                        text       = "${downloadedBytes.toMb()} / ${totalBytes.toMb()}",
-                        style      = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+                Spacer(Modifier.height(16.dp))
 
-            // ── Progress bar + persen ─────────────────────────────
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                LinearProgressIndicator(
-                    progress = { progress },
+                // ── Tab ─────────────────────────────────────────────────────
+                TabRow(
+                    selectedTabIndex = tab,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                )
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                        .clip(RoundedCornerShape(12.dp)),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    indicator = {},
+                    divider  = {},
                 ) {
-                    Text(
-                        text       = "$percent%",
-                        style      = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = MaterialTheme.colorScheme.primary,
-                    )
+                    listOf(s.updateTabDesc, s.updateTabChangelog).forEachIndexed { i, label ->
+                        Tab(
+                            selected = tab == i,
+                            onClick  = { tab = i },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (tab == i) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                .padding(vertical = 4.dp),
+                            text = {
+                                Text(
+                                    text  = label,
+                                    color = if (tab == i)
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (tab == i) FontWeight.SemiBold else FontWeight.Normal,
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // ── Tab content ──────────────────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 80.dp, max = 220.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    AnimatedContent(
+                        targetState = tab,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "updateTab"
+                    ) { t ->
+                        when (t) {
+                            0 -> Text(
+                                text  = s.updateAboutDesc,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            else -> {
+                                val cl = info.changelog.trim()
+                                Text(
+                                    text  = cl.ifBlank { s.updateChangelogEmpty },
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // ── Download progress ────────────────────────────────────────
+                AnimatedVisibility(visible = downloading || downloadDone || errorMsg != null) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        when {
+                            errorMsg != null -> {
+                                Text(
+                                    text  = s.updateFailed.format(errorMsg),
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            downloadDone -> {
+                                Text(
+                                    text  = s.updateDownloadDone,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            else -> {
+                                Text(
+                                    text  = if (progress < 0) s.updateDownloading
+                                            else "${s.updateDownloading}  ${(progress * 100).toInt()}%",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                if (progress < 0) LinearProgressIndicator(Modifier.fillMaxWidth())
+                                else LinearProgressIndicator(
+                                    progress = { progress },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+
+                // ── Buttons ──────────────────────────────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // Browser button
+                    OutlinedButton(
+                        onClick  = { ctx.openUrl(info.htmlUrl) },
+                        enabled  = !downloading,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            Icons.Outlined.OpenInBrowser,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(s.updateBtnBrowser, fontSize = 12.sp)
+                    }
+
+                    when {
+                        // Error — retry
+                        errorMsg != null -> Button(
+                            onClick = {
+                                errorMsg    = null
+                                downloadDone = false
+                                scope.launch {
+                                    downloadApk(
+                                        ctx, info.downloadUrl,
+                                        onProgress   = { progress = it },
+                                        onDone       = { file -> apkFile = file; downloadDone = true; downloading = false },
+                                        onError      = { e -> errorMsg = e; downloading = false },
+                                        onStart      = { downloading = true; progress = -1f },
+                                    )
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) { Text(s.updateBtnRetry, fontSize = 12.sp) }
+
+                        // Download selesai — install
+                        downloadDone -> Button(
+                            onClick = { apkFile?.let { ctx.installApk(it) } },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(
+                                Icons.Outlined.InstallMobile,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(s.updateInstalling, fontSize = 12.sp)
+                        }
+
+                        // Sedang download
+                        downloading -> Button(
+                            onClick  = {},
+                            enabled  = false,
+                            modifier = Modifier.weight(1f),
+                        ) { Text(s.updateDownloading, fontSize = 12.sp) }
+
+                        // Idle — Download & Install
+                        else -> Button(
+                            onClick = {
+                                scope.launch {
+                                    downloadApk(
+                                        ctx, info.downloadUrl,
+                                        onProgress = { progress = it },
+                                        onDone     = { file -> apkFile = file; downloadDone = true; downloading = false },
+                                        onError    = { e -> errorMsg = e; downloading = false },
+                                        onStart    = { downloading = true; progress = -1f },
+                                    )
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(s.updateBtnDownload, fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                // Later button
+                if (!downloading) {
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick  = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(s.updateBtnLater, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Download helper
+// ─────────────────────────────────────────────────────────────────────────────
 
-private suspend fun fetchChangelogFromGitHub(releasePageUrl: String): String? =
-    withContext(Dispatchers.IO) {
-        try {
-            val apiUrl = releasePageUrl
-                .replace("https://github.com/", "https://api.github.com/repos/")
-                .let { if (it.contains("/releases/tag/")) it.replace("/releases/tag/", "/releases/tags/") else it }
+private val dlClient by lazy {
+    OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .build()
+}
 
-            val conn = (URL(apiUrl).openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                setRequestProperty("Accept", "application/vnd.github+json")
-                setRequestProperty("User-Agent", "AetherManager-Android")
-                connectTimeout = 10_000
-                readTimeout    = 10_000
-            }
-            if (conn.responseCode != 200) return@withContext null
-
-            val body = conn.inputStream.bufferedReader().readText()
-            conn.disconnect()
-
-            org.json.JSONObject(body).optString("body", "").trim().takeIf { it.isNotBlank() }
-        } catch (_: Exception) { null }
-    }
-
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-
-private suspend fun downloadAndInstall(
-    context   : Context,
-    url       : String,
-    onProgress: (percent: Int, downloaded: Long, total: Long) -> Unit,
-    onDone    : (File) -> Unit,
-    onFailed  : (String) -> Unit,
+private suspend fun downloadApk(
+    ctx: Context,
+    url: String,
+    onStart:    () -> Unit,
+    onProgress: (Float) -> Unit,
+    onDone:     (File) -> Unit,
+    onError:    (String) -> Unit,
 ) = withContext(Dispatchers.IO) {
+    withContext(Dispatchers.Main) { onStart() }
     try {
-        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout          = 15_000
-            readTimeout             = 60_000
-            instanceFollowRedirects = true
-        }
-        conn.connect()
+        val req  = Request.Builder().url(url).build()
+        val resp = dlClient.newCall(req).execute()
+        if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
 
-        if (conn.responseCode != 200) {
-            withContext(Dispatchers.Main) { onFailed("HTTP ${conn.responseCode}") }
-            return@withContext
-        }
+        val body   = resp.body ?: throw Exception("Empty body")
+        val total  = body.contentLength()
+        val file   = File(ctx.cacheDir, "aether_update.apk")
 
-        val totalBytes = conn.contentLengthLong
-        val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.cacheDir
-        downloadsDir.mkdirs()
-        val apkFileName = url.substringAfterLast("/").substringBefore("?").takeIf { it.endsWith(".apk", ignoreCase = true) }
-            ?: "AetherManager-update.apk"
-        val outFile = File(downloadsDir, apkFileName)
-        if (outFile.exists()) outFile.delete()
-
-        conn.inputStream.use { input ->
-            outFile.outputStream().use { output ->
-                val buf = ByteArray(8192)
-                var downloaded = 0L
-                var read: Int
-                while (input.read(buf).also { read = it } != -1) {
-                    output.write(buf, 0, read)
-                    downloaded += read
-                    if (totalBytes > 0) {
-                        val pct = (downloaded * 100 / totalBytes).toInt()
-                        withContext(Dispatchers.Main) { onProgress(pct, downloaded, totalBytes) }
+        file.outputStream().use { out ->
+            val buf     = ByteArray(8192)
+            var written = 0L
+            body.byteStream().use { inp ->
+                while (true) {
+                    val n = inp.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                    written += n
+                    if (total > 0) {
+                        val p = written.toFloat() / total
+                        withContext(Dispatchers.Main) { onProgress(p) }
                     }
                 }
             }
         }
-        withContext(Dispatchers.Main) { onDone(outFile) }
+
+        withContext(Dispatchers.Main) { onDone(file) }
     } catch (e: Exception) {
-        withContext(Dispatchers.Main) { onFailed(e.message ?: "Download gagal") }
+        withContext(Dispatchers.Main) { onError(e.message ?: "Unknown error") }
     }
 }
 
-private fun installApk(context: Context, apkFile: File) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Install APK via Intent
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun Context.installApk(file: File) {
     try {
         val uri = androidx.core.content.FileProvider.getUriForFile(
-            context, "${context.packageName}.provider", apkFile
+            this,
+            "$packageName.provider",
+            file,
         )
-        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        })
-    } catch (_: Exception) {
-        context.startActivity(Intent(Intent.ACTION_VIEW, apkFile.toUri()).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        })
+        }
+        startActivity(intent)
+    } catch (e: Exception) {
+        openUrl("https://github.com/aetherdev01/aether-manager/releases/latest")
     }
+}
+
+private fun Context.openUrl(url: String) {
+    try {
+        startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    } catch (_: Exception) {}
 }

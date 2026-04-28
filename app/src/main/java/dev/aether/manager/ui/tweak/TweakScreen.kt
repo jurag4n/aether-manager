@@ -5,218 +5,436 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.automirrored.outlined.Article
-import androidx.compose.material.icons.automirrored.outlined.CompareArrows
-import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.aether.manager.data.ApplyStatus
 import dev.aether.manager.data.MainViewModel
-import dev.aether.manager.data.UiState
+import dev.aether.manager.data.TweaksState
 import dev.aether.manager.i18n.LocalStrings
-import dev.aether.manager.ui.components.*
 import dev.aether.manager.ui.home.TabSectionTitle
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Root Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun TweakScreen(vm: MainViewModel) {
-    val s           = LocalStrings.current
-    val tweaks      by vm.tweaks.collectAsState()
-    val deviceState by vm.deviceInfo.collectAsState()
-    val applying    by vm.applyingTweak.collectAsState()
-    val scrollState = rememberScrollState()
-    val context     = LocalContext.current
-    val activity    = context as? android.app.Activity
+    val s      = LocalStrings.current
+    val tweaks by vm.tweaks.collectAsState()
+    val status by vm.applyStatus.collectAsState()
+    val scroll = rememberScrollState()
 
     Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
+                .verticalScroll(scroll)
                 .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 100.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(top = 12.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // ── Profile Selector ─────────────────────────────────────
+            ProfileSection(
+                current  = tweaks.thermalProfile,
+                onSelect = { vm.setProfile(it) }
+            )
 
-            // ── Performance Profile ───────────────────────────
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TabSectionTitle(icon = Icons.Outlined.Tune, title = s.tweakPerformanceProfile)
-                val current = (deviceState as? UiState.Success)?.data?.profile ?: "balance"
-                ProfileGrid(current = current, onSelect = { vm.setProfile(it) })
+            // ── CPU Section ──────────────────────────────────────────
+            TweakSection(
+                icon  = Icons.Outlined.Memory,
+                title = s.tweakSectionCpu
+            ) {
+                TweakToggleRow(
+                    icon      = Icons.Outlined.FlashOn,
+                    title     = s.tweakSchedBoost,
+                    subtitle  = s.tweakSchedBoostDesc,
+                    checked   = tweaks.schedboost,
+                    onToggle  = { vm.setTweak("schedboost", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Speed,
+                    title     = s.tweakCpuBoost,
+                    subtitle  = s.tweakCpuBoostDesc,
+                    checked   = tweaks.cpuBoost,
+                    onToggle  = { vm.setTweak("cpuBoost", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.GridView,
+                    title     = s.tweakGpuThrottle,
+                    subtitle  = s.tweakGpuThrottleDesc,
+                    checked   = tweaks.gpuThrottleOff,
+                    onToggle  = { vm.setTweak("gpuThrottleOff", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Dashboard,
+                    title     = s.tweakCpusetOpt,
+                    subtitle  = s.tweakCpusetOptDesc,
+                    checked   = tweaks.cpusetOpt,
+                    onToggle  = { vm.setTweak("cpusetOpt", it) }
+                )
+                if (tweaks.mtkBoost != null) { // MTK only
+                    TweakDivider()
+                    TweakToggleRow(
+                        icon      = Icons.Outlined.Bolt,
+                        title     = s.tweakMtkBoost,
+                        subtitle  = s.tweakMtkBoostDesc,
+                        checked   = tweaks.mtkBoost ?: false,
+                        onToggle  = { vm.setTweak("mtkBoost", it) }
+                    )
+                }
             }
 
-            // ── CPU & Kernel ──────────────────────────────────
-            TweakSection(s.tweakSectionCpu) {
-                TweakRow(Icons.Outlined.DateRange, s.tweakSchedBoost, s.tweakSchedBoostDesc, tweaks.schedboost) { vm.setTweak("schedboost", it) }
-                ItemDivider()
-                TweakRow(Icons.AutoMirrored.Outlined.TrendingUp, s.tweakCpuBoost, s.tweakCpuBoostDesc, tweaks.cpuBoost) { vm.setTweak("cpu_boost", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.GridView, s.tweakGpuThrottle, s.tweakGpuThrottleDesc, tweaks.gpuThrottleOff) { vm.setTweak("gpu_throttle_off", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Memory, s.tweakCpusetOpt, s.tweakCpusetOptDesc, tweaks.cpusetOpt) { vm.setTweak("cpuset_opt", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Speed, s.tweakMtkBoost, s.tweakMtkBoostDesc, tweaks.mtkBoost) { vm.setTweak("obb_noop", it) }
-            }
-
-            // ── CPU Freq Limiter ──────────────────────────────
-            TweakSection(s.tweakSectionCpuFreq) {
-                TweakRow(
-                    Icons.Outlined.Tune,
-                    s.tweakCpuFreqEnable,
-                    s.tweakCpuFreqEnableDesc,
-                    tweaks.cpuFreqEnable
-                ) { vm.setTweak("cpu_freq_enable", it) }
+            // ── CPU Frequency Section ────────────────────────────────
+            TweakSection(
+                icon  = Icons.Outlined.Tune,
+                title = s.tweakSectionCpuFreq
+            ) {
+                TweakToggleRow(
+                    icon      = Icons.Outlined.SwapVert,
+                    title     = s.tweakCpuFreqEnable,
+                    subtitle  = s.tweakCpuFreqEnableDesc,
+                    checked   = tweaks.cpuFreqEnable,
+                    onToggle  = { vm.setTweak("cpuFreqEnable", it) }
+                )
                 AnimatedVisibility(visible = tweaks.cpuFreqEnable) {
                     Column {
-                        ItemDivider()
-                        CpuClusterRow(
-                            clusterName = s.tweakCpuClusterPrime,
-                            icon        = Icons.Outlined.ElectricBolt,
-                            accentColor = MaterialTheme.colorScheme.error,
-                            minVal      = tweaks.cpuFreqPrimeMin,
-                            maxVal      = tweaks.cpuFreqPrimeMax,
-                            onMinSelect = { vm.setTweakStr("cpu_freq_prime_min", it) },
-                            onMaxSelect = { vm.setTweakStr("cpu_freq_prime_max", it) }
+                        TweakDivider()
+                        CpuFreqCluster(
+                            label    = s.tweakCpuClusterPrime,
+                            minValue = tweaks.cpuFreqPrimeMin,
+                            maxValue = tweaks.cpuFreqPrimeMax,
+                            onMin    = { vm.setTweakStr("cpuFreqPrimeMin", it) },
+                            onMax    = { vm.setTweakStr("cpuFreqPrimeMax", it) },
+                            color    = MaterialTheme.colorScheme.error
                         )
-                        ItemDivider()
-                        CpuClusterRow(
-                            clusterName = s.tweakCpuClusterGold,
-                            icon        = Icons.Outlined.Star,
-                            accentColor = MaterialTheme.colorScheme.tertiary,
-                            minVal      = tweaks.cpuFreqGoldMin,
-                            maxVal      = tweaks.cpuFreqGoldMax,
-                            onMinSelect = { vm.setTweakStr("cpu_freq_gold_min", it) },
-                            onMaxSelect = { vm.setTweakStr("cpu_freq_gold_max", it) }
+                        TweakDivider()
+                        CpuFreqCluster(
+                            label    = s.tweakCpuClusterGold,
+                            minValue = tweaks.cpuFreqGoldMin,
+                            maxValue = tweaks.cpuFreqGoldMax,
+                            onMin    = { vm.setTweakStr("cpuFreqGoldMin", it) },
+                            onMax    = { vm.setTweakStr("cpuFreqGoldMax", it) },
+                            color    = MaterialTheme.colorScheme.tertiary
                         )
-                        ItemDivider()
-                        CpuClusterRow(
-                            clusterName = s.tweakCpuClusterSilver,
-                            icon        = Icons.Outlined.Memory,
-                            accentColor = MaterialTheme.colorScheme.secondary,
-                            minVal      = tweaks.cpuFreqSilverMin,
-                            maxVal      = tweaks.cpuFreqSilverMax,
-                            onMinSelect = { vm.setTweakStr("cpu_freq_silver_min", it) },
-                            onMaxSelect = { vm.setTweakStr("cpu_freq_silver_max", it) }
+                        TweakDivider()
+                        CpuFreqCluster(
+                            label    = s.tweakCpuClusterSilver,
+                            minValue = tweaks.cpuFreqSilverMin,
+                            maxValue = tweaks.cpuFreqSilverMax,
+                            onMin    = { vm.setTweakStr("cpuFreqSilverMin", it) },
+                            onMax    = { vm.setTweakStr("cpuFreqSilverMax", it) },
+                            color    = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
             }
 
-            // ── Thermal Profile ───────────────────────────────
-            TweakSection(s.tweakThermalProfile) {
-                ThermalProfileRow(
-                    desc    = s.tweakThermalDesc,
-                    current = tweaks.thermalProfile,
-                    labelDefault     = s.tweakThermalDefault,
-                    labelPerformance = s.tweakThermalPerformance,
-                    labelExtreme     = s.tweakThermalExtreme,
-                    onSelect = { vm.setTweakStr("thermal_profile", it) }
+            // ── Memory Section ───────────────────────────────────────
+            TweakSection(
+                icon  = Icons.Outlined.Dns,
+                title = s.tweakSectionMemory
+            ) {
+                TweakToggleRow(
+                    icon      = Icons.Outlined.ManageSearch,
+                    title     = s.tweakLmk,
+                    subtitle  = s.tweakLmkDesc,
+                    checked   = tweaks.lmkAggressive,
+                    onToggle  = { vm.setTweak("lmkAggressive", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Compress,
+                    title     = s.tweakZram,
+                    subtitle  = s.tweakZramDesc,
+                    checked   = tweaks.zram,
+                    onToggle  = { vm.setTweak("zram", it) }
+                )
+                AnimatedVisibility(visible = tweaks.zram) {
+                    Column {
+                        TweakDivider()
+                        TweakDropdownRow(
+                            icon    = Icons.Outlined.Storage,
+                            label   = s.tweakZramSize,
+                            options = listOf(
+                                "536870912"  to "512 MB",
+                                "1073741824" to "1 GB",
+                                "1610612736" to "1.5 GB",
+                                "2147483648" to "2 GB"
+                            ),
+                            selected  = tweaks.zramSize,
+                            onSelect  = { vm.setTweakStr("zramSize", it) }
+                        )
+                        TweakDivider()
+                        TweakDropdownRow(
+                            icon    = Icons.Outlined.Code,
+                            label   = s.tweakZramAlgo,
+                            options = listOf(
+                                "lz4"    to "LZ4",
+                                "zstd"   to "ZSTD",
+                                "lzo"    to "LZO",
+                                "lzo-rle" to "LZO-RLE"
+                            ),
+                            selected  = tweaks.zramAlgo,
+                            onSelect  = { vm.setTweakStr("zramAlgo", it) }
+                        )
+                    }
+                }
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.AutoAwesome,
+                    title     = s.tweakVmDirty,
+                    subtitle  = s.tweakVmDirtyDesc,
+                    checked   = tweaks.vmDirtyOpt,
+                    onToggle  = { vm.setTweak("vmDirtyOpt", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.ContentCopy,
+                    title     = s.tweakKsm,
+                    subtitle  = s.tweakKsmDesc,
+                    checked   = tweaks.ksm,
+                    onToggle  = { vm.setTweak("ksm", it) }
+                )
+                AnimatedVisibility(visible = tweaks.ksm) {
+                    Column {
+                        TweakDivider()
+                        TweakToggleRow(
+                            icon      = Icons.Outlined.DoubleArrow,
+                            title     = s.tweakKsmAggressive,
+                            subtitle  = s.tweakKsmAggressiveDesc,
+                            checked   = tweaks.ksmAggressive,
+                            onToggle  = { vm.setTweak("ksmAggressive", it) },
+                            indented  = true
+                        )
+                    }
+                }
+            }
+
+            // ── I/O Section ──────────────────────────────────────────
+            TweakSection(
+                icon  = Icons.Outlined.Storage,
+                title = s.tweakSectionIo
+            ) {
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Timelapse,
+                    title     = s.tweakIoLatency,
+                    subtitle  = s.tweakIoLatencyDesc,
+                    checked   = tweaks.ioLatencyOpt,
+                    onToggle  = { vm.setTweak("ioLatencyOpt", it) }
+                )
+                TweakDivider()
+                TweakDropdownRow(
+                    icon    = Icons.Outlined.SortByAlpha,
+                    label   = s.tweakIoScheduler,
+                    options = listOf(
+                        ""        to "Auto",
+                        "cfq"     to "CFQ",
+                        "deadline" to "Deadline",
+                        "noop"    to "Noop",
+                        "bfq"     to "BFQ",
+                        "mq-deadline" to "MQ-Deadline"
+                    ),
+                    selected  = tweaks.ioScheduler,
+                    onSelect  = { vm.setTweakStr("ioScheduler", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Psychology,
+                    title     = s.tweakEntropy,
+                    subtitle  = s.tweakEntropyDesc,
+                    checked   = tweaks.entropyBoost,
+                    onToggle  = { vm.setTweak("entropyBoost", it) }
                 )
             }
 
-            // ── GPU Freq Lock ─────────────────────────────────
-            TweakSection("GPU") {
-                TweakRow(Icons.Outlined.LockOpen, s.tweakGpuFreqLock, s.tweakGpuFreqLockDesc, tweaks.gpuFreqLock) { vm.setTweak("gpu_freq_lock", it) }
-                AnimatedVisibility(visible = tweaks.gpuFreqLock) {
-                    Column {
-                        ItemDivider()
-                        GpuFreqRow(
-                            current  = tweaks.gpuFreqMax,
-                            label    = s.tweakGpuFreqMax,
-                            onSelect = { vm.setTweakStr("gpu_freq_max", it) }
+            // ── Network Section ──────────────────────────────────────
+            TweakSection(
+                icon  = Icons.Outlined.Wifi,
+                title = s.tweakSectionNetwork
+            ) {
+                TweakToggleRow(
+                    icon      = Icons.Outlined.NetworkCheck,
+                    title     = s.tweakTcpBbr,
+                    subtitle  = s.tweakTcpBbrDesc,
+                    checked   = tweaks.tcpBbr,
+                    onToggle  = { vm.setTweak("tcpBbr", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.DnsOutlined,
+                    title     = s.tweakDoh,
+                    subtitle  = s.tweakDohDesc,
+                    checked   = tweaks.doh,
+                    onToggle  = { vm.setTweak("doh", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Cached,
+                    title     = s.tweakNetBuffer,
+                    subtitle  = s.tweakNetBufferDesc,
+                    checked   = tweaks.netBuffer,
+                    onToggle  = { vm.setTweak("netBuffer", it) }
+                )
+            }
+
+            // ── Battery & UX Section ─────────────────────────────────
+            TweakSection(
+                icon  = Icons.Outlined.BatteryFull,
+                title = s.tweakSectionBattery
+            ) {
+                TweakToggleRow(
+                    icon      = Icons.Outlined.BatterySaver,
+                    title     = s.tweakDoze,
+                    subtitle  = s.tweakDozeDesc,
+                    checked   = tweaks.doze,
+                    onToggle  = { vm.setTweak("doze", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Animation,
+                    title     = s.tweakFastAnim,
+                    subtitle  = s.tweakFastAnimDesc,
+                    checked   = tweaks.fastAnim,
+                    onToggle  = { vm.setTweak("fastAnim", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Vibration,
+                    title     = s.tweakTouchBoost,
+                    subtitle  = s.tweakTouchBoostDesc,
+                    checked   = tweaks.touchBoost,
+                    onToggle  = { vm.setTweak("touchBoost", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.CleaningServices,
+                    title     = s.tweakClearCache,
+                    subtitle  = s.tweakClearCacheDesc,
+                    checked   = tweaks.clearCache,
+                    onToggle  = { vm.setTweak("clearCache", it) }
+                )
+                TweakDivider()
+                TweakToggleRow(
+                    icon      = Icons.Outlined.Lock,
+                    title     = s.tweakGpuFreqLock,
+                    subtitle  = s.tweakGpuFreqLockDesc,
+                    checked   = tweaks.gpuFreqLock,
+                    onToggle  = { vm.setTweak("gpuFreqLock", it) }
+                )
+            }
+        }
+
+        // ── Floating Apply Button ────────────────────────────────────
+        ApplyBar(
+            status    = status,
+            onApply   = { vm.applyAll() },
+            modifier  = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Profile Selector (Chips row)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ProfileSection(
+    current: String,
+    onSelect: (String) -> Unit
+) {
+    val s = LocalStrings.current
+
+    val profiles = listOf(
+        Triple("default",     s.tweakThermalDefault,     Icons.Outlined.Balance),
+        Triple("performance", s.tweakThermalPerformance, Icons.Outlined.FlashOn),
+        Triple("extreme",     s.tweakThermalExtreme,     Icons.Filled.Bolt)
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        TabSectionTitle(
+            icon  = Icons.Outlined.Tune,
+            title = s.tweakPerformanceProfile
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            profiles.forEach { (key, label, icon) ->
+                val selected = current == key
+                val bg by animateColorAsState(
+                    if (selected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tween(200), label = "profile_bg"
+                )
+                val fg by animateColorAsState(
+                    if (selected) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tween(200), label = "profile_fg"
+                )
+                Surface(
+                    onClick = { onSelect(key) },
+                    shape   = RoundedCornerShape(14.dp),
+                    color   = bg,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier            = Modifier.padding(vertical = 14.dp, horizontal = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            icon, null,
+                            tint     = fg,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            label,
+                            style      = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = fg
                         )
                     }
                 }
-            }
-
-            // ── Memory ────────────────────────────────────────
-            TweakSection(s.tweakSectionMemory) {
-                TweakRow(Icons.AutoMirrored.Outlined.Article, s.tweakLmk, s.tweakLmkDesc, tweaks.lmkAggressive) { vm.setTweak("lmk_aggressive", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Memory, s.tweakZram, s.tweakZramDesc, tweaks.zram) { vm.setTweak("zram", it) }
-                ItemDivider()
-                ZramSizeRow(tweaks.zramSize) { vm.setTweakStr("zram_size", it) }
-                ItemDivider()
-                ZramAlgoRow(tweaks.zramAlgo) { vm.setTweakStr("zram_algo", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Info, s.tweakVmDirty, s.tweakVmDirtyDesc, tweaks.vmDirtyOpt) { vm.setTweak("vm_dirty_opt", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.ContentCopy, s.tweakKsm, s.tweakKsmDesc, tweaks.ksm) { vm.setTweak("ksm", it) }
-                AnimatedVisibility(visible = tweaks.ksm) {
-                    Column {
-                        ItemDivider()
-                        TweakRow(Icons.Outlined.FastForward, s.tweakKsmAggressive, s.tweakKsmAggressiveDesc, tweaks.ksmAggressive) { vm.setTweak("ksm_aggressive", it) }
-                    }
-                }
-            }
-
-            // ── I/O ───────────────────────────────────────────
-            TweakSection(s.tweakSectionIo) {
-                IoSchedulerRow(tweaks.ioScheduler) { vm.setTweakStr("io_scheduler", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Add, s.tweakIoLatency, s.tweakIoLatencyDesc, tweaks.ioLatencyOpt) { vm.setTweak("io_latency_opt", it) }
-            }
-
-            // ── Network ───────────────────────────────────────
-            TweakSection(s.tweakSectionNetwork) {
-                TweakRow(Icons.Outlined.Language, s.tweakTcpBbr, s.tweakTcpBbrDesc, tweaks.tcpBbr) { vm.setTweak("tcp_bbr", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Lock, s.tweakDoh, s.tweakDohDesc, tweaks.doh) { vm.setTweak("doh", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.SwapHoriz, s.tweakNetBuffer, s.tweakNetBufferDesc, tweaks.netBuffer) { vm.setTweak("net_buffer", it) }
-            }
-
-            // ── Battery & Daily ───────────────────────────────
-            TweakSection(s.tweakSectionBattery) {
-                TweakRow(Icons.Outlined.TouchApp, s.tweakTouchBoost, s.tweakTouchBoostDesc, tweaks.touchBoost) { vm.setTweak("touch_boost", it) }
-                AnimatedVisibility(visible = tweaks.touchBoost) {
-                    Column {
-                        ItemDivider()
-                        TouchSampleRateRow(
-                            current  = tweaks.touchSampleRate,
-                            label    = s.tweakTouchSampleRate,
-                            onSelect = { vm.setTweakStr("touch_sample_rate", it) }
-                        )
-                    }
-                }
-                ItemDivider()
-                TweakRow(Icons.Outlined.NightsStay, s.tweakDoze, s.tweakDozeDesc, tweaks.doze) { vm.setTweak("doze", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Delete, s.tweakClearCache, s.tweakClearCacheDesc, tweaks.clearCache) { vm.setTweak("clear_cache", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Animation, s.tweakFastAnim, s.tweakFastAnimDesc, tweaks.fastAnim) { vm.setTweak("fast_anim", it) }
-                ItemDivider()
-                TweakRow(Icons.Outlined.Shuffle, s.tweakEntropy, s.tweakEntropyDesc, tweaks.entropyBoost) { vm.setTweak("entropy_boost", it) }
             }
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Section Container
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun TweakSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TabSectionTitle(icon = Icons.Outlined.Settings, title = title)
-        Surface(
-            shape          = RoundedCornerShape(20.dp),
-            color          = MaterialTheme.colorScheme.surfaceContainerLow,
-            border         = androidx.compose.foundation.BorderStroke(
-                1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+private fun TweakSection(
+    icon: ImageVector,
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        TabSectionTitle(icon = icon, title = title)
+        Card(
+            shape  = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             ),
-            tonalElevation = 0.dp
+            modifier = Modifier.fillMaxWidth()
         ) {
             Column(content = content)
         }
@@ -224,474 +442,370 @@ private fun TweakSection(title: String, content: @Composable ColumnScope.() -> U
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Toggle Row
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun TweakRow(
-    icon: ImageVector, title: String, subtitle: String,
-    checked: Boolean, onToggle: (Boolean) -> Unit
-) {
-    CardItemRow(
-        icon               = icon,
-        title              = title,
-        subtitle           = subtitle,
-        iconContainerColor = if (checked) MaterialTheme.colorScheme.primaryContainer
-                             else MaterialTheme.colorScheme.surfaceContainerHighest,
-        iconTint           = if (checked) MaterialTheme.colorScheme.onPrimaryContainer
-                             else MaterialTheme.colorScheme.onSurfaceVariant,
-        trailingContent    = { AetherSwitch(checked = checked, onCheckedChange = onToggle) }
-    )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun ProfileGrid(current: String, onSelect: (String) -> Unit) {
-    val profiles = listOf(
-        Triple("balance",     "Balance",      "schedutil")        to Pair(Icons.Outlined.Balance,             MaterialTheme.colorScheme.primary),
-        Triple("performance", "Performance",  "performance gov")  to Pair(Icons.Outlined.BatteryChargingFull, MaterialTheme.colorScheme.error),
-        Triple("gaming",      "Gaming",       "schedutil+boost")  to Pair(Icons.Outlined.SportsEsports,       MaterialTheme.colorScheme.tertiary),
-        Triple("battery",     "Battery Saver","powersave gov")    to Pair(Icons.Outlined.BatteryFull,         Color(0xFF2D7D46)),
-    )
-
-    Surface(
-        shape  = RoundedCornerShape(20.dp),
-        color  = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
-        )
-    ) {
-        Column {
-            profiles.forEachIndexed { idx, (triple, iconColor) ->
-                val (key, label, desc) = triple
-                val (icon, accentColor) = iconColor
-                val isActive = current == key
-                Surface(
-                    onClick = { onSelect(key) },
-                    color   = if (isActive)
-                                  accentColor.copy(alpha = 0.08f)
-                              else Color.Transparent
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 13.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .run {
-                                    if (isActive) this.background(
-                                        accentColor.copy(alpha = 0.15f),
-                                        RoundedCornerShape(11.dp)
-                                    ) else this.background(
-                                        MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        RoundedCornerShape(11.dp)
-                                    )
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(icon, null,
-                                tint     = if (isActive) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(19.dp))
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(label,
-                                style      = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color      = if (isActive) accentColor else MaterialTheme.colorScheme.onSurface)
-                            Text(desc,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        if (isActive) {
-                            Icon(Icons.Filled.CheckCircle, null,
-                                tint = accentColor, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-                if (idx < profiles.lastIndex)
-                    HorizontalDivider(
-                        modifier  = Modifier.padding(start = 68.dp, end = 16.dp),
-                        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                        thickness = 0.5.dp
-                    )
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-
-private val CPU_FREQ_OPTIONS = listOf(
-    "" to "Auto",
-    "300000"  to "300 MHz",
-    "480000"  to "480 MHz",
-    "576000"  to "576 MHz",
-    "672000"  to "672 MHz",
-    "768000"  to "768 MHz",
-    "864000"  to "864 MHz",
-    "960000"  to "960 MHz",
-    "1056000" to "1.05 GHz",
-    "1152000" to "1.15 GHz",
-    "1248000" to "1.25 GHz",
-    "1344000" to "1.34 GHz",
-    "1440000" to "1.44 GHz",
-    "1536000" to "1.54 GHz",
-    "1632000" to "1.63 GHz",
-    "1728000" to "1.73 GHz",
-    "1824000" to "1.82 GHz",
-    "1920000" to "1.92 GHz",
-    "2016000" to "2.02 GHz",
-    "2112000" to "2.11 GHz",
-    "2208000" to "2.21 GHz",
-    "2304000" to "2.30 GHz",
-    "2400000" to "2.40 GHz",
-    "2496000" to "2.50 GHz",
-    "2592000" to "2.59 GHz",
-    "2688000" to "2.69 GHz",
-    "2784000" to "2.78 GHz",
-    "2880000" to "2.88 GHz",
-    "3000000" to "3.00 GHz",
-    "3187200" to "3.19 GHz",
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CpuClusterRow(
-    clusterName: String,
-    icon: ImageVector,
-    accentColor: Color,
-    minVal: String,
-    maxVal: String,
-    onMinSelect: (String) -> Unit,
-    onMaxSelect: (String) -> Unit,
-) {
-    var minExpanded by remember { mutableStateOf(false) }
-    var maxExpanded by remember { mutableStateOf(false) }
-    val s = LocalStrings.current
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(11.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = accentColor, modifier = Modifier.size(18.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(clusterName,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium)
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(s.tweakCpuFreqMin,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            ExposedDropdownMenuBox(expanded = minExpanded, onExpandedChange = { minExpanded = it }) {
-                OutlinedTextField(
-                    value         = CPU_FREQ_OPTIONS.find { it.first == minVal }?.second ?: "Auto",
-                    onValueChange = {},
-                    readOnly      = true,
-                    modifier      = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).width(92.dp),
-                    trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(minExpanded) },
-                    textStyle     = MaterialTheme.typography.labelSmall,
-                    singleLine    = true
-                )
-                ExposedDropdownMenu(expanded = minExpanded, onDismissRequest = { minExpanded = false }) {
-                    CPU_FREQ_OPTIONS.forEach { (v, l) ->
-                        DropdownMenuItem(text = { Text(l, style = MaterialTheme.typography.bodySmall) },
-                            onClick = { onMinSelect(v); minExpanded = false })
-                    }
-                }
-            }
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(s.tweakCpuFreqMax,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            ExposedDropdownMenuBox(expanded = maxExpanded, onExpandedChange = { maxExpanded = it }) {
-                OutlinedTextField(
-                    value         = CPU_FREQ_OPTIONS.find { it.first == maxVal }?.second ?: "Auto",
-                    onValueChange = {},
-                    readOnly      = true,
-                    modifier      = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).width(92.dp),
-                    trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(maxExpanded) },
-                    textStyle     = MaterialTheme.typography.labelSmall,
-                    singleLine    = true
-                )
-                ExposedDropdownMenu(expanded = maxExpanded, onDismissRequest = { maxExpanded = false }) {
-                    CPU_FREQ_OPTIONS.forEach { (v, l) ->
-                        DropdownMenuItem(text = { Text(l, style = MaterialTheme.typography.bodySmall) },
-                            onClick = { onMaxSelect(v); maxExpanded = false })
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun ThermalProfileRow(
-    desc: String,
-    current: String,
-    labelDefault: String,
-    labelPerformance: String,
-    labelExtreme: String,
-    onSelect: (String) -> Unit,
-) {
-    val options = listOf(
-        "default"     to labelDefault,
-        "performance" to labelPerformance,
-        "extreme"     to labelExtreme,
-    )
-    val colors = mapOf(
-        "default"     to MaterialTheme.colorScheme.primary,
-        "performance" to MaterialTheme.colorScheme.error,
-        "extreme"     to Color(0xFFB00020),
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(11.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Outlined.Thermostat, null,
-                    tint     = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(19.dp))
-            }
-            Column {
-                Text(LocalStrings.current.tweakThermalProfile,
-                    style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium)
-                Text(desc,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            options.forEachIndexed { idx, (key, label) ->
-                val isSelected = current == key
-                val accent = colors[key] ?: MaterialTheme.colorScheme.primary
-                SegmentedButton(
-                    selected = isSelected,
-                    onClick  = { onSelect(key) },
-                    shape    = SegmentedButtonDefaults.itemShape(index = idx, count = options.size),
-                    colors   = SegmentedButtonDefaults.colors(
-                        activeContainerColor  = accent.copy(alpha = 0.12f),
-                        activeContentColor    = accent,
-                        activeBorderColor     = accent,
-                    ),
-                    icon = { SegmentedButtonDefaults.Icon(isSelected) }
-                ) {
-                    Text(label, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-
-private val GPU_FREQ_OPTIONS = listOf(
-    ""          to "Auto",
-    "150000000" to "150 MHz",
-    "205000000" to "205 MHz",
-    "270000000" to "270 MHz",
-    "315000000" to "315 MHz",
-    "370000000" to "370 MHz",
-    "410000000" to "410 MHz",
-    "441600000" to "441 MHz",
-    "490000000" to "490 MHz",
-    "530000000" to "530 MHz",
-    "571000000" to "571 MHz",
-    "587000000" to "587 MHz",
-    "625000000" to "625 MHz",
-    "647000000" to "647 MHz",
-    "670000000" to "670 MHz",
-    "700000000" to "700 MHz",
-    "725000000" to "725 MHz",
-    "750000000" to "750 MHz",
-    "800000000" to "800 MHz",
-    "840000000" to "840 MHz",
-    "900000000" to "900 MHz",
-    "950000000" to "950 MHz",
-    "1000000000" to "1.00 GHz",
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun GpuFreqRow(current: String, label: String, onSelect: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    DropdownRow(
-        icon     = Icons.Outlined.GraphicEq,
-        title    = label,
-        subtitle = "Hz — lock GPU ke frekuensi target",
-        value    = GPU_FREQ_OPTIONS.find { it.first == current }?.second ?: "Auto",
-        expanded = expanded,
-        onExpand = { expanded = it }
-    ) {
-        GPU_FREQ_OPTIONS.forEach { (v, l) ->
-            DropdownMenuItem(text = { Text(l) }, onClick = { onSelect(v); expanded = false })
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TouchSampleRateRow(current: String, label: String, onSelect: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val options = listOf(
-        "default" to "120 Hz (Default)",
-        "high"    to "180 Hz (High)",
-        "max"     to "240 Hz (Max)",
-    )
-    DropdownRow(
-        icon     = Icons.Outlined.TouchApp,
-        title    = label,
-        subtitle = "Polling rate layar sentuh",
-        value    = options.find { it.first == current }?.second ?: "120 Hz (Default)",
-        expanded = expanded,
-        onExpand = { expanded = it }
-    ) {
-        options.forEach { (v, l) ->
-            DropdownMenuItem(text = { Text(l) }, onClick = { onSelect(v); expanded = false })
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ZramSizeRow(current: String, onSelect: (String) -> Unit) {
-    val s = LocalStrings.current
-    var expanded by remember { mutableStateOf(false) }
-    val options = listOf("536870912" to "512 MB", "1073741824" to "1 GB", "2147483648" to "2 GB", "3221225472" to "3 GB")
-    DropdownRow(
-        icon    = Icons.Outlined.Memory,
-        title   = s.tweakZramSize,
-        subtitle = "Ukuran compressed swap",
-        value   = options.find { it.first == current }?.second ?: "1 GB",
-        expanded = expanded,
-        onExpand = { expanded = it }
-    ) {
-        options.forEach { (v, l) ->
-            DropdownMenuItem(text = { Text(l) }, onClick = { onSelect(v); expanded = false })
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ZramAlgoRow(current: String, onSelect: (String) -> Unit) {
-    val s = LocalStrings.current
-    var expanded by remember { mutableStateOf(false) }
-    val options = listOf("lz4", "lzo", "zstd", "lz4hc")
-    DropdownRow(
-        icon    = Icons.AutoMirrored.Outlined.CompareArrows,
-        title   = s.tweakZramAlgo,
-        subtitle = "Kompresi — LZ4 paling cepat",
-        value   = current.ifBlank { "lz4" },
-        expanded = expanded,
-        onExpand = { expanded = it }
-    ) {
-        options.forEach { opt ->
-            DropdownMenuItem(text = { Text(opt) }, onClick = { onSelect(opt); expanded = false })
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun IoSchedulerRow(current: String, onSelect: (String) -> Unit) {
-    val s = LocalStrings.current
-    var expanded by remember { mutableStateOf(false) }
-    val options = listOf("" to "Default", "none" to "none (UFS)", "noop" to "noop (eMMC)",
-        "cfq" to "cfq", "deadline" to "deadline", "mq-deadline" to "mq-deadline",
-        "bfq" to "bfq", "kyber" to "kyber")
-    DropdownRow(
-        icon    = Icons.AutoMirrored.Outlined.Sort,
-        title   = s.tweakIoScheduler,
-        subtitle = "Algoritma I/O",
-        value   = options.find { it.first == current }?.second ?: "Default",
-        expanded = expanded,
-        onExpand = { expanded = it }
-    ) {
-        options.forEach { (v, l) ->
-            DropdownMenuItem(text = { Text(l) }, onClick = { onSelect(v); expanded = false })
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DropdownRow(
+private fun TweakToggleRow(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    value: String,
-    expanded: Boolean,
-    onExpand: (Boolean) -> Unit,
-    menuContent: @Composable () -> Unit
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+    indented: Boolean = false
 ) {
+    val iconTint by animateColorAsState(
+        if (checked) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        tween(200), label = "toggle_icon"
+    )
+    val iconBg by animateColorAsState(
+        if (checked) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.surfaceContainerHighest,
+        tween(200), label = "toggle_bg"
+    )
+
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start  = if (indented) 28.dp else 16.dp,
+                end    = 16.dp,
+                top    = 14.dp,
+                bottom = 14.dp
+            ),
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
-            modifier = Modifier.size(38.dp).background(
-                MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(11.dp)),
+            modifier         = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(iconBg),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+            Icon(icon, null, tint = iconTint, modifier = Modifier.size(18.dp))
         }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = onExpand) {
-            OutlinedTextField(
-                value         = value,
-                onValueChange = {},
-                readOnly      = true,
-                modifier      = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).width(105.dp),
-                trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                textStyle     = MaterialTheme.typography.bodySmall,
-                singleLine    = true
+
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                title,
+                style      = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color      = MaterialTheme.colorScheme.onSurface
             )
-            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { onExpand(false) }) {
-                menuContent()
+            Text(
+                subtitle,
+                style    = MaterialTheme.typography.bodySmall,
+                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 16.sp
+            )
+        }
+
+        Switch(
+            checked         = checked,
+            onCheckedChange = onToggle,
+            colors          = SwitchDefaults.colors(
+                checkedThumbColor  = MaterialTheme.colorScheme.onPrimary,
+                checkedTrackColor  = MaterialTheme.colorScheme.primary
+            )
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dropdown Row
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun TweakDropdownRow(
+    icon: ImageVector,
+    label: String,
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val displayLabel = options.firstOrNull { it.first == selected }?.second ?: selected
+
+    Row(
+        modifier              = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier         = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon, null,
+                tint     = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        Text(
+            label,
+            modifier   = Modifier.weight(1f),
+            style      = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color      = MaterialTheme.colorScheme.onSurface
+        )
+
+        Box {
+            Surface(
+                onClick = { expanded = true },
+                shape   = RoundedCornerShape(10.dp),
+                color   = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Row(
+                    modifier              = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        displayLabel,
+                        style      = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Icon(
+                        Icons.Filled.ArrowDropDown, null,
+                        tint     = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            DropdownMenu(
+                expanded          = expanded,
+                onDismissRequest  = { expanded = false },
+                shape             = RoundedCornerShape(14.dp)
+            ) {
+                options.forEach { (value, display) ->
+                    DropdownMenuItem(
+                        text   = {
+                            Text(
+                                display,
+                                style      = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (selected == value) FontWeight.SemiBold else FontWeight.Normal,
+                                color      = if (selected == value) MaterialTheme.colorScheme.primary
+                                             else MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        onClick = {
+                            onSelect(value)
+                            expanded = false
+                        },
+                        leadingIcon = if (selected == value) ({
+                            Icon(
+                                Icons.Filled.Check, null,
+                                tint     = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }) else null
+                    )
+                }
             }
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CPU Freq Cluster Row
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CpuFreqCluster(
+    label: String,
+    minValue: String,
+    maxValue: String,
+    onMin: (String) -> Unit,
+    onMax: (String) -> Unit,
+    color: Color
+) {
+    val s = LocalStrings.current
+
+    Row(
+        modifier              = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = color.copy(alpha = 0.12f),
+            modifier = Modifier.size(8.dp)
+        ) {}
+
+        Text(
+            label,
+            modifier   = Modifier.weight(1f),
+            style      = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color      = MaterialTheme.colorScheme.onSurface
+        )
+
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            FreqInput(
+                hint     = "${s.tweakCpuFreqMin}: ${minValue.ifBlank { "Auto" }}",
+                value    = minValue,
+                onChange = onMin,
+                color    = color
+            )
+            FreqInput(
+                hint     = "${s.tweakCpuFreqMax}: ${maxValue.ifBlank { "Auto" }}",
+                value    = maxValue,
+                onChange = onMax,
+                color    = color
+            )
+        }
+    }
+}
+
+@Composable
+private fun FreqInput(
+    hint: String, value: String,
+    onChange: (String) -> Unit, color: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = color.copy(alpha = 0.08f)
+    ) {
+        Text(
+            hint,
+            modifier   = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            style      = MaterialTheme.typography.labelSmall,
+            color      = color,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Apply Bottom Bar
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ApplyBar(
+    status: ApplyStatus,
+    onApply: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier      = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        shape         = RoundedCornerShape(20.dp),
+        color         = MaterialTheme.colorScheme.surfaceContainerHighest,
+        tonalElevation = 4.dp
+    ) {
+        Row(
+            modifier              = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Status indicator
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                AnimatedContent(
+                    targetState    = status,
+                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
+                    label          = "apply_status"
+                ) { s ->
+                    if (s.running) {
+                        Row(
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier    = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color       = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                "Menerapkan…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    } else if (s.summary.isNotBlank()) {
+                        Row(
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                if (s.lastOk) Icons.Filled.CheckCircle else Icons.Filled.Error,
+                                null,
+                                tint     = if (s.lastOk) Color(0xFF2D7D46)
+                                           else MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                s.summary,
+                                style  = MaterialTheme.typography.bodySmall,
+                                color  = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        Text(
+                            "Tweaks siap diterapkan",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Apply button
+            Button(
+                onClick  = onApply,
+                enabled  = !status.running,
+                shape    = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+            ) {
+                if (status.running) {
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color       = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Icon(
+                        Icons.Outlined.PlayArrow, null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "Apply",
+                        style      = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun TweakDivider() = HorizontalDivider(
+    modifier  = Modifier.padding(start = 66.dp, end = 16.dp),
+    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+    thickness = 0.5.dp
+)
