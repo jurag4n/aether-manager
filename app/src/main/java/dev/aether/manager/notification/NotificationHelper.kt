@@ -107,7 +107,7 @@ object NotificationHelper {
             "Versi baru tersedia. Tap untuk mengunduh."
 
         val notification = NotificationCompat.Builder(context, CHANNEL_UPDATE)
-            .setSmallIcon(R.drawable.ic_launcher_round)
+            .setSmallIcon(R.mipmap.ic_launcher_round)
             .setContentTitle("🚀 Update Tersedia: $versionName")
             .setContentText("Versi baru Aether Manager siap diunduh")
             .setStyle(
@@ -138,7 +138,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_LICENSE)
-            .setSmallIcon(R.drawable.ic_launcher_round)
+            .setSmallIcon(R.mipmap.ic_launcher_round)
             .setContentTitle("⚠️ Lisensi Premium Kamu Expired")
             .setContentText("Perpanjang sekarang untuk tetap menikmati semua fitur Premium.")
             .setStyle(
@@ -179,7 +179,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_LICENSE)
-            .setSmallIcon(R.drawable.ic_launcher_round)
+            .setSmallIcon(R.mipmap.ic_launcher_round)
             .setContentTitle("⏳ Lisensi Hampir Berakhir ($daysLeft hari lagi)")
             .setContentText("Perpanjang sebelum $expiryDate agar tidak terputus.")
             .setStyle(
@@ -214,7 +214,7 @@ object NotificationHelper {
             "Semua tweak berhasil diterapkan"
 
         val notification = NotificationCompat.Builder(context, CHANNEL_GENERAL)
-            .setSmallIcon(R.drawable.ic_launcher_round)
+            .setSmallIcon(R.mipmap.ic_launcher_round)
             .setContentTitle("✅ Aether Manager")
             .setContentText(contentText)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -241,7 +241,7 @@ object NotificationHelper {
         withSound: Boolean = false
     ) {
         val builder = NotificationCompat.Builder(context, CHANNEL_GENERAL)
-            .setSmallIcon(R.drawable.ic_launcher_round)
+            .setSmallIcon(R.mipmap.ic_launcher_round)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
