@@ -9,6 +9,8 @@ import com.unity3d.ads.UnityAds
 import dev.aether.manager.ads.AdManager
 import dev.aether.manager.ads.InterstitialAdManager
 import dev.aether.manager.CimolAgent
+import dev.aether.manager.notification.NotificationHelper
+import dev.aether.manager.notification.NotificationScheduler
 
 class AetherApplication : Application() {
 
@@ -25,6 +27,12 @@ class AetherApplication : Application() {
         initLibsu()
         CimolAgent.tryLoad()
         initUnityAds()
+
+        // ── Buat notification channels sekali di awal ──────────────────────
+        // Harus dipanggil sebelum notifikasi pertama dikirim.
+        // Aman dipanggil berulang (Android no-op kalau channel sudah ada).
+        NotificationHelper.createChannels(this)    // buat channel sebelum notif pertama
+        NotificationScheduler.schedule(this)       // cek update + lisensi 1x sehari (background)
     }
 
     // ─── Security checks ──────────────────────────────────────────────────────

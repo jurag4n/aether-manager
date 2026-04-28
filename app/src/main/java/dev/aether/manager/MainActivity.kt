@@ -36,6 +36,8 @@ import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.i18n.ProvideStrings
 import androidx.compose.foundation.isSystemInDarkTheme
 import dev.aether.manager.license.LicenseManager
+import dev.aether.manager.notification.LicenseNotificationChecker
+import dev.aether.manager.notification.UpdateNotificationHelper
 import dev.aether.manager.ui.AetherTheme
 import dev.aether.manager.ui.appprofile.AppProfileScreen
 import dev.aether.manager.ui.components.RebootBottomSheet
@@ -89,6 +91,19 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
         LicenseManager.isActive(context)
     }
 
+    // ── Notifikasi update di status bar saat ada versi baru ───────────────
+    val updateState by updateVm.state.collectAsState()
+    LaunchedEffect(updateState) {
+        val state = updateState
+        if (state is dev.aether.manager.update.UpdateUiState.UpdateAvailable) {
+            dev.aether.manager.notification.NotificationHelper.showUpdateAvailable(
+                context      = context,
+                versionName  = state.info.latestVersion,
+                releaseNotes = state.info.releaseNotes
+            )
+        }
+    }
+
     // ── AdBlock Detection ─────────────────────────────────────────────────
     var showAdBlockDialog   by remember { mutableStateOf(false) }
     var adBlockCheckTrigger by remember { mutableStateOf(0) }
@@ -135,6 +150,8 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                     }
                     adBlockCheckTrigger++
                     premiumCheckTick++
+                    // ── Notifikasi lisensi (expired / hampir habis) ──────
+                    LicenseNotificationChecker.check(activity)
                 }
                 Lifecycle.Event.ON_PAUSE   -> AdScheduler.stop()
                 Lifecycle.Event.ON_DESTROY -> AdScheduler.stop()

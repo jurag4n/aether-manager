@@ -186,6 +186,7 @@ dependencies {
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content)
     implementation(libs.ktor.serialization)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
     // ── UI extras ─────────────────────────────────────────────────────────
     implementation(libs.shimmer)
     implementation(libs.compose.charts)
