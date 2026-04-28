@@ -157,11 +157,19 @@ object AppProfileRepository {
             done
             """.trimIndent(),
 
-            // ── CPU min freq → reset ke 0 (biarkan kernel yang atur) ────────
+            // ── CPU min freq → reset ke cpuinfo_min_freq (nilai 0 invalid di beberapa kernel) ─
             """
             for _f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_min_freq \
                       /sys/devices/system/cpu/cpufreq/policy*/scaling_min_freq; do
-              [ -f "${'$'}_f" ] && echo 0 > "${'$'}_f" 2>/dev/null || true
+              [ -f "${'$'}_f" ] || continue
+              # Gunakan cpuinfo_min_freq sebagai fallback — nilai 0 menyebabkan
+              # kernel scheduler error pada beberapa chipset (Snapdragon 6xx/7xx)
+              _minf=${'$'}(cat "${'$'}{_f/scaling_min/cpuinfo_min}" 2>/dev/null)
+              if [ -n "${'$'}_minf" ] && echo "${'$'}_minf" | grep -qE '^[0-9]+$'; then
+                echo "${'$'}_minf" > "${'$'}_f" 2>/dev/null || true
+              else
+                echo 300000 > "${'$'}_f" 2>/dev/null || true
+              fi
             done
             """.trimIndent(),
 
@@ -405,10 +413,17 @@ _restore_default() {
     [ -f "${'$'}_mtk" ] && echo "${'$'}_DEF" > "${'$'}_mtk" 2>/dev/null || true
   done
 
-  # CPU min freq reset
+  # CPU min freq reset — JANGAN echo 0: invalid di banyak kernel, menyebabkan hang
+  # Gunakan cpuinfo_min_freq sebagai nilai aman
   for _f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_min_freq \
             /sys/devices/system/cpu/cpufreq/policy*/scaling_min_freq; do
-    [ -f "${'$'}_f" ] && echo 0 > "${'$'}_f" 2>/dev/null || true
+    [ -f "${'$'}_f" ] || continue
+    _minf=${'$'}(cat "${'$'}{_f/scaling_min/cpuinfo_min}" 2>/dev/null)
+    if [ -n "${'$'}_minf" ] && echo "${'$'}_minf" | grep -qE '^[0-9]+$'; then
+      echo "${'$'}_minf" > "${'$'}_f" 2>/dev/null || true
+    else
+      echo 300000 > "${'$'}_f" 2>/dev/null || true
+    fi
   done
 
   settings delete system peak_refresh_rate 2>/dev/null || true
@@ -516,6 +531,9 @@ while true; do
       apply_profile "${'$'}CURRENT"
       PROFILE_ACTIVE=1
     elif [ "${'$'}PROFILE_ACTIVE" = "1" ]; then
+      # Delay singkat sebelum restore: beri waktu kernel menyelesaikan
+      # transisi governor sebelumnya agar tidak terjadi race condition
+      sleep 1
       _restore_default
       PROFILE_ACTIVE=0
     fi

@@ -30,6 +30,9 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState = _uiState.asStateFlow()
 
+    private val _showTimeoutWarning = MutableStateFlow(false)
+    val showTimeoutWarning = _showTimeoutWarning.asStateFlow()
+
     private var activeOrderId: String? = null
 
     companion object {
@@ -81,9 +84,18 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun startPolling(orderId: String) {
+        _showTimeoutWarning.value = false
+        viewModelScope.launch {
+            // 2-minute warning timer
+            delay(2 * 60 * 1_000L)
+            if (_uiState.value is UiState.Polling) {
+                _showTimeoutWarning.value = true
+            }
+        }
         viewModelScope.launch {
             _uiState.value = UiState.Polling
             val result = PaymentManager.pollUntilDone(ctx, orderId) { }
+            _showTimeoutWarning.value = false
             _uiState.value = when (result) {
                 is PaymentManager.PollResult.Completed ->
                     UiState.Success(licenseKey = result.licenseKey, orderId = orderId)
@@ -97,8 +109,13 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun dismissTimeoutWarning() {
+        _showTimeoutWarning.value = false
+    }
+
     fun reset() {
         activeOrderId  = null
+        _showTimeoutWarning.value = false
         _uiState.value = UiState.Idle
     }
 }

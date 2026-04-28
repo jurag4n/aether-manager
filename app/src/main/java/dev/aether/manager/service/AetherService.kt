@@ -134,6 +134,31 @@ class BootReceiver : BroadcastReceiver() {
 
     private suspend fun applyOnBoot(context: Context) {
 
+        // ── Bootloop detection ────────────────────────────────────────────────
+        // Simpan timestamp boot terakhir. Jika 3 boot berturut-turut dalam < 5 menit
+        // (tanda bootloop akibat tweak), aktifkan safe mode otomatis.
+        val RAPID_BOOT_FILE   = "${RootUtils.CONF_DIR}/rapid_boot_ts"
+        val RAPID_BOOT_COUNT  = "${RootUtils.CONF_DIR}/rapid_boot_count"
+        val now = System.currentTimeMillis()
+
+        try {
+            val lastTs    = RootUtils.readFile(RAPID_BOOT_FILE).trim().toLongOrNull() ?: 0L
+            val rapidCnt  = RootUtils.readFile(RAPID_BOOT_COUNT).trim().toIntOrNull() ?: 0
+            val timeDiff  = now - lastTs
+
+            val newRapidCnt = if (timeDiff < 5 * 60 * 1000L) rapidCnt + 1 else 1
+            RootUtils.writeFile(RAPID_BOOT_FILE, now.toString())
+            RootUtils.writeFile(RAPID_BOOT_COUNT, newRapidCnt.toString())
+
+            if (newRapidCnt >= 3 && !RootUtils.fileExists(RootUtils.SAFE_MODE_FILE)) {
+                // 3+ reboot cepat = kemungkinan bootloop akibat tweak → aktifkan safe mode
+                RootUtils.toggleSafeMode(true)
+                // Reset counter supaya tidak terus-menerus trigger
+                RootUtils.writeFile(RAPID_BOOT_COUNT, "0")
+                return  // Jangan apply tweak di boot ini
+            }
+        } catch (_: Exception) { /* Tidak kritis, lanjut */ }
+
         // Increment boot count
         val bootCount = try {
             val raw = RootUtils.readFile(RootUtils.BOOT_COUNT_FILE).trim().toIntOrNull() ?: 0
@@ -166,10 +191,11 @@ class BootReceiver : BroadcastReceiver() {
 
             val result = TweakApplier.apply(tweaks)
 
-            // Retry sekali kalau ada yang gagal — beberapa node perlu waktu lebih
+            // Retry sekali kalau ada yang gagal — tunggu lebih lama agar
+            // kernel/HAL sudah benar-benar stabil sebelum retry
             if (!result.success) {
-                delay(5_000)
-                val retry = TweakApplier.apply(tweaks)
+                delay(10_000)
+                TweakApplier.apply(tweaks)
             }
 
         } catch (e: Exception) {

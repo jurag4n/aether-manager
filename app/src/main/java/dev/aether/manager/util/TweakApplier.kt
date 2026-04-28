@@ -245,15 +245,17 @@ _end "cpu_governor"
         return when {
             profile == "gaming" || profile == "performance" -> """
 _begin
-# cpu_freq — max perf (encore cpufreq_max_perf style)
+# cpu_freq — max perf (safe: write only, no chmod 444 lock)
 for pol in /sys/devices/system/cpu/cpufreq/policy*/; do
   [ -d "${'$'}pol" ] || continue
   maxf=${'$'}(cat "${'$'}{pol}cpuinfo_max_freq" 2>/dev/null)
   echo "${'$'}maxf" | grep -qE '^[0-9]+$' || continue
-  apply "${'$'}maxf" "${'$'}{pol}scaling_max_freq"
-  apply "${'$'}maxf" "${'$'}{pol}scaling_min_freq"
+  # Tulis max dulu, baru min — urutan penting agar tidak invalid range
+  write "${'$'}maxf" "${'$'}{pol}scaling_max_freq"
+  write "${'$'}maxf" "${'$'}{pol}scaling_min_freq"
 done
-chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq 2>/dev/null
+# TIDAK chmod 444 — mengunci freq nodes secara paksa dapat menyebabkan
+# kernel hang saat thermal atau scheduler mencoba mengubah nilai tersebut
 _end "cpu_freq"
 """
             profile == "battery" -> """
@@ -476,13 +478,19 @@ _end "thermal"
 """
             "extreme" -> """
 _begin
-# thermal — extreme: disable throttling
-for tz in /sys/class/thermal/thermal_zone*/mode; do
-  apply disabled "${'$'}tz"
+# thermal — extreme: raise limits only (TIDAK disable total — disable thermal
+# dapat menyebabkan chip overheat → kernel panic → reboot paksa)
+write 90 /sys/module/msm_thermal/parameters/temp_threshold
+write 95 /sys/module/msm_thermal/parameters/core_limit_temp_degC
+write Y  /sys/module/msm_thermal/parameters/enabled
+write 1  /sys/module/msm_thermal/core_control/enabled
+write 3  /proc/mtk_cl_objthermal/thermal_policy
+# MTK: raise trip point tapi tidak disable
+for tz in /sys/class/thermal/thermal_zone*/trip_point_0_temp; do
+  [ -f "${'$'}tz" ] || continue
+  cur=${'$'}(cat "${'$'}tz" 2>/dev/null)
+  [ "${'$'}cur" -lt 90000 ] 2>/dev/null && write 90000 "${'$'}tz"
 done
-write N /sys/module/msm_thermal/parameters/enabled
-write 0 /sys/module/msm_thermal/core_control/enabled
-write 3 /proc/mtk_cl_objthermal/thermal_policy
 _end "thermal"
 """
             else -> """
@@ -508,12 +516,12 @@ _end "thermal"
         val perf = t["gpu_throttle_off"] == "1" || profile == "gaming" || profile == "performance"
         return if (perf) """
 _begin
-# gpu — performance (encore snapdragon_performance style)
-apply 0    /sys/class/kgsl/kgsl-3d0/throttling
-apply 1    /sys/class/kgsl/kgsl-3d0/force_clk_on
-apply 1000 /sys/class/kgsl/kgsl-3d0/idle_timer
-apply 0    /sys/class/kgsl/kgsl-3d0/bus_split
-write 0    /sys/kernel/ged/hal/dvfs_enable
+# gpu — performance (safe: tanpa force_clk_on/idle_timer paksa)
+apply 0 /sys/class/kgsl/kgsl-3d0/throttling
+# force_clk_on dan idle_timer=1000 dihapus: menyebabkan GPU driver hang
+# saat app keluar dan driver mencoba power-gate GPU
+apply 0 /sys/class/kgsl/kgsl-3d0/bus_split
+write 0 /sys/kernel/ged/hal/dvfs_enable
 apply always_on /sys/class/misc/mali0/device/power_policy
 apply on        /sys/devices/platform/mali.0/power/control
 apply 10        /sys/class/misc/mali0/device/js_scheduling_period
@@ -764,8 +772,18 @@ _end "ui_anim"
     private fun buildMisc(t: Map<String, String>): String = buildString {
         append("_begin\n# misc (encore perfcommon style)\n")
 
-        // Kernel scheduler base — selalu diapply
-        append("printf -- '-1' > /proc/sys/kernel/sched_rt_runtime_us 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
+        // sched_rt_runtime_us = -1 menonaktifkan RT throttling.
+        // BERBAHAYA: beberapa kernel tidak support nilai -1 dan dapat menyebabkan deadlock.
+        // Fix: cek dulu sebelum menulis, fallback ke 950000 jika tidak support.
+        append("""
+if [ -f /proc/sys/kernel/sched_rt_runtime_us ]; then
+  if echo -1 > /proc/sys/kernel/sched_rt_runtime_us 2>/dev/null; then
+    _A=$((_A+1))
+  else
+    echo 950000 > /proc/sys/kernel/sched_rt_runtime_us 2>/dev/null && _A=$((_A+1)) || _F=$((_F+1))
+  fi
+fi
+""")
         append("write 1  /proc/sys/kernel/perf_event_paranoid\n")
         append("write 3  /proc/sys/kernel/perf_cpu_time_max_percent\n")
         append("write 0  /proc/sys/kernel/sched_schedstats\n")

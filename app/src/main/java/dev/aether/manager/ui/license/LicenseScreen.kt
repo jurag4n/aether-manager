@@ -8,6 +8,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.ui.window.Dialog
 import dev.aether.manager.payment.PaymentManager
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -37,6 +38,8 @@ import dev.aether.manager.license.LicensePrefs
 import dev.aether.manager.license.LicenseViewModel
 import dev.aether.manager.payment.InvoicePrefs
 import dev.aether.manager.payment.PaymentViewModel
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.sp
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -50,6 +53,7 @@ fun LicenseScreen(onBack: () -> Unit) {
 
     val licState by licVm.uiState.collectAsState()
     val payState by payVm.uiState.collectAsState()
+    val showTimeoutWarning by payVm.showTimeoutWarning.collectAsState()
 
     var keyInput             by remember { mutableStateOf("") }
     var showDeactivateDialog by remember { mutableStateOf(false) }
@@ -257,7 +261,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                     TransferInstructionContent(
                         state = s, ctx = ctx,
                         onConfirm = { selectedMethod ->
-                            sendPaymentNotification(ctx, buyerName, s.orderId, listOfNotNull(selectedMethod))
+                            sendPaymentNotificationSilent(ctx, buyerName, s.orderId, listOfNotNull(selectedMethod))
                             payVm.confirmAndPoll()
                             showBuySheet = false
                         },
@@ -282,7 +286,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                 ),
                 ctx = ctx,
                 onConfirm = { selectedMethod ->
-                    sendPaymentNotification(ctx, inv.name, inv.orderId, listOfNotNull(selectedMethod))
+                    sendPaymentNotificationSilent(ctx, inv.name, inv.orderId, listOfNotNull(selectedMethod))
                     payVm.resumePoll(inv.orderId)
                     resumeInvoice = null
                 },
@@ -307,6 +311,59 @@ fun LicenseScreen(onBack: () -> Unit) {
                 }
             )
         }
+    }
+
+    // ── Timeout warning dialog (2 menit belum dikonfirmasi) ──────────────────
+    if (showTimeoutWarning) {
+        AlertDialog(
+            onDismissRequest = { /* user harus memilih action */ },
+            shape = RoundedCornerShape(24.dp),
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFFF3E0)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Outlined.AccessTime, null, tint = Color(0xFFFF9800), modifier = Modifier.size(34.dp))
+                }
+            },
+            title = {
+                Text(
+                    "Belum Dikonfirmasi",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Pembayaranmu belum dikonfirmasi admin dalam 2 menit. Silakan hubungi admin untuk mempercepat proses.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ContactAdminRow(ctx)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { /* tutup peringatan, tetap polling */ payVm.dismissTimeoutWarning() }) {
+                    Text("Lanjut Tunggu", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { payVm.reset() }) {
+                    Text("Batalkan", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        )
     }
 
     if (licState is LicenseViewModel.UiState.Success) {
@@ -833,7 +890,7 @@ private fun SelectedMethodDetail(method: PaymentManager.PaymentMethod, ctx: Cont
                         fontFamily = FontFamily.Monospace
                     )
                     Text(
-                        "a.n. ${method.holderName}",
+                        ${method.holderName},
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -896,6 +953,20 @@ private fun sendPaymentNotification(
         tgIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         ctx.startActivity(tgIntent)
     } catch (_: Exception) { /* Telegram tidak tersedia */ }
+}
+
+/**
+ * Versi silent: hanya catat order, TIDAK membuka WA/Telegram.
+ * WA/Telegram hanya dibuka manual oleh user jika perlu.
+ */
+private fun sendPaymentNotificationSilent(
+    ctx: Context,
+    buyerName: String,
+    orderId: String,
+    paymentMethods: List<PaymentManager.PaymentMethod>,
+) {
+    // No-op: konfirmasi dilakukan oleh admin via backend, tidak perlu buka WA/Telegram otomatis.
+    // Fungsi ini sengaja dikosongkan agar flow tidak mengganggu user.
 }
 
 @Composable
@@ -1011,57 +1082,133 @@ private fun InvoiceHistoryContent(
 private fun PremiumSuccessDialog(licenseKey: String, expLabel: String, onDismiss: () -> Unit) {
     val s     = LocalStrings.current
     val green = Color(0xFF4CAF50)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor   = MaterialTheme.colorScheme.surface,
-        shape            = RoundedCornerShape(28.dp),
-        icon = {
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(green.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Outlined.WorkspacePremium, null, tint = green, modifier = Modifier.size(40.dp))
-            }
-        },
-        title = {
-            Text(
-                s.licenseSuccessTitle,
-                style      = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign  = TextAlign.Center,
-                modifier   = Modifier.fillMaxWidth()
-            )
-        },
-        text = {
+    val ctx   = LocalContext.current
+
+    // Animasi masuk dialog
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "dialogScale"
+    )
+    // Animasi pulse lingkaran icon
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.08f, targetValue = 0.22f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { scaleX = scale; scaleY = scale }
+        ) {
             Column(
-                verticalArrangement     = Arrangement.spacedBy(16.dp),
-                horizontalAlignment     = Alignment.CenterHorizontally,
-                modifier                = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
+                // ── Animated icon ─────────────────────────────────────────────
+                Box(contentAlignment = Alignment.Center) {
+                    // Outer pulse ring
+                    Box(
+                        modifier = Modifier
+                            .size(96.dp)
+                            .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
+                            .clip(CircleShape)
+                            .background(green.copy(alpha = pulseAlpha))
+                    )
+                    // Inner circle
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(green.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.WorkspacePremium,
+                            null,
+                            tint = green,
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
+                }
+
+                // ── Checkmarks animation ──────────────────────────────────────
+                var showBadge by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    delay(300)
+                    showBadge = true
+                }
+                AnimatedVisibility(
+                    visible = showBadge,
+                    enter = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn()
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(50.dp),
+                        color = green.copy(alpha = 0.12f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Outlined.CheckCircle, null, tint = green, modifier = Modifier.size(16.dp))
+                            Text(
+                                "Pembayaran Berhasil!",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = green
+                            )
+                        }
+                    }
+                }
+
+                // ── Title ─────────────────────────────────────────────────────
+                Text(
+                    s.licenseSuccessTitle,
+                    style      = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign  = TextAlign.Center
+                )
+
                 Text(
                     s.licenseSuccessBody,
                     style     = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color     = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                // ── License key card ──────────────────────────────────────────
                 Surface(
-                    shape  = RoundedCornerShape(14.dp),
-                    color  = MaterialTheme.colorScheme.primaryContainer,
+                    shape    = RoundedCornerShape(16.dp),
+                    color    = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
-                        modifier            = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        modifier            = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
-                            s.licenseSuccessKeyLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text(s.licenseSuccessKeyLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             licenseKey,
                             style      = MaterialTheme.typography.titleMedium,
@@ -1070,57 +1217,43 @@ private fun PremiumSuccessDialog(licenseKey: String, expLabel: String, onDismiss
                             color      = MaterialTheme.colorScheme.primary,
                             textAlign  = TextAlign.Center
                         )
-                        Text(
-                            s.licenseSuccessValidUntil.format(expLabel),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text(s.licenseSuccessValidUntil.format(expLabel), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                Text(
-                    s.licenseSuccessSaveHint,
-                    style     = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    color     = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Column(
-                    modifier            = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    s.licenseSuccessBenefits.forEach { label ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment     = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Outlined.CheckCircle,
-                                null,
-                                tint     = green,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+
+                // ── Benefits list ─────────────────────────────────────────────
+                var showBenefits by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { delay(500); showBenefits = true }
+                AnimatedVisibility(visible = showBenefits, enter = fadeIn(tween(400)) + slideInVertically { it / 2 }) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        s.licenseSuccessBenefits.forEachIndexed { i, label ->
+                            var show by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) { delay(600L + i * 120L); show = true }
+                            AnimatedVisibility(visible = show, enter = fadeIn() + slideInHorizontally { -it / 2 }) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment     = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Outlined.CheckCircle, null, tint = green, modifier = Modifier.size(16.dp))
+                                    Text(label, style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick  = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 0.dp),
-                shape  = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = green)
-            ) {
-                Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(s.licenseSuccessStartBtn, fontWeight = FontWeight.SemiBold)
+
+                // ── Action button ─────────────────────────────────────────────
+                Button(
+                    onClick  = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(14.dp),
+                    colors   = ButtonDefaults.buttonColors(containerColor = green)
+                ) {
+                    Icon(Icons.Outlined.Rocket, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(s.licenseSuccessStartBtn, fontWeight = FontWeight.Bold)
+                }
             }
         }
-    )
+    }
 }
