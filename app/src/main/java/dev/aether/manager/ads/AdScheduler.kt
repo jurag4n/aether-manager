@@ -6,11 +6,11 @@ import kotlinx.coroutines.*
 
 object AdScheduler {
 
-    // Iklan pertama muncul 60 detik setelah app dibuka
+    // Iklan pertama muncul 40 detik setelah app dibuka
     var startDelayMs: Long  = 40 * 1_000L
-    // Interval antar iklan: 5 menit
+    // Interval antar iklan: 2.5 menit
     var intervalMs: Long    = 2 * 60 * 1_000L + 30 * 1_000L
-    // Minimum jarak antar iklan: 4 menit (guard anti-spam)
+    // Minimum jarak antar iklan (guard anti-spam)
     var minIntervalMs: Long = 2 * 60 * 1_000L
 
     private var job: Job? = null
@@ -21,13 +21,23 @@ object AdScheduler {
 
     /**
      * Mulai scheduler otomatis.
-     * Iklan akan muncul sendiri sesuai interval tanpa perlu dipicu manual.
+     * Jika job sudah aktif (misalnya ON_RESUME dipanggil ulang setelah notifikasi),
+     * TIDAK restart dari awal — timer tetap berjalan dari posisi sebelumnya.
      */
     fun start(provider: () -> Activity?) {
         activityProvider = provider
+        // Jika job masih aktif, hanya update provider — jangan restart timer
         if (job?.isActive == true) return
         job = scope.launch {
-            delay(startDelayMs)
+            // Kalau sudah pernah tampil, mulai dari sisa interval — bukan dari awal
+            val sinceLastMs = if (lastShownMs > 0L)
+                System.currentTimeMillis() - lastShownMs
+            else 0L
+            val initialDelay = if (sinceLastMs < intervalMs)
+                (intervalMs - sinceLastMs).coerceAtLeast(0L)
+            else
+                startDelayMs
+            delay(initialDelay)
             while (isActive) {
                 showNow()
                 delay(intervalMs)
@@ -44,7 +54,6 @@ object AdScheduler {
     /**
      * Hanya dipakai untuk trigger manual yang benar-benar diinginkan
      * (contoh: setelah user selesai aksi penting seperti apply tweak).
-     * Jangan dipanggil saat ganti tab biasa.
      */
     fun tryShowAfterAction() {
         val now = System.currentTimeMillis()

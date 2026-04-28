@@ -89,6 +89,7 @@ fun UpdateDialog(
     var fetchingChangelog by remember { mutableStateOf(false) }
 
     LaunchedEffect(info.releasePageUrl) {
+        if (info.releaseNotes.isNotBlank()) return@LaunchedEffect
         fetchingChangelog = true
         val fresh = fetchChangelogFromGitHub(info.releasePageUrl)
         if (fresh != null) changelog = fresh

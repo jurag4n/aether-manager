@@ -38,8 +38,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
     fun checkForUpdate() {
         viewModelScope.launch {
-            _state.value   = UpdateUiState.Checking
-            _dismissed.value = false
+            _state.value = UpdateUiState.Checking
 
             val currentCode = getCurrentVersionCode()
             _state.value = when (val result = UpdateChecker.check(currentCode)) {

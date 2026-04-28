@@ -94,7 +94,7 @@ object UpdateChecker {
             2    -> {
                 val major = segments[0].toIntOrNull() ?: return null
                 val minor = segments[1].toIntOrNull() ?: return null
-                major * 100 + minor * 10
+                major * 100 + minor
             }
             else -> {
                 val major = segments[0].toIntOrNull() ?: return null

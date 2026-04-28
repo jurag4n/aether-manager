@@ -596,19 +596,60 @@ _end "gpu_freq"
             val size = t["zram_size"] ?: "1073741824"
             val algo = t["zram_algo"] ?: "lz4"
             append("""
-if [ -b /dev/zram0 ]; then
-  swapoff /dev/zram0 2>/dev/null
-  write 1 /sys/block/zram0/reset
-  write $algo /sys/block/zram0/comp_algorithm
-  write $size /sys/block/zram0/disksize
-  if mkswap /dev/zram0 >/dev/null 2>&1 && swapon -p 5 /dev/zram0 2>/dev/null; then
+# zram setup — TIDAK pakai write() helper karena [ -f ] gagal pada sysfs special nodes
+# Urutan wajib: swapoff → reset (disksize=0) → comp_algorithm → disksize → mkswap → swapon
+_zram_ok=0
+for _zdev in /dev/zram0 /dev/zram1; do
+  [ -b "${'$'}_zdev" ] || continue
+  _zblk=${'$'}(basename "${'$'}_zdev")
+  _zsys="/sys/block/${'$'}_zblk"
+  [ -d "${'$'}_zsys" ] || continue
+
+  # Step 1: swapoff — paksa meski gagal (lanjut ke reset)
+  swapoff "${'$'}_zdev" 2>/dev/null || true
+
+  # Step 2: reset — cara kernel modern: tulis 0 ke disksize dulu
+  # Beberapa kernel pakai /reset, beberapa pakai disksize=0, support keduanya
+  if [ -f "${'$'}_zsys/reset" ]; then
+    chmod 644 "${'$'}_zsys/reset" 2>/dev/null
+    echo 1 > "${'$'}_zsys/reset" 2>/dev/null || true
+  else
+    chmod 644 "${'$'}_zsys/disksize" 2>/dev/null
+    echo 0 > "${'$'}_zsys/disksize" 2>/dev/null || true
+  fi
+  # Beri waktu kernel selesaikan reset
+  sleep 0.1 2>/dev/null || true
+
+  # Step 3: set comp_algorithm — cek dulu apakah algo tersedia
+  if [ -f "${'$'}_zsys/comp_algorithm" ]; then
+    chmod 644 "${'$'}_zsys/comp_algorithm" 2>/dev/null
+    if grep -qw "$algo" "${'$'}_zsys/comp_algorithm" 2>/dev/null; then
+      echo "$algo" > "${'$'}_zsys/comp_algorithm" 2>/dev/null || true
+    else
+      # Fallback algo: lz4 → lzo → deflate
+      for _fb in lz4 lzo deflate; do
+        grep -qw "${'$'}_fb" "${'$'}_zsys/comp_algorithm" 2>/dev/null && {
+          echo "${'$'}_fb" > "${'$'}_zsys/comp_algorithm" 2>/dev/null || true
+          break
+        }
+      done
+    fi
+  fi
+
+  # Step 4: set disksize
+  chmod 644 "${'$'}_zsys/disksize" 2>/dev/null
+  echo $size > "${'$'}_zsys/disksize" 2>/dev/null || { _F=${'$'}((_F+1)); continue; }
+
+  # Step 5: mkswap + swapon
+  if mkswap "${'$'}_zdev" >/dev/null 2>&1 && swapon -p 5 "${'$'}_zdev" 2>/dev/null; then
     _A=${'$'}((_A+1))
+    _zram_ok=1
+    break  # sukses, tidak perlu coba zram1
   else
     _F=${'$'}((_F+1))
   fi
-else
-  _S=${'$'}((_S+1))
-fi
+done
+[ "${'$'}_zram_ok" = "0" ] && [ "${'$'}_F" = "0" ] && _S=${'$'}((_S+1))
 """)
         }
 

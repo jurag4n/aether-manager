@@ -153,7 +153,11 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                     // ── Notifikasi lisensi (expired / hampir habis) ──────
                     LicenseNotificationChecker.check(activity)
                 }
-                Lifecycle.Event.ON_PAUSE   -> AdScheduler.stop()
+                // ON_PAUSE: JANGAN stop scheduler — ini terpanggil setiap kali
+                // layar redup, notifikasi masuk, atau user alt-tab sebentar.
+                // Kalau di-stop di sini, timer reset terus dan iklan tidak pernah muncul.
+                Lifecycle.Event.ON_PAUSE   -> { /* biarkan scheduler tetap jalan */ }
+                Lifecycle.Event.ON_STOP    -> AdScheduler.stop()  // baru stop kalau benar-benar background
                 Lifecycle.Event.ON_DESTROY -> AdScheduler.stop()
                 else -> {}
             }
