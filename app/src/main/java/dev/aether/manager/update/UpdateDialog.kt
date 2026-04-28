@@ -105,31 +105,33 @@ fun UpdateDialog(
         )
     ) {
         Surface(
-            modifier       = Modifier.fillMaxWidth(0.92f).wrapContentHeight(),
-            shape          = RoundedCornerShape(28.dp),
-            tonalElevation = 6.dp,
+            modifier       = Modifier
+                .fillMaxWidth(0.90f)
+                .wrapContentHeight(),
+            shape          = RoundedCornerShape(24.dp),
+            tonalElevation = 3.dp,
             color          = MaterialTheme.colorScheme.surface,
         ) {
             Column(
-                modifier            = Modifier.padding(top = 24.dp, start = 24.dp, end = 24.dp, bottom = 20.dp),
+                modifier            = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
 
                 // ── Header icon ───────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
+                Surface(
+                    modifier = Modifier.size(56.dp),
+                    shape    = RoundedCornerShape(16.dp),
+                    color    = MaterialTheme.colorScheme.primaryContainer,
                 ) {
-                    Icon(
-                        imageVector        = Icons.Outlined.NewReleases,
-                        contentDescription = null,
-                        tint               = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier           = Modifier.size(32.dp),
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector        = Icons.Outlined.NewReleases,
+                            contentDescription = null,
+                            tint               = MaterialTheme.colorScheme.primary,
+                            modifier           = Modifier.size(28.dp),
+                        )
+                    }
                 }
 
                 // ── Title ─────────────────────────────────────────
@@ -139,14 +141,15 @@ fun UpdateDialog(
                 ) {
                     Text(
                         text       = s.updateAvailable,
-                        style      = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
+                        style      = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
                         textAlign  = TextAlign.Center,
                     )
                     Text(
-                        text  = "Aether Manager",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text  = "v${info.latestVersion}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
 
@@ -157,10 +160,12 @@ fun UpdateDialog(
                 val tabs = listOf(s.updateTabDesc, s.updateTabChangelog)
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    modifier         = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
-                    containerColor   = MaterialTheme.colorScheme.surfaceVariant,
-                    indicator        = {},
-                    divider          = {},
+                    modifier         = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp)),
+                    containerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                    indicator        = { },
+                    divider          = { },
                 ) {
                     tabs.forEachIndexed { idx, label ->
                         val selected = selectedTab == idx
@@ -168,7 +173,7 @@ fun UpdateDialog(
                             selected = selected,
                             onClick  = { selectedTab = idx },
                             modifier = Modifier
-                                .padding(3.dp)
+                                .padding(4.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(
                                     if (selected) MaterialTheme.colorScheme.surface
@@ -181,7 +186,7 @@ fun UpdateDialog(
                                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                                 color      = if (selected) MaterialTheme.colorScheme.primary
                                              else          MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier   = Modifier.padding(vertical = 8.dp),
+                                modifier   = Modifier.padding(vertical = 10.dp),
                             )
                         }
                     }
@@ -205,7 +210,7 @@ fun UpdateDialog(
                     is DownloadState.Idle -> {
                         Column(
                             Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             Button(
                                 onClick  = {
@@ -224,8 +229,10 @@ fun UpdateDialog(
                                         )
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                shape    = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(44.dp),
+                                shape    = RoundedCornerShape(12.dp),
                             ) {
                                 Icon(Icons.Outlined.Download, null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
@@ -237,13 +244,14 @@ fun UpdateDialog(
 
                             OutlinedButton(
                                 onClick  = onDismiss,
-                                modifier = Modifier.fillMaxWidth().height(44.dp),
-                                shape    = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(44.dp),
+                                shape    = RoundedCornerShape(12.dp),
                             ) {
                                 Text(
                                     s.updateBtnLater,
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -273,19 +281,32 @@ fun UpdateDialog(
                     }
 
                     is DownloadState.Failed -> {
-                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape    = RoundedCornerShape(10.dp),
-                                color    = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                                shape    = RoundedCornerShape(12.dp),
+                                color    = MaterialTheme.colorScheme.errorContainer,
                             ) {
-                                Text(
-                                    s.updateFailed.format(dl.reason),
-                                    modifier  = Modifier.padding(12.dp),
-                                    style     = MaterialTheme.typography.bodySmall,
-                                    color     = MaterialTheme.colorScheme.onErrorContainer,
-                                    textAlign = TextAlign.Center,
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .padding(12.dp)
+                                        .fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.ErrorOutline,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        s.updateFailed.format(dl.reason),
+                                        style     = MaterialTheme.typography.bodySmall,
+                                        color     = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
                             }
                             OutlinedButton(
                                 onClick  = { dlState = DownloadState.Idle },
@@ -319,24 +340,24 @@ private fun VersionArrowChip(currentVersion: String, newVersion: String) {
         color = MaterialTheme.colorScheme.secondaryContainer
     ) {
         Row(
-            modifier              = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            modifier              = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
                 text       = currentVersion,
-                style      = MaterialTheme.typography.labelLarge,
-                color      = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f),
+                style      = MaterialTheme.typography.labelSmall,
+                color      = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
                 fontWeight = FontWeight.Medium,
             )
             Icon(
                 Icons.AutoMirrored.Outlined.ArrowForward, null,
                 tint     = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(12.dp)
             )
             Text(
                 text       = newVersion,
-                style      = MaterialTheme.typography.labelLarge,
+                style      = MaterialTheme.typography.labelSmall,
                 color      = MaterialTheme.colorScheme.onSecondaryContainer,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -349,11 +370,11 @@ private fun DescriptionBox(s: AppStrings) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape    = RoundedCornerShape(12.dp),
-        color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color    = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(
             modifier            = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -361,7 +382,7 @@ private fun DescriptionBox(s: AppStrings) {
             ) {
                 Icon(
                     Icons.Outlined.Info, null,
-                    modifier = Modifier.size(15.dp),
+                    modifier = Modifier.size(18.dp),
                     tint     = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -386,10 +407,12 @@ private fun ChangelogBox(notes: String, loading: Boolean, s: AppStrings) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape    = RoundedCornerShape(12.dp),
-        color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color    = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         if (loading) {
-            Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier
+                .fillMaxWidth()
+                .height(100.dp), contentAlignment = Alignment.Center) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment     = Alignment.CenterVertically,
@@ -445,11 +468,11 @@ private fun DownloadProgressBar(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(16.dp),
-        color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape    = RoundedCornerShape(12.dp),
+        color    = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // ── Row atas: label kiri, size kanan ──────────────────
@@ -466,7 +489,7 @@ private fun DownloadProgressBar(
                         Icon(
                             Icons.Outlined.CheckCircle, null,
                             tint     = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             s.updateDownloadDone,
@@ -476,8 +499,8 @@ private fun DownloadProgressBar(
                         )
                     } else {
                         CircularProgressIndicator(
-                            modifier    = Modifier.size(12.dp),
-                            strokeWidth = 1.5.dp,
+                            modifier    = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
                             color       = MaterialTheme.colorScheme.primary,
                         )
                         Text(
@@ -489,33 +512,12 @@ private fun DownloadProgressBar(
                 }
 
                 if (hasSizeInfo) {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                    ) {
-                        Row(
-                            modifier              = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment     = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text       = downloadedBytes.toMb(),
-                                style      = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color      = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                text  = "/",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text  = totalBytes.toMb(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    Text(
+                        text       = "${downloadedBytes.toMb()} / ${totalBytes.toMb()}",
+                        style      = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -553,7 +555,7 @@ private suspend fun fetchChangelogFromGitHub(releasePageUrl: String): String? =
         try {
             val apiUrl = releasePageUrl
                 .replace("https://github.com/", "https://api.github.com/repos/")
-                .replace("/releases/tag/", "/releases/tags/")
+                .let { if (it.contains("/releases/tag/")) it.replace("/releases/tag/", "/releases/tags/") else it }
 
             val conn = (URL(apiUrl).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
@@ -595,14 +597,11 @@ private suspend fun downloadAndInstall(
         }
 
         val totalBytes = conn.contentLengthLong
-        // Simpan ke /sdcard/Download/ agar user bisa akses file setelah install
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.cacheDir
         downloadsDir.mkdirs()
-        // Pakai nama file asli dari GitHub release asset URL
-        val apkFileName = url.substringAfterLast("/").takeIf { it.endsWith(".apk", ignoreCase = true) }
+        val apkFileName = url.substringAfterLast("/").substringBefore("?").takeIf { it.endsWith(".apk", ignoreCase = true) }
             ?: "AetherManager-update.apk"
         val outFile = File(downloadsDir, apkFileName)
-        // Hapus file lama jika ada agar tidak corrupt
         if (outFile.exists()) outFile.delete()
 
         conn.inputStream.use { input ->

@@ -60,6 +60,8 @@ object UpdateChecker {
             val htmlUrl     = json.getString("html_url")
 
             val (versionName, versionCode) = parseTag(tagName)
+                ?: (tagName to (tagName.filter { it.isDigit() }.toIntOrNull() ?: 0))
+                .takeIf { it.second > 0 }
                 ?: return@withContext UpdateResult.Error("Tag tidak valid: $tagName")
 
             val assets      = json.getJSONArray("assets")

@@ -246,25 +246,32 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Aether Manager", fontWeight = FontWeight.Medium, fontSize = 20.sp) },
+                title = { Text("Aether Manager", fontWeight = FontWeight.SemiBold, fontSize = 18.sp) },
                 actions = {
                     IconButton(onClick = {
                         showSettings = true
                     }) {
-                        Icon(Icons.Outlined.Settings, null)
+                        Icon(Icons.Outlined.Settings, null, modifier = Modifier.size(24.dp))
                     }
                     IconButton(onClick = { showReboot = true }) {
-                        Icon(Icons.Outlined.RestartAlt, null)
+                        Icon(Icons.Outlined.RestartAlt, null, modifier = Modifier.size(24.dp))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor         = MaterialTheme.colorScheme.surface,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                )
+                    titleContentColor      = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                modifier = Modifier.height(56.dp),
             )
         },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 0.dp) {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                modifier = Modifier.height(64.dp)
+            ) {
                 navItems.forEachIndexed { idx, item ->
                     val selected = currentScreen == item.screen
                     val scale by animateFloatAsState(
@@ -278,17 +285,22 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                         },
                         icon = {
                             Box(Modifier.scale(scale)) {
-                                Icon(if (selected) item.selectedIcon else item.unselectedIcon, null)
+                                Icon(
+                                    if (selected) item.selectedIcon else item.unselectedIcon,
+                                    null,
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
                         },
-                        label  = { Text(item.label, fontSize = 11.sp) },
+                        label  = { Text(item.label, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor   = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedIconColor   = MaterialTheme.colorScheme.primary,
                             selectedTextColor   = MaterialTheme.colorScheme.primary,
-                            indicatorColor      = MaterialTheme.colorScheme.secondaryContainer,
+                            indicatorColor      = MaterialTheme.colorScheme.primaryContainer,
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        ),
+                        alwaysShowLabel = true,
                     )
                 }
             }
