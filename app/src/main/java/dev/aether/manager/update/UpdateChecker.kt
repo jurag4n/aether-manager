@@ -97,11 +97,11 @@ object UpdateChecker {
         if (segments.isEmpty()) return null
         val name = "v$clean"
         val code = when (segments.size) {
-            1    -> (segments[0].toIntOrNull() ?: return null) * 100
+            1    -> (segments[0].toIntOrNull() ?: return null) * 10
             2    -> {
                 val major = segments[0].toIntOrNull() ?: return null
                 val minor = segments[1].toIntOrNull() ?: return null
-                major * 100 + minor
+                major * 10 + minor   // V2.6 → 26, V2.7 → 27, dst
             }
             else -> {
                 val major = segments[0].toIntOrNull() ?: return null

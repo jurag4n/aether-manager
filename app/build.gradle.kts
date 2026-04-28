@@ -41,7 +41,7 @@ android {
             cmake {
                 cppFlags += "-std=c++17"
                 arguments += listOf(
-                    "-DANDROID_STL=c++_static",
+                    "-DANDROID_STL=c++_shared
                     "-DANDROID_ARM_NEON=TRUE"
                 )
             }

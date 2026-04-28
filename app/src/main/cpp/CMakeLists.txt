@@ -37,7 +37,6 @@ target_link_options(aether PRIVATE
     -Wl,-z,noexecstack
     -Wl,-z,relro
     -Wl,-z,now
-    -Wl,-z,nodlopen
     -Wl,--no-undefined
 )
 

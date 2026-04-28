@@ -30,13 +30,13 @@ object AdScheduler {
         if (job?.isActive == true) return
         job = scope.launch {
             // Kalau sudah pernah tampil, mulai dari sisa interval — bukan dari awal
-            val sinceLastMs = if (lastShownMs > 0L)
-                System.currentTimeMillis() - lastShownMs
-            else 0L
-            val initialDelay = if (sinceLastMs < intervalMs)
+            // Kalau belum pernah tampil (lastShownMs == 0), gunakan startDelayMs
+            val initialDelay = if (lastShownMs > 0L) {
+                val sinceLastMs = System.currentTimeMillis() - lastShownMs
                 (intervalMs - sinceLastMs).coerceAtLeast(0L)
-            else
+            } else {
                 startDelayMs
+            }
             delay(initialDelay)
             while (isActive) {
                 showNow()
