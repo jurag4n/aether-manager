@@ -268,12 +268,14 @@ static const uint8_t EK_TRACERPID[] = {0xF7,0xD1,0xC2,0xC0,0xC6,0xD1,0xF3,0xCA,0
 // "ro.kernel.qemu"
 static const uint8_t __attribute__((unused)) EK_QEMU_PROP[] = {0xD1,0xCC,0x8D,0xC8,0xC6,0xD1,0xCD,0xC6,0xCF,0x8D,0xD2,0xC6,0xCE,0xD6};
 
-// \"org.litepatchers.lp\"
+// "org.litepatchers.lp"
 static const uint8_t EK_LP_LITEPATCHER[] = {0xCC,0xD1,0xC4,0x8D,0xCF,0xCA,0xD7,0xC6,0xD3,0xC2,0xC0,0xCB,0xC6,0xD1,0xD0,0x8D,0xCF,0xD3};
-// \"lucky.patcher\"
+// "lucky.patcher"
 static const uint8_t EK_LP_PKG2[] = {0xCF,0xD6,0xC0,0xC8,0xDA,0x8D,0xD3,0xC2,0xD7,0xC0,0xCB,0xC6,0xD1};
-// \"patch.application\"
+// "patch.application"
 static const uint8_t EK_LP_PKG3[] = {0xD3,0xC2,0xD7,0xC0,0xCB,0x8D,0xC2,0xD3,0xD3,0xCF,0xCA,0xC0,0xC2,0xD7,0xCA,0xCC,0xCD};
+
+// ── [XK_URL = 0x5C] URL strings ──────────────────────────────────────────────
 
 // "https://api.github.com/repos/aetherdev01/aether-manager/releases/latest"
 static const uint8_t EU_GITHUB_API[] = {
@@ -430,8 +432,11 @@ static int l2_timing_check(void) {
     (void)x;
     gettimeofday(&t1, NULL);
     long us = (t1.tv_sec - t0.tv_sec) * 1000000L + (t1.tv_usec - t0.tv_usec);
-    // Threshold: > 50ms untuk 1000 iterasi artinya sedang di-trace
-    return (us > 200000) ? 1 : 0;  // 200ms — safe untuk Samsung throttle
+    // Threshold: > 500ms untuk 1000 iterasi artinya sedang di-trace.
+    // 200ms terlalu ketat untuk device budget/low-end yang CPU-nya throttled
+    // saat cold start (banyak proses berjalan bersamaan saat boot) → false kill.
+    // Debugger single-step biasanya 10x-100x lebih lambat dari threshold ini.
+    return (us > 500000) ? 1 : 0;  // 500ms — safe untuk semua device
 }
 
 __attribute__((visibility("hidden")))
@@ -571,20 +576,8 @@ static int l4_lp_filesystem(void) {
 
     struct stat st;
 
-    // /sdcard/LuckyPatcher — aktifkan, tapi cek apakah ada file di dalamnya
-    // (bukan hanya dir kosong) untuk kurangi false positive Samsung Knox
-    if (stat(sdcard, &st) == 0 && S_ISDIR(st.st_mode)) {
-        DIR *lpd = opendir(sdcard);
-        if (lpd) {
-            int lp_files = 0;
-            struct dirent *lpe;
-            while ((lpe = readdir(lpd)) != NULL) {
-                if (lpe->d_name[0] != '.') { lp_files++; break; }
-            }
-            closedir(lpd);
-            if (lp_files > 0) return 1;  // dir ada dan isinya bukan kosong
-        }
-    }
+    // [DISABLED] Sdcard dir check — false positive di Samsung Knox/A-series
+    // if (stat(sdcard, &st) == 0 && S_ISDIR(st.st_mode)) return 1;
 
     // /data/local/tmp — cek isi, bukan hanya keberadaan dir
     if (stat(tmp, &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -629,15 +622,15 @@ __attribute__((visibility("hidden")))
 static int l4_lp_maps(void) {
     char maps[32]; xdec(EP_PROC_MAPS,sizeof(EP_PROC_MAPS),XK_PATH,maps);
     char kws[9][48];
-    xdec(EK_LP_KW,       sizeof(EK_LP_KW),       XK_KW,kws[0]);
-    xdec(EK_LP_KW2,      sizeof(EK_LP_KW2),      XK_KW,kws[1]);
-    xdec(EK_XPOSED,      sizeof(EK_XPOSED),      XK_KW,kws[2]);
-    xdec(EK_LPHELPER,    sizeof(EK_LPHELPER),    XK_KW,kws[3]);
-    xdec(EK_LP_HELPER2,  sizeof(EK_LP_HELPER2),  XK_KW,kws[4]);
-    xdec(EK_CHELPUS,     sizeof(EK_CHELPUS),     XK_KW,kws[5]);
-    xdec(EK_LP_LITEPATCHER,sizeof(EK_LP_LITEPATCHER),XK_KW,kws[6]);
-    xdec(EK_LP_PKG2,     sizeof(EK_LP_PKG2),     XK_KW,kws[7]);
-    xdec(EK_LP_PKG3,     sizeof(EK_LP_PKG3),     XK_KW,kws[8]);
+    xdec(EK_LP_KW,         sizeof(EK_LP_KW),         XK_KW,kws[0]);
+    xdec(EK_LP_KW2,        sizeof(EK_LP_KW2),         XK_KW,kws[1]);
+    xdec(EK_XPOSED,        sizeof(EK_XPOSED),         XK_KW,kws[2]);
+    xdec(EK_LPHELPER,      sizeof(EK_LPHELPER),       XK_KW,kws[3]);
+    xdec(EK_LP_HELPER2,    sizeof(EK_LP_HELPER2),     XK_KW,kws[4]);
+    xdec(EK_CHELPUS,       sizeof(EK_CHELPUS),        XK_KW,kws[5]);
+    xdec(EK_LP_LITEPATCHER,sizeof(EK_LP_LITEPATCHER), XK_KW,kws[6]);
+    xdec(EK_LP_PKG2,       sizeof(EK_LP_PKG2),        XK_KW,kws[7]);
+    xdec(EK_LP_PKG3,       sizeof(EK_LP_PKG3),        XK_KW,kws[8]);
     FILE *f=fopen(maps,"r"); if(!f) return 0;
     char line[1024];
     while(fgets(line,sizeof(line),f)) {
@@ -656,14 +649,14 @@ __attribute__((visibility("hidden")))
 static int l4_lp_process(void) {
     char proc[16]; xdec(EP_PROC,sizeof(EP_PROC),XK_PATH,proc);
     char kws[8][48];
-    xdec(EK_LP_KW,      sizeof(EK_LP_KW),      XK_KW,kws[0]);
-    xdec(EK_CHELPUS,    sizeof(EK_CHELPUS),    XK_KW,kws[1]);
-    xdec(EK_LACKY,      sizeof(EK_LACKY),      XK_KW,kws[2]);
-    xdec(EK_LPHELPER,   sizeof(EK_LPHELPER),   XK_KW,kws[3]);
-    xdec(EK_LP_HELPER2, sizeof(EK_LP_HELPER2), XK_KW,kws[4]);
+    xdec(EK_LP_KW,         sizeof(EK_LP_KW),         XK_KW,kws[0]);
+    xdec(EK_CHELPUS,       sizeof(EK_CHELPUS),       XK_KW,kws[1]);
+    xdec(EK_LACKY,         sizeof(EK_LACKY),         XK_KW,kws[2]);
+    xdec(EK_LPHELPER,      sizeof(EK_LPHELPER),      XK_KW,kws[3]);
+    xdec(EK_LP_HELPER2,    sizeof(EK_LP_HELPER2),    XK_KW,kws[4]);
     xdec(EK_LP_LITEPATCHER,sizeof(EK_LP_LITEPATCHER),XK_KW,kws[5]);
-    xdec(EK_LP_PKG2,    sizeof(EK_LP_PKG2),    XK_KW,kws[6]);
-    xdec(EK_LP_PKG3,    sizeof(EK_LP_PKG3),    XK_KW,kws[7]);
+    xdec(EK_LP_PKG2,       sizeof(EK_LP_PKG2),       XK_KW,kws[6]);
+    xdec(EK_LP_PKG3,       sizeof(EK_LP_PKG3),       XK_KW,kws[7]);
     DIR *d=opendir(proc); if(!d) return 0;
     struct dirent *e;
     while((e=readdir(d))!=NULL) {
@@ -850,59 +843,22 @@ static void get_source_dir(JNIEnv *env, jobject ctx, char *out, size_t outlen) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BACKGROUND WATCHER — periodic re-check di thread terpisah
-// Mencegah LP patch SETELAH initial check lolos (runtime tamper).
-// Interval: acak antara 8-15 detik agar tidak mudah di-pattern-match.
-// ─────────────────────────────────────────────────────────────────────────────
-
-__attribute__((visibility("hidden")))
-static void *aether_watcher_thread(void *arg) {
-    (void)arg;
-
-    // Delay awal — beri waktu app fully loaded
-    sleep(5);
-
-    // Seed acak dari waktu
-    unsigned int seed = (unsigned int)time(nullptr) ^ (unsigned int)getpid();
-
-    while(1) {
-        // Interval acak 8–15 detik
-        unsigned int interval = 8 + (rand_r(&seed) % 8);
-        sleep(interval);
-
-        // Re-check dasar (tidak butuh JNI — cukup native checks)
-        if(l1_tracer_pid())   { DEVLOG("watcher: tracer");    aether_kill(); }
-        if(l1_frida_maps())   { DEVLOG("watcher: frida");     aether_kill(); }
-        if(!l3_zip_integrity()){ DEVLOG("watcher: zip");      aether_kill(); }
-        if(!l3_dex_magic())   { DEVLOG("watcher: dex");       aether_kill(); }
-        if(l4_lp_maps())      { DEVLOG("watcher: lp-maps");   aether_kill(); }
-        if(l4_lp_process())   { DEVLOG("watcher: lp-proc");   aether_kill(); }
-        if(l4_lp_filesystem()){ DEVLOG("watcher: lp-fs");     aether_kill(); }
-    }
-    return nullptr;
-}
-
-__attribute__((visibility("hidden")))
-static void start_watcher(void) {
-    pthread_t tid;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_create(&tid, &attr, aether_watcher_thread, nullptr);
-    pthread_attr_destroy(&attr);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // .init_array constructor — dijalankan sebelum JNI_OnLoad
 // Pasang deteksi hook paling dasar seawal mungkin.
 // ─────────────────────────────────────────────────────────────────────────────
 
 __attribute__((constructor(101), visibility("hidden")))
 static void early_security_check(void) {
-    // Hanya cek tracer pid dan maps di init — cukup cepat, tidak perlu JNI.
+    // Hanya cek frida maps di init — cukup cepat, tidak perlu JNI.
+    //
+    // l1_tracer_pid DIHAPUS dari sini: beberapa ROM (MIUI/HyperOS, ColorOS,
+    // Samsung Knox) menyebabkan TracerPid non-zero secara normal saat cold
+    // start, sebelum app fully initialized -> false positive SIGKILL.
+    // TracerPid tetap dicek di layer1_anti_hook() via nativeCheckAll()
+    // yang dipanggil setelah Application.onCreate() selesai.
+    //
     // l2_self_ptrace TIDAK dijalankan di sini: Samsung Knox bisa belum siap
-    // saat .init_array dipanggil sehingga ptrace errno ambigu → false kill.
-    if (l1_tracer_pid()) { DEVLOG("tracer_pid"); aether_kill(); }
+    // saat .init_array dipanggil sehingga ptrace errno ambigu -> false kill.
     if (l1_frida_maps()) { DEVLOG("frida_maps"); aether_kill(); }
 }
 
@@ -913,14 +869,6 @@ static void early_security_check(void) {
 #define JNI_PKG "Java_dev_aether_manager_NativeAether_"
 
 extern "C" {
-
-// ── JNI_OnLoad — start background watcher ─────────────────────────────────
-
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
-    (void)vm; (void)reserved;
-    start_watcher();   // mulai background periodic re-check
-    return JNI_VERSION_1_6;
-}
 
 // ── Integrity ──────────────────────────────────────────────────────────────
 
@@ -990,63 +938,12 @@ Java_dev_aether_manager_NativeAether_nativeCheckUnityIntact(JNIEnv *env, jobject
 JNIEXPORT jboolean JNICALL
 Java_dev_aether_manager_NativeAether_nativeCheckAll(JNIEnv *env, jobject, jobject ctx) {
     DEVLOG("start");
-
-    // Layer 1 — Anti-Hook (Frida, ptrace, fd scan)
-    if(layer1_anti_hook())         { DEVLOG("anti-hook");   aether_kill(); }
-
-    // Layer 2 — Anti-Debug (timing, ptrace self-attach)
-    if(layer2_anti_debug())        { DEVLOG("anti-debug");  aether_kill(); }
-
-    // Layer 3 — Anti-Repack (ZIP integrity, DEX magic)
-    if(!l3_zip_integrity())        { DEVLOG("zip");         aether_kill(); }
-    if(!l3_dex_magic())            { DEVLOG("dex");         aether_kill(); }
-
-    // Layer 3b — Signature check (inline, tidak perlu call terpisah dari Kotlin)
-    // Ambil sig dari PackageManager via JNI, bandingkan di native
-    if(env && ctx) {
-        jclass cc = env->GetObjectClass(ctx);
-        if(cc) {
-            jmethodID gpn = env->GetMethodID(cc, "getPackageName", "()Ljava/lang/String;");
-            jmethodID gpm = env->GetMethodID(cc, "getPackageManager", "()Landroid/content/pm/PackageManager;");
-            if(gpn && gpm) {
-                jobject pm = env->CallObjectMethod(ctx, gpm);
-                jstring pkgJ = (jstring)env->CallObjectMethod(ctx, gpn);
-                if(pm && pkgJ) {
-                    jclass pmc = env->GetObjectClass(pm);
-                    // GET_SIGNING_CERTIFICATES = 0x08000000 (API 28+), fallback GET_SIGNATURES = 64
-                    jmethodID gpi = env->GetMethodID(pmc, "getPackageInfo",
-                        "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;");
-                    if(gpi) {
-                        // Cek package name dulu — harus cocok dengan yang dicompile
-                        const char *pkgC = env->GetStringUTFChars(pkgJ, nullptr);
-                        if(pkgC) {
-                            // Package name tidak boleh dimodifikasi
-                            if(strcmp(pkgC, "dev.aether.manager") != 0) {
-                                DEVLOG("pkg mismatch");
-                                env->ReleaseStringUTFChars(pkgJ, pkgC);
-                                aether_kill();
-                            }
-                            env->ReleaseStringUTFChars(pkgJ, pkgC);
-                        }
-                    }
-                }
-            }
-        }
-        if(env->ExceptionCheck()) env->ExceptionClear();
-    }
-
-    // Layer 4 — Anti-Patch (Lucky Patcher behavioral: fs, maps, process, installer)
+    if(layer1_anti_hook())         { DEVLOG("anti-hook"); aether_kill(); }
+    if(layer2_anti_debug())        { DEVLOG("anti-debug"); aether_kill(); }
+    if(!l3_zip_integrity())        { DEVLOG("integrity"); aether_kill(); }
+    if(!l3_dex_magic())            { DEVLOG("magic"); aether_kill(); }
     if(layer4_anti_patch(env,ctx)) { DEVLOG("anti-patch"); aether_kill(); }
-
-    // Layer 5 — Anti-Tamper (Unity string scan + class existence)
-    // Dicek setelah layer4 agar tidak memberi info ke patcher
-    if(!l5_unity_strings())        { DEVLOG("unity-str");  aether_kill(); }
-    if(!l5_unity_class(env))       { DEVLOG("unity-cls");  aether_kill(); }
-
-    // Layer 6 — Anti-Emulator
-    if(l6_emulator_check(env))     { DEVLOG("emulator");   aether_kill(); }
-
-    DEVLOG("OK");
+    DEVLOG("AetherManager");
     return JNI_TRUE;
 }
 
@@ -1132,19 +1029,21 @@ Java_dev_aether_manager_NativeAether_nativeGetAdblockDnsKeywords(JNIEnv *env, jo
 
 JNIEXPORT jobjectArray JNICALL
 Java_dev_aether_manager_NativeAether_nativeGetHostsSignatures(JNIEnv *env, jobject) {
-    // Hosts-file adblock signatures — hanya nama TOOL yang eksplisit menulis header
-    // di file hosts mereka. Domain iklan (doubleclick, admob, unityads) DIHAPUS:
-    // domain ini memang di-block oleh adblock, tapi muncul sebagai entry biasa di hosts,
-    // bukan sebagai fingerprint bahwa hosts file di-generate oleh adblock tool.
-    // Menyertakannya menyebabkan false-positive yang mem-block iklan secara salah.
-    static const uint8_t EK_H_ADAWAY[]    = {0xC2,0xC7,0xC2,0xD4,0xC2,0xDA};           // adaway
-    static const uint8_t EK_H_ADBLOCK[]   = {0xC2,0xC7,0xC1,0xCF,0xCC,0xC0,0xC8};      // adblock
-    static const uint8_t EK_H_GENERATED[] = {0xC4,0xC6,0xCD,0xC6,0xD1,0xC2,0xD7,0xC6,0xC7,0x83,0xC1,0xDA}; // generated by
+    // Hosts-file adblock signatures
+    static const uint8_t EK_H_ADAWAY[]     = {0xC2,0xC7,0xC2,0xD4,0xC2,0xDA};                                                      // adaway
+    static const uint8_t EK_H_ADBLOCK[]    = {0xC2,0xC7,0xC1,0xCF,0xCC,0xC0,0xC8};                                                // adblock
+    static const uint8_t EK_H_GENERATED[]  = {0xC4,0xC6,0xCD,0xC6,0xD1,0xC2,0xD7,0xC6,0xC7,0x83,0xC1,0xDA};                     // generated by
+    static const uint8_t EK_H_DOUBLECLICK[]= {0xC2,0xC7,0x8D,0xC7,0xCC,0xD6,0xC1,0xCF,0xC6,0xC0,0xCF,0xCA,0xC0,0xC8,0x8D,0xCD,0xC6,0xD7}; // ad.doubleclick.net
+    static const uint8_t EK_H_ADMOB[]      = {0xC2,0xC7,0xCE,0xCC,0xC1};                                                          // admob
+    static const uint8_t EK_H_UNITY[]      = {0xD6,0xCD,0xCA,0xD7,0xDA,0xC2,0xC7,0xD0,0x8D,0xD6,0xCD,0xCA,0xD7,0xDA,0x90,0xC7,0x8D,0xC0,0xCC,0xCE}; // unityads.unity3d.com
 
     struct{const uint8_t *a;size_t s;}hSig[]={
-        {EK_H_ADAWAY,    sizeof(EK_H_ADAWAY)},
-        {EK_H_ADBLOCK,   sizeof(EK_H_ADBLOCK)},
-        {EK_H_GENERATED, sizeof(EK_H_GENERATED)},
+        {EK_H_ADAWAY,     sizeof(EK_H_ADAWAY)},
+        {EK_H_ADBLOCK,    sizeof(EK_H_ADBLOCK)},
+        {EK_H_GENERATED,  sizeof(EK_H_GENERATED)},
+        {EK_H_DOUBLECLICK,sizeof(EK_H_DOUBLECLICK)},
+        {EK_H_ADMOB,      sizeof(EK_H_ADMOB)},
+        {EK_H_UNITY,      sizeof(EK_H_UNITY)},
     };
     int count=(int)(sizeof(hSig)/sizeof(hSig[0]));
     jclass sc=env->FindClass("java/lang/String");

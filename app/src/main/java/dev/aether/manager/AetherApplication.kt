@@ -1,56 +1,70 @@
 package dev.aether.manager
 
 import android.app.Application
+import android.content.pm.PackageManager
+import android.os.Build
 import com.topjohnwu.superuser.Shell
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
 import dev.aether.manager.ads.AdManager
 import dev.aether.manager.ads.InterstitialAdManager
-import dev.aether.manager.CimolAgent
-import dev.aether.manager.notification.NotificationHelper
-import dev.aether.manager.notification.NotificationScheduler
 
 class AetherApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
 
-        // Load libaether.so PERTAMA — sebelum apapun yang depend ke NativeAether.
-        // Wajib eksplisit di sini karena checkAll() hanya dipanggil di RELEASE build.
-        // Tanpa ini, di RELEASE build pun urutan eksekusi:
-        //   checkAll() → tryLoad() [load] → initUnityAds() → GAME_ID → tryLoad() [sudah loaded, ok]
-        // sudah benar karena tryLoad() sekarang idempotent. Tapi eksplisit lebih aman
-        // dan memastikan library ready sebelum checkAll() dipanggil.
-        NativeAether.tryLoad()
-
         // Security check hanya aktif di RELEASE build yang benar-benar signed.
         // Di debug build, semua check di-skip agar tidak FC saat development/testing.
-        // checkSignature() DIHAPUS — sudah inline di dalam nativeCheckAll() di C,
-        // tidak bisa di-bypass dari Kotlin level oleh Lucky Patcher.
         if (!BuildConfig.DEBUG) {
+            checkSignature()
             checkAll()
         }
 
         initLibsu()
         CimolAgent.tryLoad()
         initUnityAds()
-
-        // ── Buat notification channels sekali di awal ──────────────────────
-        // Harus dipanggil sebelum notifikasi pertama dikirim.
-        // Aman dipanggil berulang (Android no-op kalau channel sudah ada).
-        NotificationHelper.createChannels(this)
-        NotificationScheduler.schedule(this)
     }
 
     // ─── Security checks ──────────────────────────────────────────────────────
-    // checkSignature() DIHAPUS — sudah dilakukan di dalam nativeCheckAll() (C layer).
-    // Memindahkan ke native mencegah Lucky Patcher bypass via Kotlin bytecode patch.
+
+    private fun checkSignature() {
+        if (!NativeAether.tryLoad()) return
+        try {
+            @Suppress("DEPRECATION")
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                PackageManager.GET_SIGNING_CERTIFICATES
+            else
+                PackageManager.GET_SIGNATURES
+
+            val info = packageManager.getPackageInfo(packageName, flags)
+
+            val sigBytes: ByteArray? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
+            } else {
+                @Suppress("DEPRECATION")
+                info.signatures?.firstOrNull()?.toByteArray()
+            }
+
+            if (sigBytes == null) return
+
+            val hex = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(sigBytes).joinToString("") { "%02x".format(it) }
+
+            NativeAether.nativeCheckSignature(hex)
+        } catch (_: Exception) {
+            // Jangan kill — bisa false positive Samsung Knox / binder error
+        }
+    }
 
     private fun checkAll() {
         if (!NativeAether.tryLoad()) return
         try {
             NativeAether.nativeCheckAll(this)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
+            // Catch Throwable (bukan hanya Exception) agar UnsatisfiedLinkError
+            // dan Error lainnya tidak menyebabkan unhandled crash ke sistem.
+            // nativeKillProcess hanya dipanggil jika .so berhasil load (tryLoad() true di atas).
             NativeAether.nativeKillProcess()
         }
     }
@@ -67,12 +81,10 @@ class AetherApplication : Application() {
     }
 
     // ─── Unity Ads ────────────────────────────────────────────────────────────
-    // checkUnityIntact() DIHAPUS — sudah dicek di nativeCheckAll() (Layer 5)
-    // dan background watcher thread di C. Memanggil dari Kotlin hanya membuka
-    // celah bagi LP untuk patch call-site ini.
 
     private fun initUnityAds() {
         if (UnityAds.isInitialized) {
+            if (!BuildConfig.DEBUG) checkUnityIntact()
             InterstitialAdManager.preload(this)
             return
         }
@@ -83,6 +95,7 @@ class AetherApplication : Application() {
             AdManager.isTestMode,
             object : IUnityAdsInitializationListener {
                 override fun onInitializationComplete() {
+                    if (!BuildConfig.DEBUG) checkUnityIntact()
                     InterstitialAdManager.preload(this@AetherApplication)
                 }
 
@@ -90,9 +103,22 @@ class AetherApplication : Application() {
                     error: UnityAds.UnityAdsInitializationError,
                     message: String
                 ) {
-                    // Tidak perlu kill di sini — watcher thread akan catch kalau Unity di-strip
+                    if (!BuildConfig.DEBUG &&
+                        error != UnityAds.UnityAdsInitializationError.INTERNAL_ERROR) {
+                        checkUnityIntact()
+                    }
                 }
             }
         )
+    }
+
+
+    private fun checkUnityIntact() {
+        if (!NativeAether.tryLoad()) return
+        try {
+            NativeAether.nativeCheckUnityIntact()
+        } catch (_: Exception) {
+            NativeAether.nativeKillProcess()
+        }
     }
 }
