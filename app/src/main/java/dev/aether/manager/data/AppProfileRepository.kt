@@ -434,7 +434,7 @@ _restore_default() {
 
   # Perbaikan: Gunakan pendekatan yang lebih generik untuk refresh rate
   for _rr_node in /sys/class/display/panel0/max_refresh_rate /sys/class/display/panel0/min_refresh_rate /sys/devices/platform/soc/*/display/*/panel_refresh_rate; do
-    [ -f "$_rr_node" ] && echo "${'$'}_DEF_PEAK" > "$_rr_node" 2>/dev/null || true
+    [ -f "${'$'}_rr_node" ] && echo "${'$'}_DEF_PEAK" > "${'$'}_rr_node" 2>/dev/null || true
   done
   [ -f /sys/class/display/panel0/min_refresh_rate ] && \
     echo "${'$'}_DEF_MIN"  > /sys/class/display/panel0/min_refresh_rate 2>/dev/null || true
