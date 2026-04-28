@@ -172,7 +172,7 @@ class BootReceiver : BroadcastReceiver() {
         // Boot ke-2..5: 15 detik
         // Boot ke-6+: 10 detik (sudah terbukti stabil)
         val delayMs = when {
-            bootCount <= 1 -> 20_000L
+            bootCount <= 1 -> 30_000L
             bootCount <= 5 -> 15_000L
             else           -> 10_000L
         }

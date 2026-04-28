@@ -14,7 +14,14 @@ object RootUtils {
 
     data class ShellResult(val exitCode: Int, val stdout: String, val stderr: String)
 
-    suspend fun hasRoot(): Boolean = RootManager.isRooted()
+    suspend fun hasRoot(): Boolean {
+        val rooted = RootManager.isRooted()
+        // Sinkronisasi state jika terdeteksi root tapi cache belum update
+        if (rooted && !RootManager.isRootGranted) {
+            RootManager.markGranted()
+        }
+        return rooted
+    }
 
     suspend fun sh(script: String): ShellResult = withContext(Dispatchers.IO) {
         val result = Shell.cmd(script).exec()
@@ -65,15 +72,8 @@ object RootUtils {
             soc_model=$(getprop ro.soc.model 2>/dev/null)
             kernel=$(uname -r 2>/dev/null | head -c 50)
             selinux=$(getenforce 2>/dev/null)
-            if [ -d /data/adb/ksu ]; then
-              root=KernelSU
-            elif [ -d /data/adb/ap ]; then
-              root=APatch
-            elif [ -d /data/adb/magisk ]; then
-              root=Magisk
-            else
-              root=Unknown
-            fi
+            # Root type akan dideteksi via RootManager.detectRootType() di Kotlin
+            root=SKIP
             profile=$(cat ${PROFILE_FILE} 2>/dev/null || echo balance)
             safe=$([ -f ${SAFE_MODE_FILE} ] && echo 1 || echo 0)
             boot=$(cat ${BOOT_COUNT_FILE} 2>/dev/null || echo 0)
@@ -94,8 +94,8 @@ object RootUtils {
         val map = parseKv(result.stdout)
         val platform = "${map["platform"]} ${map["hardware"]} ${map["soc_model"]}".lowercase()
 
-        val shellRootType = map["root"]
-        val rootType = when {
+        
+        val rootType = RootManager.detectRootType() //
             shellRootType != null && shellRootType != "Unknown" -> shellRootType
             else -> RootManager.detectRootType()
         }

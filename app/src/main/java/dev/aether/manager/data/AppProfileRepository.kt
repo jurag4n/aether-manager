@@ -432,8 +432,10 @@ _restore_default() {
   [ -n "${'$'}_DEF_MIN"  ] && settings put system min_refresh_rate  "${'$'}_DEF_MIN"  2>/dev/null || true
   service call SurfaceFlinger 1035 i32 "${'$'}_DEF_PEAK" 2>/dev/null || true
 
-  [ -f /sys/class/display/panel0/max_refresh_rate ] && \
-    echo "${'$'}_DEF_PEAK" > /sys/class/display/panel0/max_refresh_rate 2>/dev/null || true
+  # Perbaikan: Gunakan pendekatan yang lebih generik untuk refresh rate
+  for _rr_node in /sys/class/display/panel0/max_refresh_rate /sys/class/display/panel0/min_refresh_rate /sys/devices/platform/soc/*/display/*/panel_refresh_rate; do
+    [ -f "$_rr_node" ] && echo "${'$'}_DEF_PEAK" > "$_rr_node" 2>/dev/null || true
+  done
   [ -f /sys/class/display/panel0/min_refresh_rate ] && \
     echo "${'$'}_DEF_MIN"  > /sys/class/display/panel0/min_refresh_rate 2>/dev/null || true
 
@@ -533,12 +535,12 @@ while true; do
     elif [ "${'$'}PROFILE_ACTIVE" = "1" ]; then
       # Delay singkat sebelum restore: beri waktu kernel menyelesaikan
       # transisi governor sebelumnya agar tidak terjadi race condition
-      sleep 1
+      sleep 2
       _restore_default
       PROFILE_ACTIVE=0
     fi
   fi
-  sleep 1
+  sleep 2
 done
 """
         val escaped = script.replace("'", "'\\''")

@@ -47,6 +47,11 @@ object TweakApplier {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun runScript(script: String): String {
+        // Pastikan shell interactive sudah siap
+        if (!Shell.isAppGrantedRoot()!!) {
+             // Jika belum granted di session ini, coba init
+             Shell.getShell()
+        }
         val result = Shell.cmd(script).exec()
         return result.out.joinToString("\n")
     }
@@ -448,7 +453,9 @@ _end "cpuset"
         return """
 _begin
 # sched
-write $boost /proc/sys/kernel/sched_boost
+if [ -f /proc/sys/kernel/sched_boost ]; then
+  write $boost /proc/sys/kernel/sched_boost
+fi
 write $upmig /proc/sys/kernel/sched_upmigrate
 write $downmig /proc/sys/kernel/sched_downmigrate
 write $upmig /proc/sys/kernel/sched_group_upmigrate
@@ -517,16 +524,18 @@ _end "thermal"
         return if (perf) """
 _begin
 # gpu — performance (safe: tanpa force_clk_on/idle_timer paksa)
-apply 0 /sys/class/kgsl/kgsl-3d0/throttling
-# force_clk_on dan idle_timer=1000 dihapus: menyebabkan GPU driver hang
-# saat app keluar dan driver mencoba power-gate GPU
-apply 0 /sys/class/kgsl/kgsl-3d0/bus_split
+if [ -d /sys/class/kgsl/kgsl-3d0 ]; then
+  apply 0 /sys/class/kgsl/kgsl-3d0/throttling
+  # force_clk_on dan idle_timer=1000 dihapus: menyebabkan GPU driver hang
+  # saat app keluar dan driver mencoba power-gate GPU
+  apply 0 /sys/class/kgsl/kgsl-3d0/bus_split
+  # Qcom devfreq GPU
+  devfreq_max /sys/class/devfreq/kgsl-3d0
+fi
 write 0 /sys/kernel/ged/hal/dvfs_enable
 apply always_on /sys/class/misc/mali0/device/power_policy
 apply on        /sys/devices/platform/mali.0/power/control
 apply 10        /sys/class/misc/mali0/device/js_scheduling_period
-# Qcom devfreq GPU
-devfreq_max /sys/class/devfreq/kgsl-3d0
 _end "gpu"
 """ else """
 _begin
@@ -598,6 +607,13 @@ _end "gpu_freq"
             append("""
 # zram setup — TIDAK pakai write() helper karena [ -f ] gagal pada sysfs special nodes
 # Urutan wajib: swapoff → reset (disksize=0) → comp_algorithm → disksize → mkswap → swapon
+# Perbaikan: Tambahkan pengecekan error di setiap langkah untuk mencegah bootloop
+swapoff /dev/block/zram0 2>/dev/null || true
+write 0 /sys/block/zram0/disksize 2>/dev/null || true
+write $algo /sys/block/zram0/comp_algorithm 2>/dev/null || true
+write $size /sys/block/zram0/disksize 2>/dev/null || true
+mkswap /dev/block/zram0 2>/dev/null || true
+swapon /dev/block/zram0 2>/dev/null || true
 _zram_ok=0
 for _zdev in /dev/zram0 /dev/zram1; do
   [ -b "${'$'}_zdev" ] || continue

@@ -21,13 +21,16 @@ object RootManager {
     val isRootUnknown: Boolean get() = _cachedRoot == null
 
     fun detectRootType(): String {
+        // Jika sudah granted, gunakan shell untuk deteksi yang lebih akurat
+        if (Shell.isAppGrantedRoot() == true || _cachedRoot == true) {
+            return detectRootTypeViaShell()
+        }
+        // Fallback ke deteksi file (kurang akurat di Android 11+ tanpa root)
         return when {
-            File("/data/adb/magisk").canRead()   -> "Magisk"
+            File("/data/adb/magisk").exists()     -> "Magisk"
             File("/sbin/.magisk").exists()        -> "Magisk"
-            File("/dev/.magisk.unblock").exists() -> "Magisk"
-            File("/data/adb/ksu").canRead()       -> "KernelSU"
-            File("/data/adb/ap").canRead()        -> "APatch"
-            _cachedRoot == true                   -> detectRootTypeViaShell()
+            File("/data/adb/ksu").exists()        -> "KernelSU"
+            File("/data/adb/ap").exists()         -> "APatch"
             else                                  -> "Unknown"
         }
     }
