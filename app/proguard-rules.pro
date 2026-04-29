@@ -4,6 +4,22 @@
 # Target  : R8 full mode + proguard-android-optimize.txt
 # =============================================================================
 
+# ── Agresif: repackage semua class ke root package tunggal ───────────────────
+# Semua package (termasuk lib pihak ketiga) digabung jadi satu flat namespace
+# sehingga di Dex explorer tidak ada struktur package yang terbaca
+-repackageclasses ''
+
+# Lindungi package utama app dari repackaging — Activities & JNI harus tetap
+# di dev.aether.manager agar AndroidManifest dan System.loadLibrary() valid
+-keeppackagenames dev.aether.manager
+-keeppackagenames dev.aether.manager.**
+-allowaccessmodification
+-overloadaggressively
+
+# ── Optimasi R8 maksimal ──────────────────────────────────────────────────────
+-optimizationpasses 7
+-optimizations !code/simplification/cast,field/*,class/merging/*,code/allocation/variable
+
 # ── Attributes wajib ─────────────────────────────────────────────────────────
 -keepattributes Signature
 -keepattributes *Annotation*
@@ -11,6 +27,7 @@
 -keepattributes EnclosingMethod
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+-dontusemixedcaseclassnames
 
 # =============================================================================
 # AETHER MANAGER — CORE CLASSES
