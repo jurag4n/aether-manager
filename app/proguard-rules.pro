@@ -1,109 +1,304 @@
-# ─────────────────────────────────────────────────────────────────────────────
+# =============================================================================
 # Aether Manager — ProGuard / R8 Rules
-# ─────────────────────────────────────────────────────────────────────────────
+# Package : dev.aether.manager
+# Target  : R8 full mode + proguard-android-optimize.txt
+# =============================================================================
 
-# ── Attributes ───────────────────────────────────────────────────────────────
+# ── Attributes wajib ─────────────────────────────────────────────────────────
 -keepattributes Signature
 -keepattributes *Annotation*
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
-# ── Gson ─────────────────────────────────────────────────────────────────────
--dontwarn sun.misc.**
--keep class com.google.gson.examples.android.model.** { <fields>; }
--keep class * extends com.google.gson.TypeAdapter
--keep class * implements com.google.gson.TypeAdapterFactory
--keep class * implements com.google.gson.JsonSerializer
--keep class * implements com.google.gson.JsonDeserializer
--keepclassmembers,allowobfuscation class * {
-    @com.google.gson.annotations.SerializedName <fields>;
+# =============================================================================
+# AETHER MANAGER — CORE CLASSES
+# Jangan rename/strip class utama aplikasi
+# =============================================================================
+
+# Activities, Application, Service
+-keep public class dev.aether.manager.MainActivity
+-keep public class dev.aether.manager.SplashActivity
+-keep public class dev.aether.manager.SetupActivity
+-keep public class dev.aether.manager.AetherApplication
+
+# =============================================================================
+# JNI — libaether.so & libcimolagent.so
+# Semua external fun harus dipertahankan persis — nama method adalah JNI symbol
+# =============================================================================
+
+-keep class dev.aether.manager.NativeAether {
+    public static boolean tryLoad();
+    public static boolean isLoaded();
+    public static native boolean nativeCheckSignature(java.lang.String);
+    public static native boolean nativeCheckAntiPatch(android.content.Context);
+    public static native boolean nativeCheckUnityIntact();
+    public static native boolean nativeCheckAll(android.content.Context);
+    public static native void nativeKillProcess();
+    public static native java.lang.String nativeGetGameId();
+    public static native java.lang.String nativeGetGithubApi();
+    public static native java.lang.String[] nativeGetAdblockDnsKeywords();
+    public static native java.lang.String[] nativeGetHostsSignatures();
 }
--keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
--keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
 
-# ── Parcelable ───────────────────────────────────────────────────────────────
--keep class * implements android.os.Parcelable {
-    public static final android.os.Parcelable$Creator *;
+-keep class dev.aether.manager.CimolAgent {
+    public static boolean tryLoad();
+    public static boolean isAvailable();
+    public static native int[] getCpuFreqsNow();
+    public static native int[] getCpuFreqMinMax();
+    public static native java.lang.String[] getCpuGovernors();
+    public static native int getCpuUsagePercent(int);
+    public static native int[] getThermalRaw();
+    public static native java.lang.String[] getThermalTypes();
+    public static native int getCpuTempMilliC();
+    public static native int getGpuTempMilliC();
+    public static native long[] getMemInfoKb();
+    public static native long[] getZramStats();
+    public static native long[] getBatteryStats();
+    public static native java.lang.String getBatteryStatus();
+    public static native java.lang.String[] getIoSchedulers();
+    public static native boolean setIoScheduler(java.lang.String, java.lang.String);
+    public static native long[] getKsmStats();
+    public static native long[] getProcessStats();
+    public static native java.lang.String getProcessName(int);
+    public static native int getGpuFreqNow();
+    public static native int getGpuBusyPercent();
+    public static native java.lang.String execWithTimeout(java.lang.String, int);
+    public static native boolean writeSysfs(java.lang.String, java.lang.String);
+    public static native java.lang.String readSysfs(java.lang.String);
 }
--keepnames class * implements android.os.Parcelable
 
-# ── Unity Ads ────────────────────────────────────────────────────────────────
--keep class com.unity3d.**   { *; }
--keep class com.unity3d.ads.** { *; }
+# Data class inside CimolAgent (dipakai via Kotlin, butuh field intact)
+-keepclassmembers class dev.aether.manager.CimolAgent$ThermalZone {
+    <fields>;
+    <init>(...);
+}
 
-# ── Native methods (JNI) — KRITIS untuk libprotect.so ────────────────────────
-# Pastikan semua method dengan prefix "native" tidak di-rename/strip
+# Rule umum untuk semua native method (safety net)
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
 
-# ── IntegrityGuard — jangan obfuscate nama class & native methods ─────────────
-# R8 harus bisa menemukan method yang di-export dari JNI dengan nama persis ini.
--keep class dev.aether.manager.security.IntegrityGuard {
-    private native java.lang.String nativeGetApkHash(android.content.Context);
-    private native boolean nativeIsHooked();
-    private native boolean nativeCheckIntegrity(android.content.Context, java.lang.String);
-    private native void nativeKillProcess(java.lang.String);
-    private native java.lang.String nativeGetPackageName();
+# static initializer — jangan strip System.loadLibrary()
+-keepclassmembers class * {
+    static <initializer>;
 }
 
-# ── Kotlin intrinsics (reduce size) ──────────────────────────────────────────
--assumenosideeffects class kotlin.jvm.internal.Intrinsics {
-    public static void check*(...);
-    public static void throw*(...);
-}
--assumenosideeffects class java.util.Objects {
-    ** requireNonNull(...);
-}
+# =============================================================================
+# KOTLIN
+# =============================================================================
 
-# ── Kotlin Coroutines ─────────────────────────────────────────────────────────
+# Metadata diperlukan untuk reflection dan serialization
+-keep class kotlin.Metadata { *; }
+
+# Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
--keepclassmembernames class kotlinx.** {
+-keepclassmembernames class kotlinx.coroutines.** {
     volatile <fields>;
 }
 
-# ── Room ──────────────────────────────────────────────────────────────────────
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
--keepclassmembers @androidx.room.Entity class * { *; }
+# Hapus null-check intrinsics untuk APK lebih kecil (aman di release)
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+    public static void check*(...);
+    public static void throw*(...);
+    public static void parameter*(...);
+}
 
-# ── OkHttp / Retrofit ────────────────────────────────────────────────────────
+# =============================================================================
+# KOTLINX SERIALIZATION
+# Dipakai di UpdateChecker untuk parse JSON GitHub API
+# =============================================================================
+
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep,includedescriptorclasses class **$$serializer { *; }
+-keep @kotlinx.serialization.Serializable class * { *; }
+-keepclassmembers @kotlinx.serialization.Serializable class * {
+    *** Companion;
+    kotlinx.serialization.KSerializer serializer(...);
+    <fields>;
+}
+
+# =============================================================================
+# JETPACK COMPOSE
+# R8 sudah handle Compose dengan baik — hanya strip source info debug
+# =============================================================================
+
+-assumenosideeffects class androidx.compose.runtime.ComposerKt {
+    void sourceInformation(...);
+    void sourceInformationMarkerStart(...);
+    void sourceInformationMarkerEnd(...);
+    boolean isTraceInProgress();
+    void traceEventStart(...);
+    void traceEventEnd();
+}
+
+# =============================================================================
+# OKHTTP — dipakai UpdateChecker & download APK
+# =============================================================================
+
 -dontwarn okhttp3.**
 -dontwarn okio.**
+-keep class okhttp3.internal.publicsuffix.PublicSuffixDatabase { *; }
+-keepnames class okhttp3.** { *; }
+
+# =============================================================================
+# KOTLINX SERIALIZATION JSON (dipakai langsung, bukan via Gson)
+# =============================================================================
+
+-dontwarn kotlinx.serialization.**
+
+# =============================================================================
+# RETROFIT — ada di dependencies, keep interface-nya
+# =============================================================================
+
 -dontwarn retrofit2.**
 -keep class retrofit2.** { *; }
 -keepclasseswithmembers class * {
     @retrofit2.http.* <methods>;
 }
 
-# ── Ktor ─────────────────────────────────────────────────────────────────────
--dontwarn io.ktor.**
+# =============================================================================
+# LIBSU — root shell, KRITIS untuk TweakApplier
+# =============================================================================
 
-# ── libsu ────────────────────────────────────────────────────────────────────
 -keep class com.topjohnwu.superuser.** { *; }
+-keepclassmembers class com.topjohnwu.superuser.** { *; }
 
-# ── MMKV ─────────────────────────────────────────────────────────────────────
+# =============================================================================
+# UNITY ADS — dipakai AdManager & InterstitialAdManager
+# =============================================================================
+
+-keep class com.unity3d.ads.** { *; }
+-keepclassmembers class com.unity3d.ads.** { *; }
+
+# =============================================================================
+# GOOGLE MOBILE ADS (AdMob) — dipakai AdMobInterstitialManager
+# =============================================================================
+
+-keep class com.google.android.gms.ads.** { *; }
+-dontwarn com.google.android.gms.ads.**
+-keep class com.google.ads.** { *; }
+
+# =============================================================================
+# MMKV — SharedPreferences pengganti
+# =============================================================================
+
 -keep class com.tencent.mmkv.** { *; }
+-keepclassmembers class com.tencent.mmkv.** { *; }
 
-# ── Lottie ───────────────────────────────────────────────────────────────────
+# =============================================================================
+# ROOM — database (ada di deps, meski belum banyak dipakai)
+# =============================================================================
+
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keepclassmembers @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao class * { *; }
+-dontwarn androidx.room.**
+
+# =============================================================================
+# LOTTIE — animasi
+# =============================================================================
+
 -keep class com.airbnb.lottie.** { *; }
+-dontwarn com.airbnb.lottie.**
 
-# ── Coil ─────────────────────────────────────────────────────────────────────
+# =============================================================================
+# COIL — image loading
+# =============================================================================
+
 -dontwarn coil.**
 
-# ── Kotlin serialization ──────────────────────────────────────────────────────
--keepattributes *Annotation*, InnerClasses
--dontnote kotlinx.serialization.AnnotationsKt
--keepclassmembers class kotlinx.serialization.json.** {
-    *** Companion;
+# =============================================================================
+# TIMBER — logging (strip di release)
+# =============================================================================
+
+-assumenosideeffects class timber.log.Timber {
+    public static *** v(...);
+    public static *** d(...);
+    public static *** i(...);
+    public static *** w(...);
+    public static *** e(...);
+    public static *** wtf(...);
 }
--keepclasseswithmembers class * {
-    @kotlinx.serialization.SerialName <fields>;
-    @kotlinx.serialization.Transient <fields>;
+-assumenosideeffects class timber.log.Timber$Tree {
+    public *** v(...);
+    public *** d(...);
+    public *** i(...);
+    public *** w(...);
+    public *** e(...);
 }
 
-# ── Suppress common warnings ──────────────────────────────────────────────────
+# =============================================================================
+# ANDROID LOG — strip di release
+# =============================================================================
+
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+    public static int e(...);
+    public static int wtf(...);
+}
+
+# =============================================================================
+# PARCELABLE
+# =============================================================================
+
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
+
+# =============================================================================
+# SERIALIZABLE
+# =============================================================================
+
+-keepclassmembers class * implements java.io.Serializable {
+    static final long serialVersionUID;
+    private void writeObject(java.io.ObjectOutputStream);
+    private void readObject(java.io.ObjectInputStream);
+    java.lang.Object writeReplace();
+    java.lang.Object readResolve();
+}
+
+# =============================================================================
+# ENUM — sering dipakai di kondisional Kotlin
+# =============================================================================
+
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+    public final ** name();
+    public final int ordinal();
+}
+
+# =============================================================================
+# SUPPRESS COMMON WARNINGS — library yang tidak perlu warning
+# =============================================================================
+
 -dontwarn java.lang.invoke.**
--dontwarn **$$Lambda$*
 -dontwarn javax.annotation.**
+-dontwarn sun.misc.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.conscrypt.**
+-dontwarn org.openjsse.**
+-dontwarn **$$Lambda$*
+-dontwarn io.ktor.**
+
+# =============================================================================
+# OBFUSCATION DICTIONARY
+# =============================================================================
+
+-obfuscationdictionary      proguard-dictionary.txt
+-classobfuscationdictionary proguard-dictionary.txt
+-packageobfuscationdictionary proguard-dictionary.txt
