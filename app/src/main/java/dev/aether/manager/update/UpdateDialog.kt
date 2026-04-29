@@ -54,7 +54,6 @@ fun UpdateDialogHost(viewModel: UpdateViewModel) {
         onDismiss      = { viewModel.dismiss() },
     )
 }
-}
 
 // ─────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────
