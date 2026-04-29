@@ -114,11 +114,11 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     val updateState by updateVm.state.collectAsState()
     LaunchedEffect(updateState) {
         val state = updateState
-        if (state is dev.aether.manager.update.UpdateUiState.UpdateAvailable) {
+        if (state is dev.aether.manager.update.UpdateState.Available) {
             dev.aether.manager.notification.NotificationHelper.showUpdateAvailable(
                 context      = context,
-                versionName  = state.info.latestVersion,
-                releaseNotes = state.info.releaseNotes
+                versionName  = state.info.versionName,
+                releaseNotes = state.info.changelog
             )
         }
     }

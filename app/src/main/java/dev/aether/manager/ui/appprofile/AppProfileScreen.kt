@@ -493,7 +493,7 @@ private fun AppListItem(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                AnimatedVisibility(
+                androidx.compose.animation.AnimatedVisibility(
                     visible = isEnabled,
                     enter   = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(),
                     exit    = scaleOut(tween(150)) + fadeOut()

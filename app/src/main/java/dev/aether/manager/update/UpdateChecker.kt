@@ -8,27 +8,44 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
-/**
- * Data class hasil parse dari GitHub Releases API.
- *
- * GitHub tag format kita: "v2.6" atau "v2.6-beta" dsb.
- * versionCode di-embed di body release dengan format:
- *   versionCode: 260
- * (kalau tidak ada, fallback parse dari tag: "v2.6" → 260)
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Data classes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Data mentah dari GitHub Releases API */
 data class ReleaseInfo(
-    val versionName: String,   // e.g. "2.6"
-    val versionCode: Int,      // e.g. 260
-    val tagName: String,       // e.g. "v2.6"
-    val downloadUrl: String,   // URL APK asset
-    val changelog: String,     // body release (markdown)
-    val htmlUrl: String,       // URL halaman release di browser
+    val versionName: String,
+    val versionCode: Int,
+    val tagName:     String,
+    val downloadUrl: String,
+    val changelog:   String,
+    val htmlUrl:     String,
     val isPreRelease: Boolean,
 )
 
+/** Flat info untuk notifikasi & MainActivity */
+data class UpdateInfo(
+    val latestVersion: String,
+    val versionCode:   Int,
+    val releaseNotes:  String,
+    val downloadUrl:   String,
+    val htmlUrl:       String,
+)
+
+/** Hasil dari check() — dipakai UpdateNotificationHelper */
+sealed class UpdateResult {
+    data class UpdateAvailable(val info: UpdateInfo) : UpdateResult()
+    object UpToDate                                  : UpdateResult()
+    data class Error(val msg: String)                : UpdateResult()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UpdateChecker
+// ─────────────────────────────────────────────────────────────────────────────
+
 object UpdateChecker {
 
-    private const val TAG = "UpdateChecker"
+    private const val TAG  = "UpdateChecker"
     private const val REPO = "aetherdev01/aether-manager"
     private const val API  = "https://api.github.com/repos/$REPO/releases/latest"
 
@@ -39,10 +56,7 @@ object UpdateChecker {
             .build()
     }
 
-    /**
-     * Fetch release terbaru dari GitHub Releases API.
-     * Return null kalau gagal (no internet, 404, parse error, dll).
-     */
+    /** Fetch & return ReleaseInfo mentah. Return null kalau gagal. */
     suspend fun fetchLatest(): ReleaseInfo? = withContext(Dispatchers.IO) {
         try {
             val req = Request.Builder()
@@ -65,6 +79,27 @@ object UpdateChecker {
         }
     }
 
+    /**
+     * Higher-level API: fetch + compare dengan [installedVersionCode].
+     * Dipakai UpdateNotificationHelper.
+     */
+    suspend fun check(installedVersionCode: Int): UpdateResult = withContext(Dispatchers.IO) {
+        val release = fetchLatest()
+        when {
+            release == null -> UpdateResult.Error("Gagal fetch release")
+            release.versionCode > installedVersionCode -> UpdateResult.UpdateAvailable(
+                UpdateInfo(
+                    latestVersion = release.versionName,
+                    versionCode   = release.versionCode,
+                    releaseNotes  = release.changelog,
+                    downloadUrl   = release.downloadUrl,
+                    htmlUrl       = release.htmlUrl,
+                )
+            )
+            else -> UpdateResult.UpToDate
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun parseRelease(json: String): ReleaseInfo? = try {
@@ -74,62 +109,39 @@ object UpdateChecker {
         val htmlUrl    = obj["html_url"]?.jsonPrimitive?.content ?: ""
         val preRelease = obj["prerelease"]?.jsonPrimitive?.boolean ?: false
 
-        // ── Parse versionName dari tag ────────────────────────────────────
-        // tag: "v2.6" / "v2.6.1" / "v2.6-beta"
-        val versionName = tagName
-            .removePrefix("v")
-            .split("-").first()          // buang suffix "-beta", "-rc" dll
-            .trim()
+        // strip "v" prefix dan suffix "-beta" dll
+        val versionName = tagName.removePrefix("v").split("-").first().trim()
 
-        // ── Parse versionCode ─────────────────────────────────────────────
-        // Prioritas 1: cari "versionCode: 260" di body release
-        // Prioritas 2: konversi dari versionName ("2.6" → 260, "2.6.1" → 261)
         val versionCode = extractVersionCode(body)
             ?: versionNameToCode(versionName)
             ?: return null
 
-        // ── Cari APK asset ────────────────────────────────────────────────
         val assets     = obj["assets"]?.jsonArray ?: JsonArray(emptyList())
-        val apkAsset   = assets
-            .map { it.jsonObject }
-            .firstOrNull { asset ->
-                val name = asset["name"]?.jsonPrimitive?.contentOrNull ?: ""
-                name.endsWith(".apk", ignoreCase = true)
-            }
+        val apkAsset   = assets.map { it.jsonObject }
+            .firstOrNull { it["name"]?.jsonPrimitive?.contentOrNull?.endsWith(".apk", ignoreCase = true) == true }
         val downloadUrl = apkAsset?.get("browser_download_url")?.jsonPrimitive?.content ?: htmlUrl
 
         ReleaseInfo(
-            versionName  = versionName,
-            versionCode  = versionCode,
-            tagName      = tagName,
-            downloadUrl  = downloadUrl,
-            changelog    = body,
-            htmlUrl      = htmlUrl,
-            isPreRelease = preRelease,
+            versionName   = versionName,
+            versionCode   = versionCode,
+            tagName       = tagName,
+            downloadUrl   = downloadUrl,
+            changelog     = body,
+            htmlUrl       = htmlUrl,
+            isPreRelease  = preRelease,
         )
     } catch (e: Exception) {
         Log.e(TAG, "parseRelease failed", e)
         null
     }
 
-    /**
-     * Cari "versionCode: 260" atau "versionCode=260" di body release.
-     * Case-insensitive, whitespace-tolerant.
-     */
+    /** Cari "versionCode: 260" di body release */
     private fun extractVersionCode(body: String): Int? {
         val regex = Regex("""versionCode\s*[=:]\s*(\d+)""", RegexOption.IGNORE_CASE)
         return regex.find(body)?.groupValues?.get(1)?.toIntOrNull()
     }
 
-    /**
-     * Fallback: konversi versionName ke versionCode.
-     *
-     * "2.6"   → 260
-     * "2.6.1" → 261
-     * "2.10"  → 2100  (major*1000 + minor*10 + patch)
-     *
-     * Rumus: major * 1000 + minor * 10 + patch
-     */
+    /** "2.6" → 260, "2.6.1" → 261 */
     private fun versionNameToCode(name: String): Int? = try {
         val parts = name.split(".")
         val major = parts.getOrNull(0)?.toIntOrNull() ?: return null

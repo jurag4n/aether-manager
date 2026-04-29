@@ -278,7 +278,7 @@ fun TweakScreen(vm: MainViewModel) {
                 )
                 TweakDivider()
                 TweakToggleRow(
-                    icon      = Icons.Outlined.DnsOutlined,
+                    icon      = Icons.Outlined.Dns,
                     title     = s.tweakDoh,
                     subtitle  = s.tweakDohDesc,
                     checked   = tweaks.doh,
