@@ -82,7 +82,7 @@
 
 # static initializer — jangan strip System.loadLibrary()
 -keepclassmembers class * {
-    static <initializer>;
+    static {};
 }
 
 # =============================================================================
