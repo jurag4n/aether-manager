@@ -2,8 +2,11 @@ package dev.aether.manager.ui.home
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,10 +36,6 @@ import dev.aether.manager.update.UpdateViewModel
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Root Screen
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 fun HomeScreen(vm: MainViewModel) {
     val s            = LocalStrings.current
@@ -44,7 +43,6 @@ fun HomeScreen(vm: MainViewModel) {
     val monitorState by vm.monitorState.collectAsState()
     val scroll       = rememberScrollState()
 
-    // ── Update checker ───────────────────────────────────────────────────────
     val updateVm: UpdateViewModel = viewModel()
     LaunchedEffect(Unit) { updateVm.checkUpdate() }
     UpdateDialogHost(viewModel = updateVm)
@@ -54,10 +52,9 @@ fun HomeScreen(vm: MainViewModel) {
             .fillMaxSize()
             .verticalScroll(scroll)
             .padding(horizontal = 16.dp)
-            .padding(top = 12.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .padding(top = 20.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // ── Device Card ──────────────────────────────────────────────
         AnimatedContent(
             targetState    = deviceState,
             transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(150)) },
@@ -70,7 +67,6 @@ fun HomeScreen(vm: MainViewModel) {
             }
         }
 
-        // ── Bootloop Banner ──────────────────────────────────────────
         AnimatedVisibility(
             visible = (deviceState as? UiState.Success)?.data?.bootCount?.let { it >= 2 } == true,
             enter   = fadeIn(tween(300)) + expandVertically(),
@@ -80,22 +76,17 @@ fun HomeScreen(vm: MainViewModel) {
             if (info != null) BootloopBanner(info, vm)
         }
 
-        // ── Real-time Monitor ────────────────────────────────────────
         AnimatedVisibility(
             visible = deviceState is UiState.Success,
             enter   = fadeIn(tween(400, 100)) + slideInVertically { 24 }
         ) {
             MonitorSection(
-                state  = monitorState,
+                state     = monitorState,
                 onRefresh = { vm.refreshMonitor() }
             )
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Section Title — shared across tabs
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun TabSectionTitle(
@@ -110,73 +101,64 @@ fun TabSectionTitle(
     ) {
         Row(
             verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 icon, null,
                 tint     = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
             Text(
                 title,
-                style      = MaterialTheme.typography.titleMedium,
+                style      = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color      = MaterialTheme.colorScheme.onSurface
+                color      = MaterialTheme.colorScheme.onSurface,
+                letterSpacing = 0.1.sp
             )
         }
         trailing?.invoke()
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hero Device Card
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun HeroCard(info: DeviceInfo) {
     val s = LocalStrings.current
 
-    ElevatedCard(
-        shape  = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(
+    Card(
+        shape  = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier            = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            // Header row: device name + SOC badge
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
+                verticalAlignment     = Alignment.Top
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         info.model,
-                        style      = MaterialTheme.typography.titleLarge,
+                        style      = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color      = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
                         "Android ${info.android}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f)
                     )
                 }
                 SocBadge(info.soc)
             }
 
-            HorizontalDivider(
-                color     = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
-                thickness = 0.5.dp
-            )
-
-            // Info chips grid
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -199,34 +181,29 @@ private fun HeroCard(info: DeviceInfo) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Monitor Section
-// ─────────────────────────────────────────────────────────────────────────────
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MonitorSection(state: MonitorState, onRefresh: () -> Unit) {
     val s = LocalStrings.current
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Section header
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         TabSectionTitle(
             icon     = Icons.Outlined.Analytics,
             title    = s.homeMonitor,
             trailing = {
                 IconButton(
                     onClick  = onRefresh,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         Icons.Outlined.Refresh, null,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         tint     = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         )
 
-        // Gauge row: CPU / GPU / Battery
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -243,39 +220,41 @@ private fun MonitorSection(state: MonitorState, onRefresh: () -> Unit) {
             }
 
             ArcGaugeCard(
-                label   = "CPU",
-                value   = state.cpuUsage,
-                subText = state.cpuFreq.ifBlank { "— MHz" },
-                color   = MaterialTheme.colorScheme.primary,
-                icon    = Icons.Outlined.Memory,
+                label    = "CPU",
+                value    = state.cpuUsage,
+                subText  = state.cpuFreq.ifBlank { "— MHz" },
+                color    = MaterialTheme.colorScheme.primary,
+                icon     = Icons.Outlined.Memory,
                 modifier = Modifier.weight(1f)
             )
             ArcGaugeCard(
-                label   = "GPU",
-                value   = state.gpuUsage,
-                subText = state.gpuFreq.ifBlank { "— MHz" },
-                color   = MaterialTheme.colorScheme.tertiary,
-                icon    = Icons.Outlined.GridView,
+                label    = "GPU",
+                value    = state.gpuUsage,
+                subText  = state.gpuFreq.ifBlank { "— MHz" },
+                color    = MaterialTheme.colorScheme.tertiary,
+                icon     = Icons.Outlined.GridView,
                 modifier = Modifier.weight(1f)
             )
             ArcGaugeCard(
-                label        = s.homeBatStatusLabel,
-                value        = state.batLevel,
-                subText      = if (state.batTemp > 0f) "%.1f°C".format(state.batTemp) else "—",
-                color        = batColor,
-                icon         = batIcon,
-                modifier     = Modifier.weight(1f),
-                invertColor  = true
+                label       = s.homeBatStatusLabel,
+                value       = state.batLevel,
+                subText     = if (state.batTemp > 0f) "%.1f°C".format(state.batTemp) else "—",
+                color       = batColor,
+                icon        = batIcon,
+                modifier    = Modifier.weight(1f),
+                invertColor = true
             )
         }
 
-        // Detail card: RAM, Storage, Temp, Battery, Governor
+        TemperatureSwipeCard(state = state)
+
         Card(
             shape  = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier  = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column {
                 RamRow(state.ramUsedMb, state.ramTotalMb)
@@ -286,8 +265,6 @@ private fun MonitorSection(state: MonitorState, onRefresh: () -> Unit) {
                     SwapRow(state.swapUsedMb, state.swapTotalMb)
                 }
                 MonDivider()
-                TempRow(state.cpuTemp, state.batTemp)
-                MonDivider()
                 BatteryCurrentRow(state.batCurrentMa, state.batVoltage, state.batStatus)
                 MonDivider()
                 GovernorUptimeRow(state.cpuGovernor, state.uptime)
@@ -296,9 +273,186 @@ private fun MonitorSection(state: MonitorState, onRefresh: () -> Unit) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// InfoChip
-// ─────────────────────────────────────────────────────────────────────────────
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TemperatureSwipeCard(state: MonitorState) {
+    val s = LocalStrings.current
+
+    data class TempPage(
+        val label: String,
+        val icon: ImageVector,
+        val temp: Float,
+        val color: Color,
+        val hotThreshold: Float = 60f
+    )
+
+    val pages = listOf(
+        TempPage("CPU", Icons.Outlined.Memory, state.cpuTemp, Color(0xFF1B74E8), 70f),
+        TempPage("GPU", Icons.Outlined.GridView, state.gpuTemp, Color(0xFF7C4DFF), 75f),
+        TempPage("Thermal", Icons.Outlined.Thermostat, state.thermalTemp, Color(0xFFE67E22), 55f),
+        TempPage("Battery", Icons.Outlined.BatteryFull, state.batTemp, Color(0xFF2ECC71), 40f),
+    )
+
+    val pagerState = rememberPagerState { pages.size }
+
+    Card(
+        shape     = RoundedCornerShape(20.dp),
+        colors    = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier  = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(top = 16.dp, bottom = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.DeviceThermostat, null,
+                    tint     = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    "Temperature",
+                    style      = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "${pagerState.currentPage + 1} / ${pages.size}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            HorizontalPager(
+                state    = pagerState,
+                modifier = Modifier.fillMaxWidth()
+            ) { page ->
+                val item      = pages[page]
+                val isHot     = item.temp > item.hotThreshold
+                val accentCol = if (isHot) MaterialTheme.colorScheme.error else item.color
+                val animTemp  by animateFloatAsState(
+                    item.temp.coerceAtLeast(0f),
+                    tween(600, easing = FastOutSlowInEasing),
+                    label = "temp_anim_$page"
+                )
+
+                Row(
+                    modifier              = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier         = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(accentCol.copy(alpha = 0.10f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            item.icon, null,
+                            tint     = accentCol,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            item.label,
+                            style  = MaterialTheme.typography.labelMedium,
+                            color  = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            if (item.temp > 0f) "%.1f°C".format(animTemp) else "—",
+                            fontSize   = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = accentCol
+                        )
+                        if (isHot) {
+                            Text(
+                                "Suhu tinggi",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.weight(1f))
+
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val pct = if (item.hotThreshold > 0f)
+                            (item.temp / (item.hotThreshold * 1.3f)).coerceIn(0f, 1f)
+                        else 0f
+                        val animPct by animateFloatAsState(pct, tween(800), label = "pct_$page")
+
+                        Box(
+                            modifier = Modifier
+                                .width(80.dp)
+                                .height(6.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(animPct)
+                                    .fillMaxHeight()
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(accentCol.copy(0.5f), accentCol)
+                                        )
+                                    )
+                            )
+                        }
+                        Text(
+                            "Max ${item.hotThreshold.toInt()}°C",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                repeat(pages.size) { i ->
+                    val isSelected = pagerState.currentPage == i
+                    val width by animateDpAsState(
+                        if (isSelected) 20.dp else 6.dp,
+                        spring(Spring.DampingRatioMediumBouncy),
+                        label = "dot_$i"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 3.dp)
+                            .height(6.dp)
+                            .width(width)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outlineVariant
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun InfoChip(
@@ -308,8 +462,8 @@ private fun InfoChip(
     val tint = if (highlight) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer
 
     Surface(
-        shape  = RoundedCornerShape(14.dp),
-        color  = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.08f),
+        shape    = RoundedCornerShape(14.dp),
+        color    = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.08f),
         modifier = modifier
     ) {
         Row(
@@ -321,8 +475,8 @@ private fun InfoChip(
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     label,
-                    fontSize  = 10.sp,
-                    color     = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                    fontSize   = 10.sp,
+                    color      = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
                     lineHeight = 12.sp
                 )
                 Text(
@@ -339,15 +493,11 @@ private fun InfoChip(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SocBadge
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun SocBadge(soc: SocType) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
+        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)
     ) {
         Text(
             soc.label,
@@ -358,10 +508,6 @@ private fun SocBadge(soc: SocType) {
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Arc Gauge Card
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ArcGaugeCard(
@@ -381,11 +527,12 @@ private fun ArcGaugeCard(
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
 
     Card(
-        modifier = modifier,
-        shape    = RoundedCornerShape(20.dp),
-        colors   = CardDefaults.cardColors(
+        modifier  = modifier,
+        shape     = RoundedCornerShape(20.dp),
+        colors    = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier            = Modifier.padding(10.dp),
@@ -444,10 +591,6 @@ private fun ArcGaugeCard(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Monitor Detail Rows
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun MonDivider() = HorizontalDivider(
@@ -562,66 +705,6 @@ private fun SwapRow(usedMb: Long, totalMb: Long) {
         pct, "${(pct * 100).toInt()}%",
         MaterialTheme.colorScheme.tertiary
     )
-}
-
-@Composable
-private fun TempRow(cpuTemp: Float, batTemp: Float) {
-    val s   = LocalStrings.current
-    val hot = cpuTemp > 60f
-    val col = if (hot) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
-
-    Row(
-        modifier              = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier         = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(col.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Outlined.Thermostat, null, tint = col, modifier = Modifier.size(18.dp))
-        }
-        Row(
-            modifier              = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    s.homeTempCpu,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    if (cpuTemp > 0f) "%.1f°C".format(cpuTemp) else "—",
-                    fontWeight = FontWeight.Bold,
-                    fontSize   = 14.sp,
-                    color      = col
-                )
-            }
-            Column(
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                Text(
-                    s.homeTempBat,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    if (batTemp > 0f) "%.1f°C".format(batTemp) else "—",
-                    fontWeight = FontWeight.Bold,
-                    fontSize   = 14.sp,
-                    color      = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
 }
 
 @Composable
@@ -773,31 +856,27 @@ private fun GovernorUptimeRow(governor: String, uptime: String) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Skeleton & Error states
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun HeroSkeleton() {
-    ElevatedCard(
-        shape  = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(
+    Card(
+        shape     = RoundedCornerShape(28.dp),
+        colors    = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
-        modifier = Modifier.fillMaxWidth()
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier  = Modifier.fillMaxWidth()
     ) {
         Column(
             Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SkeletonBox(width = 160.dp, height = 22.dp, cornerRadius = 11.dp)
+                    SkeletonBox(width = 160.dp, height = 24.dp, cornerRadius = 12.dp)
                     SkeletonBox(width = 80.dp, height = 14.dp, cornerRadius = 7.dp)
                 }
-                SkeletonBox(width = 70.dp, height = 26.dp, cornerRadius = 13.dp)
+                SkeletonBox(width = 70.dp, height = 28.dp, cornerRadius = 14.dp)
             }
-            SkeletonBox(modifier = Modifier.fillMaxWidth(), height = 1.dp, cornerRadius = 0.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 repeat(2) { SkeletonBox(Modifier.weight(1f), height = 52.dp, cornerRadius = 14.dp) }
             }
@@ -809,11 +888,12 @@ private fun HeroSkeleton() {
 private fun HeroError(msg: String, onRetry: () -> Unit) {
     val s = LocalStrings.current
     Card(
-        shape  = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
+        shape     = RoundedCornerShape(28.dp),
+        colors    = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer
         ),
-        modifier = Modifier.fillMaxWidth()
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier  = Modifier.fillMaxWidth()
     ) {
         Column(
             Modifier.padding(24.dp),
@@ -827,8 +907,8 @@ private fun HeroError(msg: String, onRetry: () -> Unit) {
             )
             Text(
                 msg,
-                style  = MaterialTheme.typography.bodyMedium,
-                color  = MaterialTheme.colorScheme.onErrorContainer
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
             )
             FilledTonalButton(
                 onClick = onRetry,
@@ -848,10 +928,11 @@ private fun HeroError(msg: String, onRetry: () -> Unit) {
 @Composable
 private fun BootloopBanner(info: DeviceInfo, vm: MainViewModel) {
     Card(
-        shape  = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier              = Modifier

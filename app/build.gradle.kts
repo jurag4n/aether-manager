@@ -84,7 +84,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            multiDexEnabled = false
+            isDebuggable = false
+            isJniDebuggable = false
+            isPseudoLocalesEnabled = false
+            isCrunchPngs = true
         }
         debug {
             isMinifyEnabled = false
@@ -138,7 +141,8 @@ android {
         }
         // Pastikan libprotect.so tidak di-compress (agar bisa langsung di-mmap)
         jniLibs {
-            useLegacyPackaging = false
+            excludes += listOf("**/armeabi-v7a/**", "**/armeabi/**", "**/arm64-v8a/**")
+            useLegacyPackaging = true
         }
     }
 }

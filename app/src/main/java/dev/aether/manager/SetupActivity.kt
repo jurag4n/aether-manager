@@ -766,13 +766,13 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                             if (isUsageStatsGranted(ctx)) {
                                                 usageState = PermState.GRANTED
                                             } else {
+                                                // FIX: Jangan pakai Uri.parse("package:...") — di MIUI/HyperOS
+                                                // ACTION_USAGE_ACCESS_SETTINGS + URI package diblokir
+                                                // "Dikontrol oleh Setelan Terbatas". Buka halaman umum saja,
+                                                // launcher result akan re-check via isUsageStatsGranted().
                                                 usageLauncher.launch(
-                                                    Intent(
-                                                        Settings.ACTION_USAGE_ACCESS_SETTINGS,
-                                                        Uri.parse("package:${ctx.packageName}")
-                                                    ).apply {
-                                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                    }
+                                                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                                 )
                                             }
                                         }
@@ -792,6 +792,18 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                 }
 
                 // ── Bottom controls ──────────────────────────────────────
+                // FIX: btnScale dipindah ke sini (bukan di dalam Column) agar
+                // tidak di-recreate saat recompose, mencegah animasi kaku saat back
+                val btnScale = remember { Animatable(1f) }
+                LaunchedEffect(canProceed) {
+                    if (canProceed) {
+                        btnScale.animateTo(1.04f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
+                        btnScale.animateTo(1f, tween(130))
+                    } else {
+                        // Reset scale saat tidak bisa lanjut (misal: kembali ke halaman izin)
+                        btnScale.snapTo(1f)
+                    }
+                }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -800,14 +812,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                         .padding(bottom = 36.dp)
                 ) {
                     PagerDotIndicator(total = totalPages, current = currentPage)
-
-                    val btnScale = remember { Animatable(1f) }
-                    LaunchedEffect(canProceed) {
-                        if (canProceed) {
-                            btnScale.animateTo(1.04f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
-                            btnScale.animateTo(1f, tween(130))
-                        }
-                    }
 
                     Button(
                         onClick = {
