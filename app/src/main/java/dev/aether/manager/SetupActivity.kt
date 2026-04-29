@@ -759,9 +759,15 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                             if (isUsageStatsGranted(ctx)) {
                                                 usageState = PermState.GRANTED
                                             } else {
-                                                usageLauncher.launch(
+                                                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                                    Intent(
+                                                        Settings.ACTION_USAGE_ACCESS_SETTINGS,
+                                                        Uri.parse("package:${ctx.packageName}")
+                                                    )
+                                                } else {
                                                     Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                                                )
+                                                }
+                                                usageLauncher.launch(intent)
                                             }
                                         }
                                         // FIX: buka Accessibility Settings via launcher
