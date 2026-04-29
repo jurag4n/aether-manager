@@ -80,10 +80,8 @@
     native <methods>;
 }
 
-# static initializer — jangan strip System.loadLibrary()
--keepclassmembers class * {
-    static {};
-}
+# static initializer dijaga otomatis karena class NativeAether & CimolAgent
+# sudah di-keep penuh via rule explicit di atas.
 
 # =============================================================================
 # KOTLIN
