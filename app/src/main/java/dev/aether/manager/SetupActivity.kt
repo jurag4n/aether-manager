@@ -460,6 +460,10 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
         ActivityResultContracts.RequestPermission()
     ) { granted -> notifState = if (granted) PermState.GRANTED else PermState.DENIED }
 
+    val storageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> storState = if (granted) PermState.GRANTED else PermState.DENIED }
+
     val writeSettingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
@@ -735,15 +739,18 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                             }
                                         }
                                         "STORAGE" -> {
-                                            storState =
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                                    PermState.GRANTED
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                                storState = PermState.GRANTED
+                                            } else {
+                                                val ok = ContextCompat.checkSelfPermission(
+                                                    ctx, Manifest.permission.READ_EXTERNAL_STORAGE
+                                                ) == PackageManager.PERMISSION_GRANTED
+                                                if (ok) {
+                                                    storState = PermState.GRANTED
                                                 } else {
-                                                    val ok = ContextCompat.checkSelfPermission(
-                                                        ctx, Manifest.permission.READ_EXTERNAL_STORAGE
-                                                    ) == PackageManager.PERMISSION_GRANTED
-                                                    if (ok) PermState.GRANTED else PermState.DENIED
+                                                    storageLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
                                                 }
+                                            }
                                         }
                                         "BATTERY" -> {
                                             if (isBatteryOptimizationIgnored(ctx)) {
@@ -759,15 +766,14 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                             if (isUsageStatsGranted(ctx)) {
                                                 usageState = PermState.GRANTED
                                             } else {
-                                                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                                usageLauncher.launch(
                                                     Intent(
                                                         Settings.ACTION_USAGE_ACCESS_SETTINGS,
                                                         Uri.parse("package:${ctx.packageName}")
-                                                    )
-                                                } else {
-                                                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                                                }
-                                                usageLauncher.launch(intent)
+                                                    ).apply {
+                                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                    }
+                                                )
                                             }
                                         }
                                         // FIX: buka Accessibility Settings via launcher
@@ -845,12 +851,21 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                         enter   = fadeIn(tween(200)) + slideInVertically { it / 2 },
                         exit    = fadeOut(tween(160)) + slideOutVertically { it / 2 }
                     ) {
+                        val pendingPerms = buildList {
+                            if (!rootOk) add("Akses Root (wajib)")
+                            if (notifState == PermState.IDLE) add("Notifikasi")
+                            if (batteryState == PermState.IDLE) add("Jangan Batasi Baterai")
+                            if (usageState == PermState.IDLE) add("Akses Penggunaan")
+                            if (writeState == PermState.IDLE) add("Ubah Pengaturan Sistem")
+                            if (includeStorage && storState == PermState.IDLE) add("Penyimpanan")
+                        }
                         Text(
                             if (!rootOk) s.setupRootRequired
-                            else "Ketuk setiap kartu izin untuk melanjutkan",
+                            else "Ketuk untuk memutuskan: ${pendingPerms.joinToString(", ")}",
                             color     = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
                             fontSize  = 12.sp,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            lineHeight = 17.sp
                         )
                     }
 
