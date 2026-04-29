@@ -16,12 +16,20 @@ object NativeAether {
     }
 
     external fun nativeCheckSignature(sigHashHex: String): Boolean
+
     external fun nativeCheckAntiPatch(ctx: android.content.Context): Boolean
+
     external fun nativeCheckUnityIntact(): Boolean
+
     external fun nativeCheckAll(ctx: android.content.Context): Boolean
+
     external fun nativeKillProcess()
+
     external fun nativeGetGameId(): String
+
     external fun nativeGetGithubApi(): String
+
     external fun nativeGetAdblockDnsKeywords(): Array<String>
+
     external fun nativeGetHostsSignatures(): Array<String>
 }

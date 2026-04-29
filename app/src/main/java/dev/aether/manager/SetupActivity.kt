@@ -52,6 +52,8 @@ import dev.aether.manager.i18n.ProvideStrings
 import dev.aether.manager.ui.AetherTheme
 import dev.aether.manager.util.RootManager
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.util.lerp
 
 class SetupActivity : ComponentActivity() {
@@ -137,6 +139,14 @@ private fun isUsageStatsGranted(ctx: Context): Boolean {
             )
         }
         mode == AppOpsManager.MODE_ALLOWED
+    } catch (e: Exception) { false }
+}
+
+private fun grantUsageStatsViaRoot(pkg: String): Boolean {
+    return try {
+        val proc = Runtime.getRuntime().exec(arrayOf("su", "-c",
+            "appops set $pkg GET_USAGE_STATS allow"))
+        proc.waitFor() == 0
     } catch (e: Exception) { false }
 }
 
@@ -578,8 +588,18 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val pagerState  = rememberPagerState { totalPages }
     val currentPage = pagerState.currentPage
 
-    fun nextPage() = scope.launch { pagerState.animateScrollToPage(currentPage + 1) }
-    fun prevPage() = scope.launch { pagerState.animateScrollToPage(currentPage - 1) }
+    fun nextPage() = scope.launch {
+        pagerState.animateScrollToPage(
+            currentPage + 1,
+            animationSpec = tween(380, easing = FastOutSlowInEasing)
+        )
+    }
+    fun prevPage() = scope.launch {
+        pagerState.animateScrollToPage(
+            currentPage - 1,
+            animationSpec = tween(340, easing = FastOutSlowInEasing)
+        )
+    }
 
     // FIX: page 1 (izin) tidak bisa lanjut sampai root granted + semua perm diputuskan
     val canProceed = when (currentPage) {
@@ -766,14 +786,25 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                             if (isUsageStatsGranted(ctx)) {
                                                 usageState = PermState.GRANTED
                                             } else {
-                                                // FIX: Jangan pakai Uri.parse("package:...") — di MIUI/HyperOS
-                                                // ACTION_USAGE_ACCESS_SETTINGS + URI package diblokir
-                                                // "Dikontrol oleh Setelan Terbatas". Buka halaman umum saja,
-                                                // launcher result akan re-check via isUsageStatsGranted().
-                                                usageLauncher.launch(
-                                                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                )
+                                                usageState = PermState.CHECKING
+                                                scope.launch(Dispatchers.IO) {
+                                                    val granted = grantUsageStatsViaRoot(ctx.packageName)
+                                                    withContext(Dispatchers.Main) {
+                                                        if (granted && isUsageStatsGranted(ctx)) {
+                                                            usageState = PermState.GRANTED
+                                                        } else {
+                                                            usageState = PermState.IDLE
+                                                            usageLauncher.launch(
+                                                                Intent(
+                                                                    Settings.ACTION_USAGE_ACCESS_SETTINGS,
+                                                                    Uri.parse("package:${ctx.packageName}")
+                                                                ).apply {
+                                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                                }
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                         // FIX: buka Accessibility Settings via launcher
@@ -792,18 +823,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                 }
 
                 // ── Bottom controls ──────────────────────────────────────
-                // FIX: btnScale dipindah ke sini (bukan di dalam Column) agar
-                // tidak di-recreate saat recompose, mencegah animasi kaku saat back
-                val btnScale = remember { Animatable(1f) }
-                LaunchedEffect(canProceed) {
-                    if (canProceed) {
-                        btnScale.animateTo(1.04f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
-                        btnScale.animateTo(1f, tween(130))
-                    } else {
-                        // Reset scale saat tidak bisa lanjut (misal: kembali ke halaman izin)
-                        btnScale.snapTo(1f)
-                    }
-                }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -812,6 +831,14 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                         .padding(bottom = 36.dp)
                 ) {
                     PagerDotIndicator(total = totalPages, current = currentPage)
+
+                    val btnScale = remember { Animatable(1f) }
+                    LaunchedEffect(canProceed) {
+                        if (canProceed) {
+                            btnScale.animateTo(1.04f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
+                            btnScale.animateTo(1f, tween(130))
+                        }
+                    }
 
                     Button(
                         onClick = {
@@ -875,11 +902,22 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 
                     AnimatedVisibility(
                         visible = currentPage > 0,
-                        enter   = fadeIn() + slideInHorizontally { -it / 2 },
-                        exit    = fadeOut() + slideOutHorizontally { -it / 2 }
+                        enter   = fadeIn(tween(220)) + slideInVertically { it / 2 },
+                        exit    = fadeOut(tween(180)) + slideOutVertically { it / 2 }
                     ) {
-                        TextButton(onClick = { prevPage() }) {
-                            Icon(Icons.Outlined.ChevronLeft, null, modifier = Modifier.size(16.dp))
+                        val backScale = remember { Animatable(1f) }
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    backScale.animateTo(0.93f, tween(50))
+                                    backScale.animateTo(1f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
+                                }
+                                prevPage()
+                            },
+                            modifier = Modifier.scale(backScale.value)
+                        ) {
+                            Icon(Icons.Outlined.ChevronLeft, null, modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.width(4.dp))
                             Text(s.setupBtnBack, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
