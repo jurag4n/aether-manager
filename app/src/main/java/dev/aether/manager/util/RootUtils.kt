@@ -278,22 +278,22 @@ object RootUtils {
 
                 gpu_temp=-1
                 for _gkw in gpu adreno-lowf gpuss mali; do
-                  for _zi in $(seq 0 49); do
-                    _tp="/sys/class/thermal/thermal_zone${_zi}/type"
-                    _tv="/sys/class/thermal/thermal_zone${_zi}/temp"
-                    [ -f "$_tp" ] && [ -f "$_tv" ] || continue
-                    _t=$(cat "$_tp" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                    case "$_t" in *"$_gkw"*) gpu_temp=$(cat "$_tv" 2>/dev/null || echo -1); break 2;; esac
+                  for _zi in ${'$'}(seq 0 49); do
+                    _tp="/sys/class/thermal/thermal_zone${'$'}{_zi}/type"
+                    _tv="/sys/class/thermal/thermal_zone${'$'}{_zi}/temp"
+                    [ -f "${'$'}_tp" ] && [ -f "${'$'}_tv" ] || continue
+                    _t=${'$'}(cat "${'$'}_tp" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                    case "${'$'}_t" in *"${'$'}_gkw"*) gpu_temp=${'$'}(cat "${'$'}_tv" 2>/dev/null || echo -1); break 2;; esac
                   done
                 done
-                echo gpu_temp=$gpu_temp
+                echo gpu_temp=${'$'}gpu_temp
 
                 thermal_temp=-1
                 for _tzone in /sys/class/thermal/thermal_zone*/temp; do
-                  _tv=$(cat "$_tzone" 2>/dev/null)
-                  [ -n "$_tv" ] && [ "$_tv" -gt 0 ] 2>/dev/null && { thermal_temp=$_tv; break; }
+                  _tv=${'$'}(cat "${'$'}_tzone" 2>/dev/null)
+                  [ -n "${'$'}_tv" ] && [ "${'$'}_tv" -gt 0 ] 2>/dev/null && { thermal_temp=${'$'}_tv; break; }
                 done
-                echo thermal_temp=$thermal_temp
+                echo thermal_temp=${'$'}thermal_temp
                 echo bat_level=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 0)
 
                 bat_ua=0
