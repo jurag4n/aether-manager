@@ -1,6 +1,7 @@
 package dev.aether.manager.util
 
 import com.topjohnwu.superuser.Shell
+import dev.aether.manager.CimolAgent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -274,6 +275,25 @@ object RootUtils {
                 echo cpu_temp=${'$'}cpu_temp
 
                 echo bat_temp=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0)
+
+                gpu_temp=-1
+                for _gkw in gpu adreno-lowf gpuss mali; do
+                  for _zi in $(seq 0 49); do
+                    _tp="/sys/class/thermal/thermal_zone${_zi}/type"
+                    _tv="/sys/class/thermal/thermal_zone${_zi}/temp"
+                    [ -f "$_tp" ] && [ -f "$_tv" ] || continue
+                    _t=$(cat "$_tp" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                    case "$_t" in *"$_gkw"*) gpu_temp=$(cat "$_tv" 2>/dev/null || echo -1); break 2;; esac
+                  done
+                done
+                echo gpu_temp=$gpu_temp
+
+                thermal_temp=-1
+                for _tzone in /sys/class/thermal/thermal_zone*/temp; do
+                  _tv=$(cat "$_tzone" 2>/dev/null)
+                  [ -n "$_tv" ] && [ "$_tv" -gt 0 ] 2>/dev/null && { thermal_temp=$_tv; break; }
+                done
+                echo thermal_temp=$thermal_temp
                 echo bat_level=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 0)
 
                 bat_ua=0
@@ -316,6 +336,31 @@ object RootUtils {
             val cpuTempRaw = map["cpu_temp"]?.toLongOrNull() ?: 0L
             val batTempRaw = map["bat_temp"]?.toLongOrNull() ?: 0L
 
+            fun normTemp(raw: Long): Float = when {
+                raw > 1000 -> raw / 1000f
+                raw > 200  -> raw / 10f
+                raw > 0    -> raw.toFloat()
+                else       -> 0f
+            }
+
+            val gpuTempC: Float = if (CimolAgent.isAvailable) {
+                val mc = CimolAgent.getGpuTempMilliC()
+                if (mc > 0) mc / 1000f else normTemp(map["gpu_temp"]?.toLongOrNull() ?: -1L)
+            } else {
+                normTemp(map["gpu_temp"]?.toLongOrNull() ?: -1L)
+            }
+
+            val thermalTempC: Float = if (CimolAgent.isAvailable) {
+                val zones = CimolAgent.getThermalZones()
+                val best  = zones.firstOrNull { it.type.contains("soc", ignoreCase = true) }
+                    ?: zones.firstOrNull { it.type.contains("thermal", ignoreCase = true) }
+                    ?: zones.firstOrNull()
+                if (best != null && best.tempMilliC > 0) best.tempMilliC / 1000f
+                else normTemp(map["thermal_temp"]?.toLongOrNull() ?: -1L)
+            } else {
+                normTemp(map["thermal_temp"]?.toLongOrNull() ?: -1L)
+            }
+
             dev.aether.manager.data.MonitorState(
                 cpuUsage       = map["cpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0,
                 cpuFreq        = map["cpu_freq"]?.toLongOrNull()?.takeIf { it > 0 }?.let { "$it MHz" } ?: "",
@@ -328,6 +373,8 @@ object RootUtils {
                     cpuTempRaw > 200  -> cpuTempRaw / 10f
                     else              -> cpuTempRaw.toFloat()
                 },
+                gpuTemp        = gpuTempC,
+                thermalTemp    = thermalTempC,
                 batTemp        = when {
                     batTempRaw > 1000 -> batTempRaw / 1000f
                     batTempRaw > 200  -> batTempRaw / 10f

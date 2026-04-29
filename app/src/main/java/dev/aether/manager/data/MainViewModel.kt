@@ -66,6 +66,8 @@ data class MonitorState(
     val ramUsedMb: Long = 0L,
     val ramTotalMb: Long = 0L,
     val cpuTemp: Float = 0f,
+    val gpuTemp: Float = 0f,
+    val thermalTemp: Float = 0f,
     val batTemp: Float = 0f,
     val storageUsedGb: Float = 0f,
     val storageTotalGb: Float = 0f,
