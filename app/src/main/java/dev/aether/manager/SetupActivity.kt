@@ -1,11 +1,14 @@
 package dev.aether.manager
 
 import android.Manifest
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -111,6 +114,30 @@ private fun isAccessibilityEnabled(ctx: Context): Boolean {
     ) ?: return false
     val pkg = ctx.packageName
     return enabled.split(":").any { it.startsWith("$pkg/") }
+}
+
+private fun isBatteryOptimizationIgnored(ctx: Context): Boolean {
+    val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
+    return pm.isIgnoringBatteryOptimizations(ctx.packageName)
+}
+
+private fun isUsageStatsGranted(ctx: Context): Boolean {
+    return try {
+        val appOps = ctx.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), ctx.packageName
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), ctx.packageName
+            )
+        }
+        mode == AppOpsManager.MODE_ALLOWED
+    } catch (e: Exception) { false }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -318,12 +345,33 @@ private fun PermissionCard(
                 modifier            = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Text(
-                    item.title,
-                    style      = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.onSurface
-                )
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        item.title,
+                        style      = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onSurface,
+                        modifier   = Modifier.weight(1f, fill = false)
+                    )
+                    if (item.required) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
+                        ) {
+                            Text(
+                                "Wajib",
+                                fontSize      = 9.sp,
+                                fontWeight    = FontWeight.Bold,
+                                color         = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier      = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                letterSpacing = 0.3.sp
+                            )
+                        }
+                    }
+                }
                 AnimatedContent(
                     targetState = when (state) {
                         PermState.CHECKING -> "Memeriksa…"
@@ -396,12 +444,14 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val s       = LocalStrings.current
     val density = LocalDensity.current
 
-    var rootState   by remember { mutableStateOf(PermState.IDLE) }
-    var notifState  by remember { mutableStateOf(PermState.IDLE) }
-    var writeState  by remember { mutableStateOf(PermState.IDLE) }
-    var storState   by remember { mutableStateOf(PermState.IDLE) }
+    var rootState    by remember { mutableStateOf(PermState.IDLE) }
+    var notifState   by remember { mutableStateOf(PermState.IDLE) }
+    var writeState   by remember { mutableStateOf(PermState.IDLE) }
+    var storState    by remember { mutableStateOf(PermState.IDLE) }
+    var batteryState by remember { mutableStateOf(PermState.IDLE) }
+    var usageState   by remember { mutableStateOf(PermState.IDLE) }
     // FIX: accessState punya state sendiri — tidak lagi IDLE permanen
-    var accessState by remember { mutableStateOf(PermState.IDLE) }
+    var accessState  by remember { mutableStateOf(PermState.IDLE) }
 
     val includeStorage = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
 
@@ -414,6 +464,18 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
         ActivityResultContracts.StartActivityForResult()
     ) {
         writeState = if (Settings.System.canWrite(ctx)) PermState.GRANTED else PermState.DENIED
+    }
+
+    val batteryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        batteryState = if (isBatteryOptimizationIgnored(ctx)) PermState.GRANTED else PermState.DENIED
+    }
+
+    val usageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        usageState = if (isUsageStatsGranted(ctx)) PermState.GRANTED else PermState.DENIED
     }
 
     // FIX: Launcher aksesibilitas — cek hasilnya saat kembali dari Settings
@@ -440,6 +502,10 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
             ) == PackageManager.PERMISSION_GRANTED
             if (ok) storState = PermState.GRANTED
         }
+        if (batteryState != PermState.IDLE && isBatteryOptimizationIgnored(ctx))
+            batteryState = PermState.GRANTED
+        if (usageState != PermState.IDLE && isUsageStatsGranted(ctx))
+            usageState = PermState.GRANTED
         // FIX: re-check aksesibilitas setiap kali balik dari Settings
         if (accessState != PermState.IDLE) {
             accessState = if (isAccessibilityEnabled(ctx)) PermState.GRANTED else PermState.DENIED
@@ -449,23 +515,44 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     // ── Permission items ──────────────────────────────────────────────────────
     val permItems = remember(includeStorage) {
         buildList {
-            add(PermItem(Icons.Outlined.AdminPanelSettings,
-                "Akses Root", "Diperlukan untuk manajemen kernel dan sistem",
-                "ROOT", required = true))
-            add(PermItem(Icons.Outlined.Accessibility,
-                "Layanan Aksesibilitas", "Deteksi aplikasi aktif untuk profil per-aplikasi",
-                "ACCESSIBILITY", required = false))
-            add(PermItem(Icons.Outlined.QueryStats,
-                "Akses Penggunaan", "Pantau penggunaan dan statistik waktu layar",
-                "NOTIFICATION", required = false))
+            add(PermItem(
+                Icons.Outlined.AdminPanelSettings,
+                "Akses Root",
+                "Diperlukan untuk manajemen kernel dan pengaturan sistem tingkat rendah",
+                "ROOT", required = true
+            ))
+            add(PermItem(
+                Icons.Outlined.NotificationsActive,
+                "Notifikasi",
+                "Tampilkan pemberitahuan status optimasi dan peringatan sistem",
+                "NOTIFICATION", required = false
+            ))
             if (includeStorage) {
-                add(PermItem(Icons.Outlined.FolderOpen,
-                    "Akses Penyimpanan", "Baca konfigurasi dan log dari penyimpanan",
-                    "STORAGE", required = false))
+                add(PermItem(
+                    Icons.Outlined.FolderOpen,
+                    "Penyimpanan",
+                    "Baca dan simpan konfigurasi profil serta log sistem",
+                    "STORAGE", required = false
+                ))
             }
-            add(PermItem(Icons.Outlined.Tune,
-                "Ubah Pengaturan Sistem", "Terapkan tweak performa secara langsung",
-                "WRITE_SETTINGS", required = false))
+            add(PermItem(
+                Icons.Outlined.BatteryChargingFull,
+                "Jangan Batasi Baterai",
+                "Jalankan optimasi latar belakang tanpa dibatasi penghemat daya",
+                "BATTERY", required = false
+            ))
+            add(PermItem(
+                Icons.Outlined.QueryStats,
+                "Akses Penggunaan",
+                "Pantau statistik pemakaian aplikasi untuk profil per-aplikasi",
+                "USAGE_STATS", required = false
+            ))
+            add(PermItem(
+                Icons.Outlined.Tune,
+                "Ubah Pengaturan Sistem",
+                "Terapkan tweak performa dan layar secara langsung",
+                "WRITE_SETTINGS", required = false
+            ))
         }
     }
 
@@ -476,8 +563,9 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     // FIX: semua permission harus sudah "decided" (bukan IDLE/CHECKING)
     // sebelum bisa lanjut ke halaman Done
     val allDecided = rootOk &&
-            accessState.decided() &&
             notifState.decided() &&
+            batteryState.decided() &&
+            usageState.decided() &&
             writeState.decided() &&
             (!includeStorage || storState.decided())
 
@@ -511,6 +599,10 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                 ) == PackageManager.PERMISSION_GRANTED
                 if (ok) storState = PermState.GRANTED
             }
+            if (batteryState == PermState.IDLE && isBatteryOptimizationIgnored(ctx))
+                batteryState = PermState.GRANTED
+            if (usageState == PermState.IDLE && isUsageStatsGranted(ctx))
+                usageState = PermState.GRANTED
             // FIX: cek aksesibilitas saat halaman izin dibuka
             if (accessState == PermState.IDLE && isAccessibilityEnabled(ctx))
                 accessState = PermState.GRANTED
@@ -617,6 +709,8 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                 notifState   = notifState,
                                 writeState   = writeState,
                                 storageState = storState,
+                                batteryState = batteryState,
+                                usageState   = usageState,
                                 accessState  = accessState,
                                 onAction     = { permType ->
                                     when (permType) {
@@ -636,7 +730,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                             } else {
                                                 writeSettingsLauncher.launch(Intent(
                                                     Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                                                    android.net.Uri.parse("package:${ctx.packageName}")
+                                                    Uri.parse("package:${ctx.packageName}")
                                                 ))
                                             }
                                         }
@@ -651,8 +745,26 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                                     if (ok) PermState.GRANTED else PermState.DENIED
                                                 }
                                         }
+                                        "BATTERY" -> {
+                                            if (isBatteryOptimizationIgnored(ctx)) {
+                                                batteryState = PermState.GRANTED
+                                            } else {
+                                                batteryLauncher.launch(Intent(
+                                                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                                    Uri.parse("package:${ctx.packageName}")
+                                                ))
+                                            }
+                                        }
+                                        "USAGE_STATS" -> {
+                                            if (isUsageStatsGranted(ctx)) {
+                                                usageState = PermState.GRANTED
+                                            } else {
+                                                usageLauncher.launch(
+                                                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                                                )
+                                            }
+                                        }
                                         // FIX: buka Accessibility Settings via launcher
-                                        // supaya "Aether Manager" muncul di list aksesibilitas
                                         "ACCESSIBILITY" -> {
                                             accessState = PermState.CHECKING
                                             accessibilityLauncher.launch(
@@ -775,12 +887,12 @@ private fun WelcomePage(s: AppStrings) {
         Spacer(Modifier.height(8.dp))
 
         val features = listOf(
-            FeatureItem(Icons.Outlined.Speed, "Performa",
-                "Optimalkan pengaturan CPU dan GPU untuk performa maksimal"),
-            FeatureItem(Icons.Outlined.BatteryChargingFull, "Daya Tahan Baterai",
-                "Perpanjang daya tahan baterai dengan manajemen daya cerdas"),
+            FeatureItem(Icons.Outlined.Speed, "Performa Maksimal",
+                "Optimalkan CPU, GPU, dan kernel untuk responsivitas terbaik"),
+            FeatureItem(Icons.Outlined.BatteryChargingFull, "Manajemen Daya",
+                "Perpanjang masa pakai baterai dengan scheduler daya yang cerdas"),
             FeatureItem(Icons.Outlined.SportsEsports, "Mode Gaming",
-                "Tingkatkan pengalaman gaming dengan optimasi real-time"),
+                "Prioritaskan resource untuk gaming tanpa gangguan latar belakang"),
         )
         features.forEachIndexed { i, f -> FeatureCard(item = f, index = i) }
     }
@@ -797,32 +909,36 @@ private fun PermissionsPage(
     notifState: PermState,
     writeState: PermState,
     storageState: PermState,
-    accessState: PermState,      // FIX: parameter eksplisit untuk aksesibilitas
+    batteryState: PermState,
+    usageState: PermState,
+    accessState: PermState,
     onAction: (String) -> Unit,
 ) {
     fun stateFor(type: String) = when (type) {
-        "ROOT"           -> rootState
-        "NOTIFICATION"   -> notifState
-        "WRITE_SETTINGS" -> writeState
-        "STORAGE"        -> storageState
-        "ACCESSIBILITY"  -> accessState   // FIX: tidak lagi IDLE permanen
-        else             -> PermState.IDLE
+        "ROOT"          -> rootState
+        "NOTIFICATION"  -> notifState
+        "WRITE_SETTINGS"-> writeState
+        "STORAGE"       -> storageState
+        "BATTERY"       -> batteryState
+        "USAGE_STATS"   -> usageState
+        "ACCESSIBILITY" -> accessState
+        else            -> PermState.IDLE
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            "Izin",
-            style      = MaterialTheme.typography.headlineLarge,
+            "Izin Aplikasi",
+            style      = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color      = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            "Berikan izin yang diperlukan untuk fungsionalitas penuh",
+            "Ketuk setiap izin untuk mengaktifkan. Izin wajib harus diberikan untuk melanjutkan.",
             style      = MaterialTheme.typography.bodyMedium,
             color      = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
 
         permItems.forEachIndexed { i, item ->
             PermissionCard(
