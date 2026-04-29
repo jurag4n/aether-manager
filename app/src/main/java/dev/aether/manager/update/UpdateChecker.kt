@@ -147,6 +147,8 @@ object UpdateChecker {
         val major = parts.getOrNull(0)?.toIntOrNull() ?: return null
         val minor = parts.getOrNull(1)?.toIntOrNull() ?: 0
         val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
-        major * 1000 + minor * 10 + patch
+        // Cocok dengan build.gradle: versionCode = 260 untuk v2.6.0
+        // major*100 + minor*10 + patch → 2*100 + 6*10 + 0 = 260
+        major * 100 + minor * 10 + patch
     } catch (_: Exception) { null }
 }

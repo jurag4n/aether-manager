@@ -45,14 +45,15 @@ fun UpdateDialogHost(viewModel: UpdateViewModel) {
     val state     by viewModel.state.collectAsState()
     val dismissed by viewModel.dismissed.collectAsState()
 
-    val updateInfo = (state as? UpdateUiState.UpdateAvailable)?.info ?: return
+    val release = (state as? UpdateState.Available)?.info ?: return
     if (dismissed) return
 
     UpdateDialog(
-        info           = updateInfo,
+        info           = release,
         currentVersion = viewModel.currentVersionName,
         onDismiss      = { viewModel.dismiss() },
     )
+}
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -85,13 +86,13 @@ fun UpdateDialog(
     var dlState  by remember { mutableStateOf<DownloadState>(DownloadState.Idle) }
 
     var selectedTab      by remember { mutableIntStateOf(0) }
-    var changelog        by remember { mutableStateOf(info.releaseNotes) }
+    var changelog        by remember { mutableStateOf(info.changelog) }
     var fetchingChangelog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(info.releasePageUrl) {
-        if (info.releaseNotes.isNotBlank()) return@LaunchedEffect
+    LaunchedEffect(info.htmlUrl) {
+        if (info.changelog.isNotBlank()) return@LaunchedEffect
         fetchingChangelog = true
-        val fresh = fetchChangelogFromGitHub(info.releasePageUrl)
+        val fresh = fetchChangelogFromGitHub(info.htmlUrl)
         if (fresh != null) changelog = fresh
         fetchingChangelog = false
     }
@@ -151,7 +152,7 @@ fun UpdateDialog(
                 }
 
                 // ── Version chip: "versi saat ini → versi baru" ──
-                VersionArrowChip(currentVersion = currentVersion, newVersion = info.latestVersion)
+                VersionArrowChip(currentVersion = currentVersion, newVersion = info.versionName)
 
                 // ── Tab: Deskripsi / Changelog ────────────────────
                 val tabs = listOf(s.updateTabDesc, s.updateTabChangelog)
@@ -292,10 +293,10 @@ fun UpdateDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape    = RoundedCornerShape(12.dp),
                             ) { Text(s.updateBtnRetry) }
-                            TextButton(
+                        TextButton(
                                 onClick  = {
                                     context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, info.releasePageUrl.toUri())
+                                        Intent(Intent.ACTION_VIEW, info.htmlUrl.toUri())
                                     )
                                 },
                                 modifier = Modifier.fillMaxWidth(),

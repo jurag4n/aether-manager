@@ -3,9 +3,6 @@ package dev.aether.manager.update
 import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,8 +28,11 @@ sealed class UpdateState {
 
 class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    private val _state     = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
+
+    private val _dismissed = MutableStateFlow(false)
+    val dismissed: StateFlow<Boolean> = _dismissed.asStateFlow()
 
     val installedVersionCode: Int by lazy {
         try {
@@ -61,22 +61,29 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         } catch (_: Exception) { "?" }
     }
 
+    /** Alias yang dipakai UpdateDialogHost di UpdateDialog.kt */
+    val currentVersionName: String get() = installedVersionName
+
     fun checkUpdate() {
         if (_state.value is UpdateState.Checking) return
+        _dismissed.value = false
         _state.value = UpdateState.Checking
         viewModelScope.launch {
             val release = UpdateChecker.fetchLatest()
             _state.value = when {
-                release == null                              -> UpdateState.Error("Gagal cek update")
-                release.versionCode > installedVersionCode  -> UpdateState.Available(release)
-                else                                        -> UpdateState.UpToDate
+                release == null                             -> UpdateState.Error("Gagal cek update")
+                release.versionCode > installedVersionCode -> UpdateState.Available(release)
+                else                                       -> UpdateState.UpToDate
             }
         }
     }
 
-    fun dismiss() { _state.value = UpdateState.Idle }
+    fun dismiss() {
+        _dismissed.value = true
+        _state.value = UpdateState.Idle
+    }
 
-    // Konversi ke UpdateUiState untuk MainActivity
+    // Konversi ke UpdateUiState untuk kompatibilitas MainActivity lama
     fun currentUiState(): UpdateUiState = _state.value.toUiState()
 }
 
@@ -108,17 +115,4 @@ fun UpdateState.toUiState(): UpdateUiState = when (this) {
     is UpdateState.Error     -> UpdateUiState.Error(msg)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UpdateDialogHost — composable yang dipanggil MainActivity
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-fun UpdateDialogHost(viewModel: UpdateViewModel) {
-    val state by viewModel.state.collectAsState()
-    if (state is UpdateState.Available) {
-        UpdateDialog(
-            info      = (state as UpdateState.Available).info,
-            onDismiss = { viewModel.dismiss() },
-        )
-    }
-}
+// UpdateDialogHost ada di UpdateDialog.kt

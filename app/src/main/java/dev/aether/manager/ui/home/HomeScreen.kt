@@ -28,8 +28,7 @@ import dev.aether.manager.data.MonitorState
 import dev.aether.manager.data.UiState
 import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.ui.components.*
-import dev.aether.manager.update.UpdateDialog
-import dev.aether.manager.update.UpdateState
+import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
@@ -47,16 +46,8 @@ fun HomeScreen(vm: MainViewModel) {
 
     // ── Update checker ───────────────────────────────────────────────────────
     val updateVm: UpdateViewModel = viewModel()
-    val updateState by updateVm.state.collectAsState()
-
     LaunchedEffect(Unit) { updateVm.checkUpdate() }
-
-    if (updateState is UpdateState.Available) {
-        UpdateDialog(
-            info      = (updateState as UpdateState.Available).info,
-            onDismiss = { updateVm.dismiss() },
-        )
-    }
+    UpdateDialogHost(viewModel = updateVm)
 
     Column(
         modifier = Modifier
