@@ -29,11 +29,7 @@ android {
         versionName   = "2.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // ── NDK / CMake config ──────────────────────────────────────────────
         ndk {
-            // arm64-v8a  = semua device modern (flagship & mid-range)
-            // armeabi-v7a = device lama 32-bit
-            // x86_64     = emulator/Chromebook
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
         }
 
@@ -47,20 +43,16 @@ android {
         }
     }
 
-    // ── CMake — libprotect.so ───────────────────────────────────────────────
     externalNativeBuild {
         cmake {
-            path   = file("src/main/cpp/CMakeLists.txt")
+            path    = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
     }
 
     signingConfigs {
         create("release") {
-            // Signing hanya aktif di lokal (CI pakai apksigner manual via build.yml)
-            // Kalau aether.jks tidak ada (environment CI), block ini di-skip
-            // sehingga Gradle TIDAK menandatangani APK — biarkan apksigner yang sign.
-            val ks = rootProject.file("aether.jks")
+            val ks   = rootProject.file("aether.jks")
             val isCI = System.getenv("CI") == "true"
             if (ks.exists() && !isCI) {
                 storeFile     = ks
@@ -75,22 +67,23 @@ android {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
-            // Di CI: signingConfig null → Gradle keluarkan APK unsigned,
-            // lalu apksigner di build.yml yang sign.
-            // Di lokal: pakai signingConfig "release" jika keystore ada.
+
             val isCI = System.getenv("CI") == "true"
             signingConfig = if (isCI) null else signingConfigs.getByName("release")
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            isDebuggable = false
-            isJniDebuggable = false
+
+            isDebuggable          = false
+            isJniDebuggable       = false
             isPseudoLocalesEnabled = false
-            isCrunchPngs = true
-        }
-        debug {
-            isMinifyEnabled = false
+            isCrunchPngs          = true
+
+            ndk {
+                debugSymbolLevel = "NONE"
+            }
         }
     }
 
@@ -139,9 +132,7 @@ android {
                 "/META-INF/MANIFEST.MF", "**.proto", "kotlin/**", "META-INF/com/**"
             )
         }
-        // Pastikan libprotect.so tidak di-compress (agar bisa langsung di-mmap)
         jniLibs {
-            excludes += listOf("**/armeabi-v7a/**", "**/armeabi/**", "**/arm64-v8a/**")
             useLegacyPackaging = true
         }
     }
@@ -184,19 +175,14 @@ dependencies {
     implementation(libs.lottie.compose)
     implementation(libs.timber)
     implementation(libs.androidx.biometric)
-    // ── Networking ────────────────────────────────────────────────────────
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content)
     implementation(libs.ktor.serialization)
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
-    // ── UI extras ─────────────────────────────────────────────────────────
     implementation(libs.shimmer)
     implementation(libs.compose.charts)
-    // ── Lifecycle / background ────────────────────────────────────────────
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.startup)
-    debugImplementation(libs.leakcanary.android)
     debugImplementation(libs.androidx.ui.tooling)
 }
