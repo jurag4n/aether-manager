@@ -11,6 +11,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,10 +59,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -99,7 +102,7 @@ fun HomeScreen(vm: MainViewModel) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 112.dp),
+            .padding(top = 10.dp, bottom = 150.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         AnimatedContent(
@@ -112,8 +115,7 @@ fun HomeScreen(vm: MainViewModel) {
                 is UiState.Error -> InfoDeviceError(state.msg) { vm.refresh() }
                 is UiState.Success -> MonitorSection(
                     state = monitorState,
-                    info = state.data,
-                    onRefresh = { vm.refreshMonitor() }
+                    info = state.data
                 )
             }
         }
@@ -123,12 +125,6 @@ fun HomeScreen(vm: MainViewModel) {
 @Composable
 private fun InfoDeviceSkeleton() {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = "INFO DEVICE",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.onSurface
-        )
         repeat(4) {
             Box(
                 modifier = Modifier
@@ -174,25 +170,8 @@ private fun InfoDeviceError(msg: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun MonitorSection(state: MonitorState, info: DeviceInfo?, onRefresh: () -> Unit) {
+private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "INFO DEVICE",
-                fontSize = 25.sp,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurface,
-                letterSpacing = 0.4.sp
-            )
-            IconButton(onClick = onRefresh, modifier = Modifier.size(38.dp)) {
-                Icon(Icons.Outlined.Refresh, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             CpuInfoCard(state, info, Modifier.weight(1f))
             TemperaturePagerCard(state, Modifier.weight(1f))
@@ -232,7 +211,6 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modifier) {
-    val scope = rememberCoroutineScope()
     val temps = listOf(
         TempItem("CPU", state.cpuTemp, Icons.Outlined.Memory),
         TempItem("GPU", state.gpuTemp, Icons.Outlined.GridView),
@@ -246,20 +224,15 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
         Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconBadge(Icons.Outlined.Thermostat, accent)
                     Text("Suhu", fontSize = 17.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
-                PillText(temps[pager.currentPage].label.uppercase(), accent)
             }
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                IconButton(
-                    onClick = { scope.launch { pager.animateScrollToPage((pager.currentPage - 1).floorMod(temps.size)) } },
-                    modifier = Modifier.align(Alignment.CenterStart).size(30.dp)
-                ) { Icon(Icons.Outlined.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                 HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
                     val item = temps[page]
                     Column(
@@ -277,10 +250,6 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
                         Text(item.label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                IconButton(
-                    onClick = { scope.launch { pager.animateScrollToPage((pager.currentPage + 1).floorMod(temps.size)) } },
-                    modifier = Modifier.align(Alignment.CenterEnd).size(30.dp)
-                ) { Icon(Icons.Outlined.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -359,19 +328,39 @@ private fun MemoryInfoCard(state: MonitorState) {
             MemoryDivider()
             MemoryMetricRow(Icons.Outlined.Dns, "ZRAM", fmtMb(state.swapUsedMb), fmtMb(state.swapTotalMb), ratio(state.swapUsedMb, state.swapTotalMb), MaterialTheme.colorScheme.secondary)
             MemoryDivider()
-            MemoryMetricRow(Icons.Outlined.Storage, "Penyimpanan Internal", "%.1f GB".format(state.storageUsedGb), "%.1f GB".format(state.storageTotalGb), ratio(state.storageUsedGb, state.storageTotalGb), Color(0xFFFF9CAF))
+            MemoryMetricRow(
+                Icons.Outlined.Storage,
+                "Penyimpanan Internal",
+                "%.1f GB".format(state.storageUsedGb),
+                advertisedStorageLabel(state.storageTotalGb),
+                ratio(state.storageUsedGb, advertisedStorageGb(state.storageTotalGb)),
+                Color(0xFFFF9CAF)
+            )
         }
     }
 }
 
 @Composable
 private fun TappableCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = tween(160, easing = FastOutSlowInEasing),
+        label = "card_press_scale"
+    )
+
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 1.dp,
-        shadowElevation = 0.dp,
-        modifier = modifier.clickable { }
+        tonalElevation = if (pressed) 4.dp else 1.dp,
+        shadowElevation = if (pressed) 6.dp else 0.dp,
+        modifier = modifier
+            .scale(scale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { }
     ) { content() }
 }
 
@@ -454,9 +443,23 @@ private fun MemoryMetricRow(icon: ImageVector, label: String, used: String, tota
             Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(label, fontSize = 15.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
-                Text("$used / $total", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    label,
+                    modifier = Modifier.weight(1f),
+                    fontSize = if (label.length > 12) 13.sp else 15.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    "$used / $total",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
             }
             WavyProgress(progress = anim, color = color)
         }
@@ -497,6 +500,22 @@ private data class TempItem(val label: String, val value: Float, val icon: Image
 private fun ratio(used: Long, total: Long): Float = if (total > 0L) (used.toFloat() / total).coerceIn(0f, 1f) else 0f
 private fun ratio(used: Float, total: Float): Float = if (total > 0f) (used / total).coerceIn(0f, 1f) else 0f
 private fun Int.floorMod(size: Int): Int = ((this % size) + size) % size
+private fun advertisedStorageGb(rawGb: Float): Float = when {
+    rawGb <= 0f -> 0f
+    rawGb <= 20f -> 16f
+    rawGb <= 40f -> 32f
+    rawGb <= 80f -> 64f
+    rawGb <= 160f -> 128f
+    rawGb <= 320f -> 256f
+    rawGb <= 640f -> 512f
+    else -> 1024f
+}
+
+private fun advertisedStorageLabel(rawGb: Float): String {
+    val gb = advertisedStorageGb(rawGb)
+    return if (gb <= 0f) "— GB" else "${gb.toInt()} GB"
+}
+
 private fun fmtMb(mb: Long): String = if (mb >= 1024) "%.1f GB".format(mb / 1024f) else "$mb MB"
 
 @Composable

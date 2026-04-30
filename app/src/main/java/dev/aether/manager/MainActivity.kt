@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -235,26 +236,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Aether Manager", fontWeight = FontWeight.SemiBold, fontSize = 18.sp) },
-                actions = {
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Outlined.Settings, null, modifier = Modifier.size(24.dp))
-                    }
-                    IconButton(onClick = { showReboot = true }) {
-                        Icon(Icons.Outlined.RestartAlt, null, modifier = Modifier.size(24.dp))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-                modifier = Modifier.height(56.dp),
-            )
-        },
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets.systemBars
     ) { paddingValues ->
@@ -311,82 +292,132 @@ private fun FloatingBottomBar(
 ) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
-        shadowElevation = 18.dp,
-        tonalElevation = 6.dp,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        shadowElevation = 20.dp,
+        tonalElevation = 8.dp,
         modifier = modifier
             .navigationBarsPadding()
-            .padding(bottom = 16.dp)
+            .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             navItems.forEachIndexed { idx, item ->
                 val selected = currentScreen == item.screen
+                val interactionSource = remember { MutableInteractionSource() }
+                val pressed by interactionSource.collectIsPressedAsState()
+                val expanded = selected || pressed
+                val width by animateDpAsState(
+                    targetValue = if (expanded) 64.dp else 48.dp,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "float_nav_width_$idx"
+                )
                 val scale by animateFloatAsState(
-                    if (selected) 1.08f else 1f,
-                    spring(Spring.DampingRatioMediumBouncy),
+                    targetValue = if (pressed) 0.94f else 1f,
+                    animationSpec = tween(140),
                     label = "float_nav_scale_$idx"
                 )
                 val bgColor by animateColorAsState(
-                    if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                    tween(200),
+                    targetValue = if (expanded) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                    animationSpec = tween(220),
                     label = "float_nav_bg_$idx"
                 )
                 val iconTint by animateColorAsState(
-                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    tween(200),
+                    targetValue = if (expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = tween(220),
                     label = "float_nav_tint_$idx"
                 )
+
                 Box(
                     modifier = Modifier
-                        .size(50.dp)
+                        .height(48.dp)
+                        .width(width)
+                        .scale(scale)
                         .clip(RoundedCornerShape(50))
                         .background(bgColor)
                         .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
+                            interactionSource = interactionSource,
                             indication = null
-                        ) { onScreenChange(item.screen) }
-                        .scale(scale),
+                        ) { onScreenChange(item.screen) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        if (selected) item.selectedIcon else item.unselectedIcon,
-                        contentDescription = item.label,
-                        tint = iconTint,
-                        modifier = Modifier.size(23.dp)
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (expanded) item.selectedIcon else item.unselectedIcon,
+                            contentDescription = item.label,
+                            tint = iconTint,
+                            modifier = Modifier.size(23.dp)
+                        )
+                        AnimatedVisibility(
+                            visible = pressed,
+                            enter = fadeIn(tween(120)) + expandHorizontally(tween(160)),
+                            exit = fadeOut(tween(90)) + shrinkHorizontally(tween(120))
+                        ) {
+                            Text(
+                                text = item.label.take(1),
+                                modifier = Modifier.padding(start = 5.dp),
+                                color = iconTint,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(RoundedCornerShape(50))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { onSettingsClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Outlined.Settings, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(23.dp))
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { onPowerClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp))
-            }
+            FloatingActionIcon(Icons.Outlined.Settings, onSettingsClick)
+            FloatingPowerIcon(onPowerClick)
         }
+    }
+}
+
+@Composable
+private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.94f else 1f, tween(140), label = "action_icon_scale")
+
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .scale(scale)
+            .clip(RoundedCornerShape(50))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(23.dp))
+    }
+}
+
+@Composable
+private fun FloatingPowerIcon(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.94f else 1f, tween(140), label = "power_icon_scale")
+
+    Box(
+        modifier = Modifier
+            .size(54.dp)
+            .scale(scale)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp))
     }
 }
