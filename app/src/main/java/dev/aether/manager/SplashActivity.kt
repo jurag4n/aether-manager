@@ -10,27 +10,55 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.aether.manager.i18n.ProvideStrings
@@ -38,6 +66,7 @@ import dev.aether.manager.ui.AetherTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.sin
 
 @SuppressLint("CustomSplashScreen")
@@ -50,10 +79,12 @@ class SplashActivity : ComponentActivity() {
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
             ),
             navigationBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
             )
         )
 
@@ -61,8 +92,8 @@ class SplashActivity : ComponentActivity() {
             AetherTheme {
                 ProvideStrings {
                     SplashScreen {
-                        if (setupDone) startActivity(Intent(this, MainActivity::class.java))
-                        else startActivity(Intent(this, SetupActivity::class.java))
+                        val next = if (setupDone) MainActivity::class.java else SetupActivity::class.java
+                        startActivity(Intent(this, next))
                         finish()
                     }
                 }
@@ -73,113 +104,106 @@ class SplashActivity : ComponentActivity() {
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
-    val primary   = MaterialTheme.colorScheme.primary
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val surface   = MaterialTheme.colorScheme.surface
+    val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
-    val tertiary  = MaterialTheme.colorScheme.tertiary
-    val density   = LocalDensity.current
+    val tertiary = MaterialTheme.colorScheme.tertiary
+    val surface = MaterialTheme.colorScheme.surface
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val density = LocalDensity.current
 
-    // ── Animatables ───────────────────────────────────────────
-    val bgAlpha         = remember { Animatable(0f) }
-    val orbScale        = remember { Animatable(0.6f) }
-    val orbAlpha        = remember { Animatable(0f) }
-    val iconScale       = remember { Animatable(0.4f) }
-    val iconAlpha       = remember { Animatable(0f) }
-    val titleAlpha      = remember { Animatable(0f) }
-    // FIX #5: simpan dalam dp, convert ke px saat pakai di graphicsLayer
-    val titleOffsetDp   = remember { Animatable(24f) }
-    val subtitleAlpha   = remember { Animatable(0f) }
-    val subtitleOffsetDp = remember { Animatable(16f) }
-    val barProgress     = remember { Animatable(0f) }
-    val barAlpha        = remember { Animatable(0f) }
-    val versionAlpha    = remember { Animatable(0f) }
+    val backgroundAlpha = remember { Animatable(0f) }
+    val logoAlpha = remember { Animatable(0f) }
+    val logoScale = remember { Animatable(0.55f) }
+    val logoRotate = remember { Animatable(-8f) }
+    val titleAlpha = remember { Animatable(0f) }
+    val titleOffset = remember { Animatable(28f) }
+    val subtitleAlpha = remember { Animatable(0f) }
+    val subtitleOffset = remember { Animatable(18f) }
+    val chipAlpha = remember { Animatable(0f) }
+    val progressAlpha = remember { Animatable(0f) }
+    val progress = remember { Animatable(0f) }
+    val versionAlpha = remember { Animatable(0f) }
 
-    // Orb breathing animation (infinite)
-    val infiniteTransition = rememberInfiniteTransition(label = "orb_breathe")
-    val orbPulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue  = 1.08f,
+    val infinite = rememberInfiniteTransition(label = "splash_motion")
+    val pulse by infinite.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.06f,
         animationSpec = infiniteRepeatable(
-            animation  = tween(2000, easing = FastOutSlowInEasing),
+            animation = tween(1600, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "orb_pulse"
+        label = "logo_pulse"
     )
-    val orbRotate by infiniteTransition.animateFloat(
+    val aura by infinite.animateFloat(
         initialValue = 0f,
-        targetValue  = 360f,
+        targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing)
-        ),
-        label = "orb_rotate"
-    )
-
-    // Shimmer sweep on title
-    val shimmer by infiniteTransition.animateFloat(
-        initialValue = -1f,
-        targetValue  = 2f,
-        animationSpec = infiniteRepeatable(
-            animation  = tween(2400, easing = FastOutSlowInEasing, delayMillis = 800),
+            animation = tween(10500, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "shimmer"
+        label = "aura_rotate"
+    )
+    val zigzagFlow by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "zigzag_flow"
     )
 
-    // FIX #1: bar sekarang di-await (bukan launch) supaya onFinished()
-    // dipanggil setelah bar benar-benar penuh, lalu tambah jeda 200ms.
     LaunchedEffect(Unit) {
-        launch { bgAlpha.animateTo(1f, tween(300)) }
+        launch { backgroundAlpha.animateTo(1f, tween(300)) }
 
-        delay(100)
+        delay(120)
+        launch { logoAlpha.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) }
         launch {
-            orbAlpha.animateTo(1f, tween(500))
-            orbScale.animateTo(
+            logoScale.animateTo(
                 1f,
-                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
             )
         }
+        launch { logoRotate.animateTo(0f, tween(680, easing = FastOutSlowInEasing)) }
 
-        delay(300)
+        delay(430)
+        launch { titleAlpha.animateTo(1f, tween(380, easing = FastOutSlowInEasing)) }
         launch {
-            iconAlpha.animateTo(1f, tween(300))
-            iconScale.animateTo(
-                1f,
-                spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium)
-            )
-        }
-
-        delay(550)
-        launch {
-            titleAlpha.animateTo(1f, tween(400))
-            titleOffsetDp.animateTo(
+            titleOffset.animateTo(
                 0f,
-                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
+                spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
             )
         }
 
-        delay(700)
+        delay(240)
+        launch { subtitleAlpha.animateTo(1f, tween(360, easing = FastOutSlowInEasing)) }
         launch {
-            subtitleAlpha.animateTo(1f, tween(350))
-            subtitleOffsetDp.animateTo(
+            subtitleOffset.animateTo(
                 0f,
-                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
+                spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
             )
         }
 
-        delay(850)
-        launch { barAlpha.animateTo(1f, tween(250)) }
-        launch { versionAlpha.animateTo(1f, tween(300)) }
+        delay(230)
+        launch { chipAlpha.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
+        launch { progressAlpha.animateTo(1f, tween(260)) }
+        launch { versionAlpha.animateTo(1f, tween(350)) }
+        launch { progress.animateTo(1f, tween(2300, easing = FastOutSlowInEasing)) }
 
-        // FIX #1: await bar supaya onFinished tidak dipanggil prematur
-        barProgress.animateTo(1f, tween(1000, easing = FastOutSlowInEasing))
-        delay(200) // jeda singkat setelah bar penuh sebelum navigasi
+        delay(2480)
         onFinished()
     }
 
     val context = LocalContext.current
-
-    // FIX #3: handle versionName nullable + API 33+ deprecation
     val versionName = remember {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -188,241 +212,334 @@ fun SplashScreen(onFinished: () -> Unit) {
                     .versionName ?: "dev"
             } else {
                 @Suppress("DEPRECATION")
-                context.packageManager
-                    .getPackageInfo(context.packageName, 0).versionName ?: "dev"
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "dev"
             }
-        } catch (_: Exception) { "dev" }
+        } catch (_: Exception) {
+            "dev"
+        }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(surface.copy(alpha = bgAlpha.value)),
+            .background(surface.copy(alpha = backgroundAlpha.value)),
         contentAlignment = Alignment.Center
     ) {
+        SplashBackground(
+            primary = primary,
+            secondary = secondary,
+            tertiary = tertiary,
+            alpha = backgroundAlpha.value,
+            rotation = aura
+        )
 
-        // ── Background orb glow ───────────────────────────────
-        // FIX #4: gunakan RenderEffect di API 31+ untuk performa lebih baik.
-        // Fallback ke graphicsLayer alpha biasa (tanpa blur) untuk API < 31
-        // agar tidak ada frame drop di device lama.
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    alpha  = orbAlpha.value
-                    scaleX = orbScale.value * orbPulse
-                    scaleY = orbScale.value * orbPulse
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        renderEffect = BlurEffect(96f, 96f, TileMode.Decal)
-                    }
-                    // Di bawah API 31: orb tetap terlihat tapi tanpa blur —
-                    // lebih baik daripada Modifier.blur() yang costly di semua frame
-                }
-        ) {
-            val cx   = size.width / 2f
-            val cy   = size.height / 2f
-            val rad  = size.minDimension * 0.45f
-
-            val angle1 = orbRotate * (PI / 180f).toFloat()
-            val angle2 = angle1 + PI.toFloat()
-            val dist   = rad * 0.28f
-
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(primary.copy(alpha = 0.35f), Color.Transparent),
-                    center = Offset(cx + dist * sin(angle1), cy + dist * sin(angle1 * 0.7f)),
-                    radius = rad * 0.7f
-                ),
-                radius = rad * 0.7f,
-                center = Offset(cx + dist * sin(angle1), cy + dist * sin(angle1 * 0.7f))
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(secondary.copy(alpha = 0.25f), Color.Transparent),
-                    center = Offset(cx + dist * sin(angle2), cy + dist * sin(angle2 * 0.7f)),
-                    radius = rad * 0.55f
-                ),
-                radius = rad * 0.55f,
-                center = Offset(cx + dist * sin(angle2), cy + dist * sin(angle2 * 0.7f))
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(tertiary.copy(alpha = 0.12f), Color.Transparent),
-                    center = Offset(cx, cy),
-                    radius = rad * 0.5f
-                ),
-                radius = rad * 0.5f,
-                center = Offset(cx, cy)
-            )
-        }
-
-        // ── Main content ──────────────────────────────────────
         Column(
+            modifier = Modifier.padding(horizontal = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
             Box(contentAlignment = Alignment.Center) {
-                // Icon glow halo
-                Box(
+                Canvas(
                     modifier = Modifier
-                        .size(112.dp)
+                        .size(156.dp)
                         .graphicsLayer {
-                            alpha  = iconAlpha.value * 0.5f
-                            scaleX = iconScale.value
-                            scaleY = iconScale.value
+                            alpha = logoAlpha.value
+                            scaleX = logoScale.value * pulse
+                            scaleY = logoScale.value * pulse
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                renderEffect = BlurEffect(32f, 32f, TileMode.Decal)
+                                renderEffect = BlurEffect(36f, 36f, TileMode.Decal)
                             }
                         }
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(listOf(primary.copy(alpha = 0.6f), Color.Transparent))
-                        )
-                )
-                // Icon utama
+                ) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(primary.copy(alpha = 0.46f), Color.Transparent),
+                            center = center,
+                            radius = size.minDimension * 0.48f
+                        ),
+                        radius = size.minDimension * 0.46f,
+                        center = center
+                    )
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(secondary.copy(alpha = 0.26f), Color.Transparent),
+                            center = center,
+                            radius = size.minDimension * 0.34f
+                        ),
+                        radius = size.minDimension * 0.34f,
+                        center = center
+                    )
+                }
+
                 Box(
                     modifier = Modifier
-                        .size(88.dp)
-                        .graphicsLayer(
-                            scaleX = iconScale.value,
-                            scaleY = iconScale.value,
-                            alpha  = iconAlpha.value
-                        )
-                        .clip(CircleShape)
+                        .size(104.dp)
+                        .graphicsLayer {
+                            alpha = logoAlpha.value
+                            scaleX = logoScale.value * pulse
+                            scaleY = logoScale.value * pulse
+                            rotationZ = logoRotate.value
+                        }
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    primary.copy(alpha = 0.20f),
+                                    secondary.copy(alpha = 0.11f),
+                                    onSurface.copy(alpha = 0.05f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Image(
-                        painter           = painterResource(R.mipmap.ic_launcher_round),
+                        painter = painterResource(R.mipmap.ic_launcher_round),
                         contentDescription = null,
-                        modifier          = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .size(82.dp)
+                            .clip(CircleShape)
                     )
                 }
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(30.dp))
 
-            // ── App name dengan shimmer + warna per kata ──────
-            // FIX #5: convert dp → px sekali via density, bukan .dp.value yang
-            // menghasilkan double-convert (float→Dp→float tanpa density factor)
-            val titleOffsetPx = with(density) { titleOffsetDp.value.dp.toPx() }
-            Box(
-                modifier = Modifier.graphicsLayer(
-                    alpha        = titleAlpha.value,
-                    translationY = titleOffsetPx
-                )
-            ) {
-                val shimmerBrush = Brush.linearGradient(
-                    colorStops = arrayOf(
-                        0f                                    to Color.Transparent,
-                        (shimmer - 0.15f).coerceIn(0f, 1f)   to Color.Transparent,
-                        shimmer.coerceIn(0f, 1f)              to Color.White.copy(alpha = 0.55f),
-                        (shimmer + 0.15f).coerceIn(0f, 1f)   to Color.Transparent,
-                        1f                                    to Color.Transparent,
+            Text(
+                text = "Aether Manager",
+                modifier = Modifier.graphicsLayer {
+                    alpha = titleAlpha.value
+                    translationY = with(density) { titleOffset.value.dp.toPx() }
+                },
+                style = TextStyle(
+                    brush = Brush.linearGradient(
+                        listOf(onSurface, primary, secondary)
                     ),
-                    start = Offset(0f, 0f),
-                    end   = Offset(1000f, 0f)
+                    fontSize = 34.sp,
+                    lineHeight = 38.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.8).sp,
+                    textAlign = TextAlign.Center
                 )
-
-                // Layer 1: teks warna asli
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = onSurface, fontWeight = FontWeight.Black)) {
-                            append("Aether")
-                        }
-                        append(" ")
-                        withStyle(SpanStyle(color = primary, fontWeight = FontWeight.Light)) {
-                            append("Manager")
-                        }
-                    },
-                    fontSize      = 32.sp,
-                    letterSpacing = (-0.8).sp
-                )
-
-                // Layer 2: shimmer overlay
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(brush = shimmerBrush, fontWeight = FontWeight.Black)) {
-                            append("Aether")
-                        }
-                        append(" ")
-                        withStyle(SpanStyle(brush = shimmerBrush, fontWeight = FontWeight.Light)) {
-                            append("Manager")
-                        }
-                    },
-                    fontSize      = 32.sp,
-                    letterSpacing = (-0.8).sp
-                )
-            }
+            )
 
             Spacer(Modifier.height(8.dp))
 
-            // FIX #5: subtitle offset juga pakai px conversion yang benar
-            val subtitleOffsetPx = with(density) { subtitleOffsetDp.value.dp.toPx() }
             Text(
-                "Optimizing Your Android Experience",
-                modifier = Modifier.graphicsLayer(
-                    alpha        = subtitleAlpha.value,
-                    translationY = subtitleOffsetPx
-                ),
-                color         = primary.copy(alpha = 0.6f),
-                fontSize      = 11.5.sp,
-                letterSpacing = 0.6.sp,
-                fontWeight    = FontWeight.Medium
+                text = "Smart Control • Clean Boost • Premium Tools",
+                modifier = Modifier.graphicsLayer {
+                    alpha = subtitleAlpha.value
+                    translationY = with(density) { subtitleOffset.value.dp.toPx() }
+                },
+                color = onSurface.copy(alpha = 0.58f),
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.2.sp,
+                textAlign = TextAlign.Center
             )
 
-            Spacer(Modifier.height(44.dp))
+            Spacer(Modifier.height(18.dp))
 
-            // ── Progress bar dengan glow ──────────────────────
             Box(
                 modifier = Modifier
-                    .graphicsLayer(alpha = barAlpha.value)
-                    .width(160.dp)
-                    .height(3.dp)
-                    .clip(CircleShape)
+                    .graphicsLayer(alpha = chipAlpha.value)
+                    .clip(RoundedCornerShape(100.dp))
                     .background(primary.copy(alpha = 0.10f))
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Glow layer
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(barProgress.value)
-                        .fillMaxHeight()
-                        .clip(CircleShape)
-                        .graphicsLayer {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                renderEffect = BlurEffect(8f, 8f, TileMode.Decal)
-                            }
-                            alpha = 0.7f
-                        }
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(primary.copy(alpha = 0.4f), secondary.copy(alpha = 0.6f))
-                            )
-                        )
-                )
-                // Solid layer
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(barProgress.value)
-                        .fillMaxHeight()
-                        .clip(CircleShape)
-                        .background(
-                            Brush.horizontalGradient(listOf(primary, secondary))
-                        )
+                Text(
+                    text = "Preparing your workspace",
+                    color = primary.copy(alpha = 0.92f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.35.sp
                 )
             }
+
+            Spacer(Modifier.height(42.dp))
+
+            ZigZagProgress(
+                progress = progress.value,
+                flow = zigzagFlow,
+                alpha = progressAlpha.value,
+                primary = primary,
+                secondary = secondary,
+                onSurface = onSurface,
+                modifier = Modifier
+                    .width(236.dp)
+                    .height(44.dp)
+            )
         }
 
-        // ── Version ───────────────────────────────────────────
         Text(
-            "v$versionName",
+            text = "v$versionName",
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 32.dp)
                 .graphicsLayer(alpha = versionAlpha.value),
-            color         = onSurface.copy(alpha = 0.22f),
-            fontSize      = 10.sp,
-            letterSpacing = 1.5.sp,
-            fontWeight    = FontWeight.Medium
+            color = onSurface.copy(alpha = 0.28f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.4.sp
+        )
+    }
+}
+
+@Composable
+private fun SplashBackground(
+    primary: Color,
+    secondary: Color,
+    tertiary: Color,
+    alpha: Float,
+    rotation: Float
+) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                this.alpha = alpha
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    renderEffect = BlurEffect(82f, 82f, TileMode.Decal)
+                }
+            }
+    ) {
+        val min = size.minDimension
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val angle = rotation * (PI / 180f).toFloat()
+
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(primary.copy(alpha = 0.26f), Color.Transparent),
+                center = Offset(cx + cos(angle) * min * 0.18f, cy + sin(angle) * min * 0.10f),
+                radius = min * 0.42f
+            ),
+            radius = min * 0.42f,
+            center = Offset(cx + cos(angle) * min * 0.18f, cy + sin(angle) * min * 0.10f)
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(secondary.copy(alpha = 0.18f), Color.Transparent),
+                center = Offset(cx - sin(angle) * min * 0.16f, cy + cos(angle) * min * 0.13f),
+                radius = min * 0.34f
+            ),
+            radius = min * 0.34f,
+            center = Offset(cx - sin(angle) * min * 0.16f, cy + cos(angle) * min * 0.13f)
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(tertiary.copy(alpha = 0.10f), Color.Transparent),
+                center = Offset(cx, cy),
+                radius = min * 0.26f
+            ),
+            radius = min * 0.26f,
+            center = Offset(cx, cy)
+        )
+    }
+}
+
+@Composable
+private fun ZigZagProgress(
+    progress: Float,
+    flow: Float,
+    alpha: Float,
+    primary: Color,
+    secondary: Color,
+    onSurface: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier.graphicsLayer(alpha = alpha)) {
+        val startX = 8.dp.toPx()
+        val endX = size.width - 8.dp.toPx()
+        val centerY = size.height / 2f
+        val amplitude = 8.dp.toPx()
+        val strokeWidth = 4.dp.toPx()
+        val segments = 18
+        val step = (endX - startX) / segments
+        val points = ArrayList<Offset>(segments + 1)
+
+        for (i in 0..segments) {
+            val x = startX + step * i
+            val y = centerY + if (i % 2 == 0) -amplitude else amplitude
+            points.add(Offset(x, y))
+        }
+
+        val track = Path().apply {
+            moveTo(points.first().x, points.first().y)
+            for (i in 1 until points.size) {
+                lineTo(points[i].x, points[i].y)
+            }
+        }
+
+        drawPath(
+            path = track,
+            color = onSurface.copy(alpha = 0.10f),
+            style = Stroke(
+                width = strokeWidth,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+
+        val totalSegments = segments * progress.coerceIn(0f, 1f)
+        val fullSegments = totalSegments.toInt().coerceIn(0, segments)
+        val remainder = totalSegments - fullSegments
+
+        val active = Path().apply {
+            moveTo(points.first().x, points.first().y)
+            for (i in 1..fullSegments) {
+                lineTo(points[i].x, points[i].y)
+            }
+            if (fullSegments < segments) {
+                val a = points[fullSegments]
+                val b = points[fullSegments + 1]
+                lineTo(
+                    x = a.x + (b.x - a.x) * remainder,
+                    y = a.y + (b.y - a.y) * remainder
+                )
+            }
+        }
+
+        drawPath(
+            path = active,
+            brush = Brush.linearGradient(
+                colors = listOf(primary, secondary, primary),
+                start = Offset(size.width * (flow - 1f), 0f),
+                end = Offset(size.width * flow, size.height)
+            ),
+            style = Stroke(
+                width = strokeWidth,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+
+        val currentIndex = fullSegments.coerceIn(0, segments)
+        val currentPoint = if (currentIndex < segments) {
+            val a = points[currentIndex]
+            val b = points[currentIndex + 1]
+            Offset(
+                x = a.x + (b.x - a.x) * remainder,
+                y = a.y + (b.y - a.y) * remainder
+            )
+        } else {
+            points.last()
+        }
+
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(primary.copy(alpha = 0.42f), Color.Transparent),
+                center = currentPoint,
+                radius = 15.dp.toPx()
+            ),
+            radius = 15.dp.toPx(),
+            center = currentPoint
+        )
+        drawCircle(
+            color = secondary,
+            radius = 3.8.dp.toPx(),
+            center = currentPoint
         )
     }
 }

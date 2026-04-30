@@ -82,6 +82,7 @@ import dev.aether.manager.data.UiState
 import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
 import dev.aether.manager.util.DeviceInfo
+import dev.aether.manager.util.SocType
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
@@ -177,7 +178,7 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
             TemperaturePagerCard(state, Modifier.weight(1f))
         }
 
-        GpuInfoCard(state)
+        GpuInfoCard(state, info)
         MemoryInfoCard(state)
     }
 }
@@ -271,8 +272,25 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
 }
 
 @Composable
-private fun GpuInfoCard(state: MonitorState) {
+private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
     val accent = Color(0xFFFF9CAF)
+
+    // Resolve GPU name: prioritize sysfs reading (state.gpuName),
+    // fallback to SocType-based guess, then generic "GPU"
+    val gpuFullName = state.gpuName.ifBlank {
+        when (info?.soc) {
+            SocType.SNAPDRAGON -> "Adreno GPU"
+            SocType.MEDIATEK   -> "Mali GPU"
+            SocType.EXYNOS     -> "Mali GPU"
+            SocType.KIRIN      -> "Mali GPU"
+            else               -> "GPU"
+        }
+    }
+    // Short label for the info tile (strip trailing " GPU" / " Gpu")
+    val gpuShortName = gpuFullName
+        .replace(Regex("\\s+[Gg][Pp][Uu]$"), "")
+        .ifBlank { "GPU" }
+
     TappableCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
@@ -294,7 +312,7 @@ private fun GpuInfoCard(state: MonitorState) {
                 Column(horizontalAlignment = Alignment.End) {
                     Text("GPU Type", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Adreno GPU", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        Text(gpuFullName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Icon(Icons.Outlined.ChevronRight, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -302,7 +320,7 @@ private fun GpuInfoCard(state: MonitorState) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 InfoTile(Icons.Outlined.Thermostat, "${state.gpuUsage}%", "Beban GPU", accent, Modifier.weight(1f))
-                InfoTile(Icons.Outlined.GridView, "Adreno", "GPU", accent, Modifier.weight(1f))
+                InfoTile(Icons.Outlined.GridView, gpuShortName, "GPU", accent, Modifier.weight(1f))
             }
         }
     }

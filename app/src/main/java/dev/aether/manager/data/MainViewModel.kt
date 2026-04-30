@@ -63,6 +63,7 @@ data class MonitorState(
     val cpuFreq: String = "",
     val gpuUsage: Int = 0,
     val gpuFreq: String = "",
+    val gpuName: String = "",
     val ramUsedMb: Long = 0L,
     val ramTotalMb: Long = 0L,
     val cpuTemp: Float = 0f,

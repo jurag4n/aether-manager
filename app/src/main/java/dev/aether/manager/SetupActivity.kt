@@ -78,13 +78,13 @@ import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -244,7 +244,7 @@ private fun SetupBackground(content: @Composable () -> Unit) {
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
                             Color.Transparent
                         )
                     )
@@ -259,7 +259,7 @@ private fun SetupBackground(content: @Composable () -> Unit) {
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f),
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
                             Color.Transparent
                         )
                     )
@@ -312,15 +312,12 @@ private fun PagerDotIndicator(total: Int, current: Int, modifier: Modifier = Mod
             val active = i == current
             val width by animateDpAsState(
                 targetValue = if (active) 30.dp else 8.dp,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                ),
+                animationSpec = tween(320, easing = FastOutSlowInEasing),
                 label = "dot_width_$i"
             )
             val alpha by animateFloatAsState(
                 targetValue = if (active) 1f else 0.30f,
-                animationSpec = tween(260, easing = FastOutSlowInEasing),
+                animationSpec = tween(320, easing = FastOutSlowInEasing),
                 label = "dot_alpha_$i"
             )
             Box(
@@ -338,19 +335,19 @@ private fun PagerDotIndicator(total: Int, current: Int, modifier: Modifier = Mod
 private fun HeroFeatureSpotlight() {
     val inf = rememberInfiniteTransition(label = "hero_motion")
     val floatY by inf.animateFloat(
-        initialValue = -4f,
-        targetValue = 6f,
+        initialValue = -3f,
+        targetValue = 4f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(2200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "hero_float"
     )
     val glow by inf.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.85f,
+        initialValue = 0.32f,
+        targetValue = 0.72f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1300, easing = FastOutSlowInEasing),
+            animation = tween(1800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "hero_glow"
@@ -359,7 +356,7 @@ private fun HeroFeatureSpotlight() {
     Surface(
         shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.40f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(
@@ -432,10 +429,10 @@ private fun HeroFeatureSpotlight() {
 @Composable
 private fun FeatureCard(item: FeatureItem, index: Int) {
     val alpha = remember { Animatable(0f) }
-    val y = remember { Animatable(26f) }
+    val y = remember { Animatable(20f) }
 
     LaunchedEffect(Unit) {
-        delay(index * 80L)
+        delay(index * 70L)
         launch { alpha.animateTo(1f, tween(360, easing = FastOutSlowInEasing)) }
         launch { y.animateTo(0f, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) }
     }
@@ -443,7 +440,7 @@ private fun FeatureCard(item: FeatureItem, index: Int) {
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f)),
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer(alpha = alpha.value, translationY = y.value)
@@ -535,7 +532,7 @@ private fun PermissionCard(
     )
 
     val alpha = remember { Animatable(0f) }
-    val y = remember { Animatable(20f) }
+    val y = remember { Animatable(18f) }
     val scale = remember { Animatable(1f) }
 
     LaunchedEffect(Unit) {
@@ -546,8 +543,8 @@ private fun PermissionCard(
 
     LaunchedEffect(state) {
         if (isGranted) {
-            scale.animateTo(1.025f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium))
-            scale.animateTo(1f, tween(120, easing = FastOutSlowInEasing))
+            scale.animateTo(1.018f, tween(120, easing = FastOutSlowInEasing))
+            scale.animateTo(1f, tween(160, easing = FastOutSlowInEasing))
         }
     }
 
@@ -576,7 +573,7 @@ private fun PermissionCard(
                 AnimatedContent(
                     targetState = state,
                     transitionSpec = {
-                        (scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(180))) togetherWith
+                        (scaleIn(tween(180)) + fadeIn(tween(180))) togetherWith
                             (scaleOut(tween(120)) + fadeOut(tween(120)))
                     },
                     label = "perm_icon_${item.permissionType}"
@@ -612,14 +609,14 @@ private fun PermissionCard(
 
                 AnimatedContent(
                     targetState = when (state) {
-                        PermState.CHECKING -> "Memeriksa izin…"
+                        PermState.CHECKING -> "Memeriksa izin..."
                         PermState.GRANTED -> "Aktif dan siap digunakan"
-                        PermState.DENIED -> if (item.required) "Belum diberikan" else "Dilewati / belum aktif"
+                        PermState.DENIED -> if (item.required) "Belum diberikan" else "Dilewati atau belum aktif"
                         PermState.IDLE -> item.desc
                     },
                     transitionSpec = {
-                        (slideInVertically { it / 2 } + fadeIn(tween(180))) togetherWith
-                            (slideOutVertically { -it / 2 } + fadeOut(tween(140)))
+                        (slideInVertically { it / 3 } + fadeIn(tween(180))) togetherWith
+                            (slideOutVertically { -it / 3 } + fadeOut(tween(140)))
                     },
                     label = "perm_desc_${item.permissionType}"
                 ) { text ->
@@ -635,9 +632,9 @@ private fun PermissionCard(
             val pulse = rememberInfiniteTransition(label = "perm_pulse_${item.permissionType}")
             val pulseScale by pulse.animateFloat(
                 initialValue = 0.92f,
-                targetValue = if (isChecking) 1.42f else 1f,
+                targetValue = if (isChecking) 1.35f else 1f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(620, easing = FastOutSlowInEasing),
+                    animation = tween(760, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse
                 ),
                 label = "pulse_scale"
@@ -655,47 +652,74 @@ private fun PermissionCard(
 
 @Composable
 private fun PermissionSummaryCard(granted: Int, total: Int, rootOk: Boolean) {
+    val progress = if (total == 0) 0f else granted.toFloat() / total.toFloat()
+
     Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
+        shape = RoundedCornerShape(30.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f)),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(58.dp)
+                        .clip(RoundedCornerShape(21.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "$granted/$total",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 15.sp
+                    )
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "Permission Setup",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        if (rootOk) "Root sudah aktif. Selesaikan izin tambahan agar monitoring, profil, dan optimasi berjalan stabil."
+                        else "Root wajib aktif untuk membuka mode performa, tweak sistem, dan kontrol penuh Aether Manager.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f))
             ) {
-                Text(
-                    "$granted/$total",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    "Permission Setup",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    if (rootOk) "Root aktif. Lengkapi izin lain agar fitur berjalan stabil."
-                    else "Root wajib aktif sebelum masuk ke aplikasi.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 18.sp
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .height(8.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
                 )
             }
         }
     }
+}
+
+@Composable
+private fun DetailCard(item: FeatureItem, index: Int) {
+    FeatureCard(item = item, index = index)
 }
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -707,24 +731,20 @@ private fun AetherNextButton(
 ) {
     val scope = rememberCoroutineScope()
     val scale = remember { Animatable(1f) }
-    val inf = rememberInfiniteTransition(label = "next_motion")
+    val inf = rememberInfiniteTransition(label = "next_button_motion")
     val arrowX by inf.animateFloat(
         initialValue = 0f,
-        targetValue = if (enabled) 8f else 0f,
+        targetValue = if (enabled) 5f else 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(760, easing = FastOutSlowInEasing),
+            animation = tween(1350, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "arrow_x"
+        label = "next_arrow_x"
     )
-    val glowAlpha by inf.animateFloat(
-        initialValue = 0.18f,
-        targetValue = if (enabled) 0.42f else 0.18f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1100, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "button_glow"
+    val glow by animateFloatAsState(
+        targetValue = if (enabled) 0.26f else 0.08f,
+        animationSpec = tween(450, easing = FastOutSlowInEasing),
+        label = "next_glow"
     )
 
     Box(Modifier.fillMaxWidth()) {
@@ -732,15 +752,15 @@ private fun AetherNextButton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(58.dp)
-                .padding(horizontal = 8.dp, vertical = 7.dp)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
                 .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = glow))
         )
         FilledTonalButton(
             onClick = {
                 scope.launch {
-                    scale.animateTo(0.965f, tween(70, easing = FastOutSlowInEasing))
-                    scale.animateTo(1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium))
+                    scale.animateTo(0.985f, tween(95, easing = FastOutSlowInEasing))
+                    scale.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
                 }
                 onClick()
             },
@@ -764,8 +784,8 @@ private fun AetherNextButton(
                 AnimatedContent(
                     targetState = text,
                     transitionSpec = {
-                        (slideInHorizontally { it / 2 } + fadeIn(tween(180))) togetherWith
-                            (slideOutHorizontally { -it / 2 } + fadeOut(tween(130)))
+                        (fadeIn(tween(220)) + slideInHorizontally { it / 5 }) togetherWith
+                            (fadeOut(tween(160)) + slideOutHorizontally { -it / 5 })
                     },
                     label = "next_text"
                 ) { label ->
@@ -935,14 +955,14 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     fun nextPage() = scope.launch {
         pagerState.animateScrollToPage(
             page = currentPage + 1,
-            animationSpec = tween(520, easing = FastOutSlowInEasing)
+            animationSpec = tween(620, easing = FastOutSlowInEasing)
         )
     }
 
     fun prevPage() = scope.launch {
         pagerState.animateScrollToPage(
             page = currentPage - 1,
-            animationSpec = tween(440, easing = FastOutSlowInEasing)
+            animationSpec = tween(520, easing = FastOutSlowInEasing)
         )
     }
 
@@ -964,7 +984,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     }
 
     val screenAlpha = remember { Animatable(0f) }
-    val screenY = remember { Animatable(28f) }
+    val screenY = remember { Animatable(24f) }
     LaunchedEffect(Unit) {
         launch { screenAlpha.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) }
         launch { screenY.animateTo(0f, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) }
@@ -1003,10 +1023,10 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             .padding(horizontal = 24.dp)
                             .padding(top = 4.dp, bottom = 18.dp)
                             .graphicsLayer {
-                                translationX = pageOffset * size.width * 0.10f
-                                alpha = lerp(1f, 0.45f, absOffset)
-                                scaleX = lerp(1f, 0.96f, absOffset)
-                                scaleY = lerp(1f, 0.96f, absOffset)
+                                translationX = pageOffset * size.width * 0.08f
+                                alpha = lerp(1f, 0.50f, absOffset)
+                                scaleX = lerp(1f, 0.97f, absOffset)
+                                scaleY = lerp(1f, 0.97f, absOffset)
                             }
                     ) {
                         when (idx) {
@@ -1195,7 +1215,7 @@ private fun WelcomePage(s: AppStrings) {
             lineHeight = 40.sp
         )
         Text(
-            s.setupWelcomeDesc,
+            "Setup cepat untuk mengaktifkan root mode, monitoring perangkat, profil performa, dan optimasi baterai dengan tampilan yang lebih rapi.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
@@ -1214,17 +1234,17 @@ private fun WelcomePage(s: AppStrings) {
         listOf(
             FeatureItem(
                 Icons.Outlined.Speed,
-                "Performa Maksimal",
-                "Optimasi CPU, GPU, dan scheduler agar perangkat terasa lebih responsif."
+                "Smart Performance",
+                "Profil performa untuk menjaga CPU, GPU, dan scheduler tetap responsif saat digunakan."
             ),
             FeatureItem(
                 Icons.Outlined.BatteryChargingFull,
-                "Manajemen Daya",
-                "Profil hemat baterai yang tetap menjaga kestabilan performa harian."
+                "Battery Control",
+                "Mengurangi limit background agar proses penting Aether Manager tetap berjalan stabil."
             ),
             FeatureItem(
                 Icons.Outlined.SportsEsports,
-                "Mode Gaming",
+                "Game Mode",
                 "Prioritaskan resource untuk game dan kurangi gangguan proses latar belakang."
             )
         ).forEachIndexed { index, item ->
@@ -1267,7 +1287,7 @@ private fun PermissionsPage(
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            "Aktifkan izin yang dibutuhkan supaya fitur root, monitoring, dan optimasi berjalan stabil.",
+            "Aktifkan izin inti secara bertahap. Root wajib untuk mode performa, sedangkan izin tambahan membantu monitoring dan optimasi berjalan lebih stabil.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
@@ -1282,8 +1302,8 @@ private fun PermissionsPage(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StatusChip("Root wajib", MaterialTheme.colorScheme.error)
-            StatusChip("Tap untuk aktifkan", MaterialTheme.colorScheme.primary)
-            StatusChip("Swipe halaman", MaterialTheme.colorScheme.tertiary)
+            StatusChip("Ketuk kartu izin", MaterialTheme.colorScheme.primary)
+            StatusChip("Swipe untuk pindah", MaterialTheme.colorScheme.tertiary)
         }
 
         permItems.forEachIndexed { index, item ->
@@ -1332,34 +1352,34 @@ private fun PermissionsPage(
 
 @Composable
 private fun DonePage(s: AppStrings, allGranted: Boolean) {
-    val iconScale = remember { Animatable(0.55f) }
+    val iconScale = remember { Animatable(0.72f) }
     val iconAlpha = remember { Animatable(0f) }
     val inf = rememberInfiniteTransition(label = "done_glow")
     val glow by inf.animateFloat(
-        initialValue = 0.24f,
-        targetValue = 0.72f,
+        initialValue = 0.22f,
+        targetValue = 0.62f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
+            animation = tween(1600, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "done_glow_alpha"
     )
 
     LaunchedEffect(Unit) {
-        launch { iconScale.animateTo(1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) }
-        launch { iconAlpha.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
+        launch { iconScale.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
+        launch { iconAlpha.animateTo(1f, tween(360, easing = FastOutSlowInEasing)) }
     }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Spacer(Modifier.height(34.dp))
+        Spacer(Modifier.height(18.dp))
 
         Box(
             modifier = Modifier
-                .size(138.dp)
+                .size(128.dp)
                 .scale(iconScale.value)
                 .graphicsLayer(alpha = iconAlpha.value)
                 .clip(CircleShape)
@@ -1382,12 +1402,12 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
                 contentDescription = null,
                 tint = if (allGranted) MaterialTheme.colorScheme.onPrimaryContainer
                 else MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.size(60.dp)
             )
         }
 
         Text(
-            if (allGranted) s.setupDoneTitle else s.setupIncompleteTitle,
+            if (allGranted) "Setup Complete" else s.setupIncompleteTitle,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -1395,44 +1415,74 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
             lineHeight = 32.sp
         )
         Text(
-            if (allGranted) s.setupDoneDesc else s.setupIncompleteDesc,
+            if (allGranted) "Aether Manager sudah siap digunakan. Root mode aktif, izin utama selesai, dan fitur monitoring siap berjalan di background."
+            else "Beberapa izin belum selesai. Kembali ke halaman izin lalu aktifkan kartu yang masih belum aktif.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp,
-            modifier = Modifier.widthIn(max = 330.dp)
+            modifier = Modifier.widthIn(max = 340.dp)
         )
 
-        AnimatedVisibility(
-            visible = allGranted,
-            enter = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(250)),
-            exit = scaleOut(tween(160)) + fadeOut(tween(160))
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = if (allGranted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+            else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.42f),
+            border = BorderStroke(
+                1.dp,
+                if (allGranted) MaterialTheme.colorScheme.primary.copy(alpha = glow)
+                else MaterialTheme.colorScheme.error.copy(alpha = glow)
+            ),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = glow))
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Text(
-                        s.setupAllPermsGranted,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = 0.3.sp
-                    )
-                }
+                Text(
+                    if (allGranted) "Semua sistem siap" else "Setup belum lengkap",
+                    fontWeight = FontWeight.Bold,
+                    color = if (allGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    fontSize = 14.sp
+                )
+                Text(
+                    if (allGranted) "Tekan tombol Mulai untuk masuk ke dashboard utama."
+                    else "Tombol Mulai baru aktif setelah root dan izin wajib selesai.",
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
             }
+        }
+
+        Text(
+            "Yang sudah disiapkan",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        listOf(
+            FeatureItem(
+                Icons.Outlined.AdminPanelSettings,
+                "Root Mode",
+                "Kontrol sistem dan tuning performa sudah bisa dipakai dari dashboard."
+            ),
+            FeatureItem(
+                Icons.Outlined.Tune,
+                "Optimasi Stabil",
+                "Profil performa, baterai, dan monitoring siap berjalan lebih konsisten."
+            ),
+            FeatureItem(
+                Icons.Outlined.QueryStats,
+                "Monitoring Siap",
+                "Status perangkat, aplikasi, dan proses background bisa dipantau lebih rapi."
+            )
+        ).forEachIndexed { index, item ->
+            DetailCard(item = item, index = index)
         }
     }
 }

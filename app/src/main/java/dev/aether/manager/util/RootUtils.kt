@@ -321,6 +321,51 @@ object RootUtils {
                 echo bat_status=$(cat /sys/class/power_supply/battery/status 2>/dev/null || echo Unknown)
                 echo cpu_gov=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
 
+                gpu_name=""
+                # Adreno (Qualcomm/Snapdragon) — kgsl
+                if [ -f /sys/class/kgsl/kgsl-3d0/gpu_model ]; then
+                  gpu_name=$(cat /sys/class/kgsl/kgsl-3d0/gpu_model 2>/dev/null | tr -d '\n')
+                elif [ -f /sys/class/kgsl/kgsl-3d0/gpu_tbl_name ]; then
+                  gpu_name=$(cat /sys/class/kgsl/kgsl-3d0/gpu_tbl_name 2>/dev/null | tr -d '\n')
+                elif [ -f /sys/class/kgsl/kgsl-3d0/device/name ]; then
+                  gpu_name=$(cat /sys/class/kgsl/kgsl-3d0/device/name 2>/dev/null | tr -d '\n')
+                fi
+                # Mali (MediaTek/Exynos/Kirin) — mali0
+                if [ -z "${'$'}gpu_name" ]; then
+                  if [ -f /sys/class/misc/mali0/device/gpu_id ]; then
+                    _id=$(cat /sys/class/misc/mali0/device/gpu_id 2>/dev/null | tr -cd '0-9')
+                    [ -n "${'$'}_id" ] && gpu_name="Mali-G${'$'}_id"
+                  elif [ -d /sys/class/misc/mali0 ]; then
+                    gpu_name="Mali GPU"
+                  fi
+                fi
+                # Exynos fallback
+                if [ -z "${'$'}gpu_name" ] && [ -d /sys/class/misc/g3d ]; then
+                  gpu_name="Mali GPU"
+                fi
+                # PowerVR (older Intel/Imagination)
+                if [ -z "${'$'}gpu_name" ] && [ -d /sys/bus/platform/drivers/pvrsrvkm ]; then
+                  gpu_name="PowerVR GPU"
+                fi
+                # Vulkan / OpenGL ES fallback via ro.hardware.vulkan
+                if [ -z "${'$'}gpu_name" ]; then
+                  _vk=$(getprop ro.hardware.vulkan 2>/dev/null)
+                  case "${'$'}_vk" in
+                    *adreno*) gpu_name="Adreno GPU" ;;
+                    *mali*)   gpu_name="Mali GPU" ;;
+                    *powervr*)gpu_name="PowerVR GPU" ;;
+                  esac
+                fi
+                # ro.hardware fallback
+                if [ -z "${'$'}gpu_name" ]; then
+                  _hw=$(getprop ro.hardware 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                  case "${'$'}_hw" in
+                    *adreno*) gpu_name="Adreno GPU" ;;
+                    *mali*)   gpu_name="Mali GPU" ;;
+                  esac
+                fi
+                echo gpu_name=${'$'}gpu_name
+
                 read -r _ stotal sused _ <<< $(df /data 2>/dev/null | tail -1)
                 echo storage_used_kb=${'$'}{sused:-0}
                 echo storage_total_kb=${'$'}{stotal:-0}
@@ -366,6 +411,7 @@ object RootUtils {
                 cpuFreq        = map["cpu_freq"]?.toLongOrNull()?.takeIf { it > 0 }?.let { "$it MHz" } ?: "",
                 gpuUsage       = map["gpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0,
                 gpuFreq        = map["gpu_freq"]?.toLongOrNull()?.takeIf { it > 0 }?.let { "$it MHz" } ?: "",
+                gpuName        = map["gpu_name"]?.takeIf { it.isNotBlank() } ?: "",
                 ramUsedMb      = map["ram_used_mb"]?.toLongOrNull()  ?: 0L,
                 ramTotalMb     = map["ram_total_mb"]?.toLongOrNull() ?: 0L,
                 cpuTemp        = when {
