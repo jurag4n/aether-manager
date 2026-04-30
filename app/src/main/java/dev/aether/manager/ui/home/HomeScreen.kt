@@ -498,3 +498,36 @@ private fun ratio(used: Long, total: Long): Float = if (total > 0L) (used.toFloa
 private fun ratio(used: Float, total: Float): Float = if (total > 0f) (used / total).coerceIn(0f, 1f) else 0f
 private fun Int.floorMod(size: Int): Int = ((this % size) + size) % size
 private fun fmtMb(mb: Long): String = if (mb >= 1024) "%.1f GB".format(mb / 1024f) else "$mb MB"
+
+@Composable
+fun TabSectionTitle(
+    icon: ImageVector,
+    title: String,
+    trailing: (@Composable () -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface,
+                letterSpacing = 0.1.sp
+            )
+        }
+        trailing?.invoke()
+    }
+}
