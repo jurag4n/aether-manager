@@ -22,11 +22,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -281,6 +285,18 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
 
     UpdateDialogHost(viewModel = updateVm)
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// FloatingBottomBar — iOS 26-style hold-to-expand + drag-to-switch capsule
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Behaviour:
+//   • Normal state  → compact pill (icon-only tabs + settings + power)
+//   • Hold (LongPress on any nav item) → capsule expands, all items show
+//     full label + icon, selected item highlighted; user can drag left/right
+//     to switch tabs; release → capsule shrinks back smoothly
+//   • Tap (short press) → instant navigate, no expansion
+//
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FloatingBottomBar(
     navItems: List<NavItem>,
@@ -290,6 +306,38 @@ private fun FloatingBottomBar(
     onPowerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // ── Expansion state ───────────────────────────────────────────────────────
+    var expanded by remember { mutableStateOf(false) }
+    // Drag tracking (pixel offset accumulated during hold-drag)
+    var dragAccum by remember { mutableStateOf(0f) }
+    // Which item index is highlighted while dragging
+    var dragIndex by remember { mutableIntStateOf(navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)) }
+
+    // Keep dragIndex in sync when screen changes externally
+    LaunchedEffect(currentScreen) {
+        if (!expanded) dragIndex = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
+    }
+
+    // ── Animation values ──────────────────────────────────────────────────────
+    val expandSpec = spring<Float>(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium)
+    val collapseSpec = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+
+    val expandProgress by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = if (expanded) expandSpec else collapseSpec,
+        label = "capsule_expand"
+    )
+
+    // Outer capsule vertical scale — subtle squish on long-press start
+    val capsuleScale by animateFloatAsState(
+        targetValue = if (expanded) 1.04f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "capsule_scale"
+    )
+
+    // ── Drag threshold per item (px → will be set after layout) ──────────────
+    val itemWidthPx = remember { mutableStateOf(0f) }
+
     Surface(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
@@ -298,83 +346,152 @@ private fun FloatingBottomBar(
         modifier = modifier
             .navigationBarsPadding()
             .padding(horizontal = 18.dp, vertical = 14.dp)
+            .scale(scaleX = 1f, scaleY = capsuleScale)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+            modifier = Modifier
+                .padding(horizontal = 8.dp, vertical = 7.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // ── Nav items ─────────────────────────────────────────────────────
             navItems.forEachIndexed { idx, item ->
-                val selected = currentScreen == item.screen
-                val interactionSource = remember { MutableInteractionSource() }
-                val pressed by interactionSource.collectIsPressedAsState()
-                val expanded = selected || pressed
-                val width by animateDpAsState(
-                    targetValue = if (expanded) 64.dp else 48.dp,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    label = "float_nav_width_$idx"
+                val isSelected = currentScreen == item.screen
+                val isHighlighted = expanded && dragIndex == idx
+
+                // Item width: expanded shows label, collapsed is icon-only
+                val itemWidth by animateDpAsState(
+                    targetValue = when {
+                        expanded        -> 76.dp   // icon + label
+                        isSelected      -> 62.dp   // selected pill
+                        else            -> 48.dp
+                    },
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                    label = "item_width_$idx"
                 )
-                val scale by animateFloatAsState(
-                    targetValue = if (pressed) 0.94f else 1f,
-                    animationSpec = tween(140),
-                    label = "float_nav_scale_$idx"
-                )
-                val bgColor by animateColorAsState(
-                    targetValue = if (expanded) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                    animationSpec = tween(220),
-                    label = "float_nav_bg_$idx"
+
+                val bgAlpha by animateFloatAsState(
+                    targetValue = when {
+                        isHighlighted -> 1f
+                        !expanded && isSelected -> 1f
+                        else -> 0f
+                    },
+                    animationSpec = tween(200),
+                    label = "item_bg_$idx"
                 )
                 val iconTint by animateColorAsState(
-                    targetValue = if (expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = tween(220),
-                    label = "float_nav_tint_$idx"
+                    targetValue = if (isHighlighted || (!expanded && isSelected))
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = tween(200),
+                    label = "item_tint_$idx"
                 )
+                val bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha)
 
                 Box(
                     modifier = Modifier
                         .height(48.dp)
-                        .width(width)
-                        .scale(scale)
+                        .width(itemWidth)
+                        .onGloballyPositioned { coords ->
+                            if (itemWidthPx.value == 0f) {
+                                itemWidthPx.value = coords.size.width.toFloat()
+                            }
+                        }
                         .clip(RoundedCornerShape(50))
                         .background(bgColor)
+                        // Short tap → navigate
                         .clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { onScreenChange(item.screen) },
+                        ) {
+                            if (!expanded) {
+                                onScreenChange(item.screen)
+                                dragIndex = idx
+                            }
+                        }
+                        // Long press → expand capsule; drag → switch tabs
+                        .pointerInput(navItems, expanded) {
+                            detectDragGesturesAfterLongPress(
+                                onLongPressStart = { _ ->
+                                    expanded = true
+                                    dragIndex = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
+                                    dragAccum = 0f
+                                },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    dragAccum += dragAmount.x
+                                    val threshold = if (itemWidthPx.value > 0f) itemWidthPx.value else 80f
+                                    val steps = (dragAccum / threshold).toInt()
+                                    if (steps != 0) {
+                                        val newIdx = (dragIndex + steps).coerceIn(0, navItems.lastIndex)
+                                        if (newIdx != dragIndex) {
+                                            dragIndex = newIdx
+                                            dragAccum -= steps * threshold
+                                        }
+                                    }
+                                },
+                                onDragEnd = {
+                                    onScreenChange(navItems[dragIndex].screen)
+                                    expanded = false
+                                    dragAccum = 0f
+                                },
+                                onDragCancel = {
+                                    expanded = false
+                                    dragAccum = 0f
+                                }
+                            )
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
                         Icon(
-                            if (expanded) item.selectedIcon else item.unselectedIcon,
+                            imageVector = if (isHighlighted || (!expanded && isSelected)) item.selectedIcon else item.unselectedIcon,
                             contentDescription = item.label,
                             tint = iconTint,
-                            modifier = Modifier.size(23.dp)
+                            modifier = Modifier.size(22.dp)
                         )
+                        // Label — slides in when expanded
                         AnimatedVisibility(
-                            visible = pressed,
-                            enter = fadeIn(tween(120)) + expandHorizontally(tween(160)),
-                            exit = fadeOut(tween(90)) + shrinkHorizontally(tween(120))
+                            visible = expandProgress > 0.4f,
+                            enter = fadeIn(tween(120)) + expandHorizontally(
+                                animationSpec = tween(180),
+                                expandFrom = Alignment.Start
+                            ),
+                            exit = shrinkHorizontally(
+                                animationSpec = tween(120),
+                                shrinkTowards = Alignment.Start
+                            ) + fadeOut(tween(80))
                         ) {
                             Text(
-                                text = item.label.take(1),
+                                text = item.label,
                                 modifier = Modifier.padding(start = 5.dp),
                                 color = iconTint,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Black
+                                fontWeight = FontWeight.Black,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
                 }
             }
 
-            FloatingActionIcon(Icons.Outlined.Settings, onSettingsClick)
-            FloatingPowerIcon(onPowerClick)
+            // ── Settings + Power (hidden while capsule is expanded) ───────────
+            AnimatedVisibility(
+                visible = expandProgress < 0.3f,
+                enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),
+                exit = shrinkHorizontally(tween(120)) + fadeOut(tween(80))
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FloatingActionIcon(Icons.Outlined.Settings, onSettingsClick)
+                    FloatingPowerIcon(onPowerClick)
+                }
+            }
         }
     }
 }
@@ -383,7 +500,7 @@ private fun FloatingBottomBar(
 private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.94f else 1f, tween(140), label = "action_icon_scale")
+    val scale by animateFloatAsState(if (pressed) 0.90f else 1f, tween(140), label = "action_icon_scale")
 
     Box(
         modifier = Modifier
@@ -404,7 +521,7 @@ private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
 private fun FloatingPowerIcon(onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.94f else 1f, tween(140), label = "power_icon_scale")
+    val scale by animateFloatAsState(if (pressed) 0.90f else 1f, tween(140), label = "power_icon_scale")
 
     Box(
         modifier = Modifier

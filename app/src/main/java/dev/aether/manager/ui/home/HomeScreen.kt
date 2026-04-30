@@ -473,8 +473,16 @@ private fun InfoTile(icon: ImageVector, value: String, label: String, color: Col
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(icon, null, tint = color, modifier = Modifier.size(26.dp))
-            Column {
-                Text(value, fontSize = 18.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = value,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false
+                )
                 Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
@@ -543,7 +551,7 @@ private fun WavyProgress(progress: Float, color: Color) {
 
 @Composable
 private fun MemoryDivider() = HorizontalDivider(
-    modifier = Modifier.padding(start = 66.dp, end = 16.dp),
+    modifier = Modifier.padding(start = 66.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
     thickness = 0.5.dp
 )
