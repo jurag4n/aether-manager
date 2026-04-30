@@ -101,6 +101,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -333,36 +334,45 @@ private fun PagerDotIndicator(total: Int, current: Int, modifier: Modifier = Mod
 
 @Composable
 private fun HeroFeatureSpotlight() {
-    val inf = rememberInfiniteTransition(label = "hero_motion")
-    val floatY by inf.animateFloat(
-        initialValue = -3f,
-        targetValue = 4f,
+    val motion = rememberInfiniteTransition(label = "hero_images")
+    val floatY by motion.animateFloat(
+        initialValue = -4f,
+        targetValue = 5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = FastOutSlowInEasing),
+            animation = tween(2400, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "hero_float"
     )
-    val glow by inf.animateFloat(
-        initialValue = 0.32f,
-        targetValue = 0.72f,
+    val rotate by motion.animateFloat(
+        initialValue = -1.5f,
+        targetValue = 1.5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
+            animation = tween(3000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "hero_rotate"
+    )
+    val glow by motion.animateFloat(
+        initialValue = 0.24f,
+        targetValue = 0.55f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1600, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "hero_glow"
     )
 
     Surface(
-        shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(188.dp)
+                .height(202.dp)
                 .background(
                     Brush.linearGradient(
                         listOf(
@@ -372,32 +382,50 @@ private fun HeroFeatureSpotlight() {
                         )
                     )
                 )
-                .padding(22.dp)
+                .padding(18.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(112.dp)
+                    .size(176.dp)
                     .align(Alignment.Center)
-                    .graphicsLayer(translationY = floatY)
-                    .clip(RoundedCornerShape(32.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .border(
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = glow)),
-                        RoundedCornerShape(32.dp)
-                    ),
+                    .graphicsLayer(translationY = floatY, rotationZ = rotate)
+                    .clip(RoundedCornerShape(34.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = glow * 0.16f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Speed,
+                Image(
+                    painter = painterResource(id = R.drawable.p1),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(54.dp)
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(116.dp)
+                        .offset(x = (-28).dp, y = 8.dp)
+                        .graphicsLayer(rotationZ = -8f, alpha = 0.92f)
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.p2),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(132.dp)
+                        .offset(x = 18.dp, y = (-12).dp)
+                        .graphicsLayer(rotationZ = 5f, alpha = 0.96f)
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.p3),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(108.dp)
+                        .offset(x = 38.dp, y = 34.dp)
+                        .graphicsLayer(rotationZ = -3f)
                 )
             }
 
             Surface(
                 shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
                 modifier = Modifier.align(Alignment.TopStart)
             ) {
                 Text(
@@ -405,21 +433,22 @@ private fun HeroFeatureSpotlight() {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                 )
             }
 
             Surface(
                 shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
                 modifier = Modifier.align(Alignment.BottomEnd)
             ) {
                 Text(
-                    "Root Mode Ready",
+                    "Mode Root Ready",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                 )
             }
         }
@@ -731,40 +760,56 @@ private fun AetherNextButton(
 ) {
     val scope = rememberCoroutineScope()
     val scale = remember { Animatable(1f) }
-    val inf = rememberInfiniteTransition(label = "next_button_motion")
+    var locked by remember { mutableStateOf(false) }
+    val inf = rememberInfiniteTransition(label = "next_motion")
     val arrowX by inf.animateFloat(
         initialValue = 0f,
-        targetValue = if (enabled) 5f else 0f,
+        targetValue = if (enabled) 7f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(950, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "arrow_x"
+    )
+    val glowAlpha by inf.animateFloat(
+        initialValue = 0.12f,
+        targetValue = if (enabled) 0.32f else 0.12f,
         animationSpec = infiniteRepeatable(
             animation = tween(1350, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "next_arrow_x"
-    )
-    val glow by animateFloatAsState(
-        targetValue = if (enabled) 0.26f else 0.08f,
-        animationSpec = tween(450, easing = FastOutSlowInEasing),
-        label = "next_glow"
+        label = "button_glow"
     )
 
-    Box(Modifier.fillMaxWidth()) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp),
+        contentAlignment = Alignment.Center
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(58.dp)
-                .padding(horizontal = 10.dp, vertical = 8.dp)
+                .padding(horizontal = 6.dp, vertical = 7.dp)
                 .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = glow))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha))
         )
         FilledTonalButton(
             onClick = {
-                scope.launch {
-                    scale.animateTo(0.985f, tween(95, easing = FastOutSlowInEasing))
-                    scale.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
+                if (!locked && enabled) {
+                    scope.launch {
+                        locked = true
+                        scale.animateTo(0.982f, tween(90, easing = FastOutSlowInEasing))
+                        scale.animateTo(1f, tween(180, easing = FastOutSlowInEasing))
+                        delay(40)
+                        onClick()
+                        delay(420)
+                        locked = false
+                    }
                 }
-                onClick()
             },
-            enabled = enabled,
+            enabled = enabled && !locked,
             shape = RoundedCornerShape(50),
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -784,8 +829,8 @@ private fun AetherNextButton(
                 AnimatedContent(
                     targetState = text,
                     transitionSpec = {
-                        (fadeIn(tween(220)) + slideInHorizontally { it / 5 }) togetherWith
-                            (fadeOut(tween(160)) + slideOutHorizontally { -it / 5 })
+                        (slideInVertically { it / 2 } + fadeIn(tween(220))) togetherWith
+                            (slideOutVertically { -it / 2 } + fadeOut(tween(160)))
                     },
                     label = "next_text"
                 ) { label ->
@@ -1137,65 +1182,88 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                     }
                 }
 
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 28.dp)
+                Surface(
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    PagerDotIndicator(total = totalPages, current = currentPage)
-
-                    AetherNextButton(
-                        text = if (currentPage == totalPages - 1) s.setupBtnStart else s.setupBtnNext,
-                        enabled = canProceed,
-                        onClick = {
-                            if (currentPage == totalPages - 1) onDone(rootState == PermState.GRANTED)
-                            else nextPage()
-                        }
-                    )
-
-                    AnimatedVisibility(
-                        visible = !canProceed && currentPage == 1,
-                        enter = fadeIn(tween(220)) + slideInVertically { it / 2 },
-                        exit = fadeOut(tween(160)) + slideOutVertically { it / 2 }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .padding(top = 12.dp, bottom = 22.dp)
                     ) {
-                        val pendingPerms = buildList {
-                            if (!rootOk) add("Akses Root")
-                            if (notifState == PermState.IDLE) add("Notifikasi")
-                            if (batteryState == PermState.IDLE) add("Optimasi Baterai")
-                            if (usageState == PermState.IDLE) add("Akses Penggunaan")
-                            if (writeState == PermState.IDLE) add("Pengaturan Sistem")
-                            if (includeStorage && storState == PermState.IDLE) add("Penyimpanan")
-                        }
-                        Text(
-                            if (!rootOk) s.setupRootRequired
-                            else "Ketuk izin yang belum diputuskan: ${pendingPerms.joinToString(", ")}",
-                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.88f),
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 17.sp
+                        PagerDotIndicator(total = totalPages, current = currentPage)
+
+                        AetherNextButton(
+                            text = if (currentPage == totalPages - 1) s.setupBtnStart else s.setupBtnNext,
+                            enabled = canProceed,
+                            onClick = {
+                                if (currentPage == totalPages - 1) onDone(rootState == PermState.GRANTED)
+                                else nextPage()
+                            }
                         )
-                    }
 
-                    AnimatedVisibility(
-                        visible = currentPage > 0,
-                        enter = fadeIn(tween(220)) + slideInVertically { it / 2 },
-                        exit = fadeOut(tween(160)) + slideOutVertically { it / 2 }
-                    ) {
-                        TextButton(onClick = { prevPage() }) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChevronLeft,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(17.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                s.setupBtnBack,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Bold
-                            )
+                        AnimatedVisibility(
+                            visible = !canProceed && currentPage == 1,
+                            enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
+                            exit = fadeOut(tween(160)) + slideOutVertically { it / 3 }
+                        ) {
+                            val pendingPerms = buildList {
+                                if (!rootOk) add("Akses Root")
+                                if (notifState == PermState.IDLE) add("Notifikasi")
+                                if (batteryState == PermState.IDLE) add("Optimasi Baterai")
+                                if (usageState == PermState.IDLE) add("Akses Penggunaan")
+                                if (writeState == PermState.IDLE) add("Pengaturan Sistem")
+                                if (includeStorage && storState == PermState.IDLE) add("Penyimpanan")
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.56f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    if (!rootOk) s.setupRootRequired
+                                    else "Selesaikan izin: ${pendingPerms.joinToString(", ")}",
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 17.sp,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(42.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AnimatedVisibility(
+                                visible = currentPage > 0,
+                                enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
+                                exit = fadeOut(tween(160)) + slideOutVertically { it / 3 }
+                            ) {
+                                TextButton(onClick = { prevPage() }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.ChevronLeft,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        s.setupBtnBack,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1206,7 +1274,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 
 @Composable
 private fun WelcomePage(s: AppStrings) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(
             s.setupWelcomeTitle,
             style = MaterialTheme.typography.headlineLarge,
@@ -1215,7 +1283,7 @@ private fun WelcomePage(s: AppStrings) {
             lineHeight = 40.sp
         )
         Text(
-            "Setup cepat untuk mengaktifkan root mode, monitoring perangkat, profil performa, dan optimasi baterai dengan tampilan yang lebih rapi.",
+            s.setupWelcomeDesc,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
@@ -1231,25 +1299,24 @@ private fun WelcomePage(s: AppStrings) {
             modifier = Modifier.padding(top = 4.dp)
         )
 
-        listOf(
+        val features = listOf(
             FeatureItem(
                 Icons.Outlined.Speed,
-                "Smart Performance",
-                "Profil performa untuk menjaga CPU, GPU, dan scheduler tetap responsif saat digunakan."
+                "Performa Maksimal",
+                "Optimalkan CPU, GPU, dan kernel agar perangkat terasa lebih responsif."
             ),
             FeatureItem(
                 Icons.Outlined.BatteryChargingFull,
-                "Battery Control",
-                "Mengurangi limit background agar proses penting Aether Manager tetap berjalan stabil."
+                "Manajemen Daya",
+                "Jaga performa tetap stabil tanpa boros baterai untuk penggunaan harian."
             ),
             FeatureItem(
                 Icons.Outlined.SportsEsports,
-                "Game Mode",
+                "Mode Gaming",
                 "Prioritaskan resource untuk game dan kurangi gangguan proses latar belakang."
             )
-        ).forEachIndexed { index, item ->
-            FeatureCard(item = item, index = index)
-        }
+        )
+        features.forEachIndexed { i, f -> FeatureCard(item = f, index = i) }
     }
 }
 

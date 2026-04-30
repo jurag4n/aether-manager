@@ -265,45 +265,74 @@ object RootUtils {
                 echo swap_total_mb=${'$'}((sw_total/1024))
                 echo swap_used_mb=${'$'}(((sw_total-sw_free)/1024))
 
-                cpu_temp=0
-                for _zi in ${'$'}(seq 0 49); do
-                  _tp="/sys/class/thermal/thermal_zone${'$'}{_zi}/type"
-                  _tv="/sys/class/thermal/thermal_zone${'$'}{_zi}/temp"
-                  [ -f "${'$'}_tp" ] && [ -f "${'$'}_tv" ] || continue
-                  _t=${'$'}(cat "${'$'}_tp" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                  case "${'$'}_t" in *cpu*|*tsens_tz_sensor*|*cpuss*|*cpu-1-1*)
-                    cpu_temp=${'$'}(cat "${'$'}_tv" 2>/dev/null || echo 0); break;;
-                  esac
-                done
-                [ "${'$'}cpu_temp" -le 0 ] 2>/dev/null && cpu_temp=${'$'}(cat /sys/class/thermal/thermal_zone4/temp 2>/dev/null || echo 0)
+                normalize_temp() {
+                  _raw=$(echo "${'$'}1" | tr -cd '0-9')
+                  [ -n "${'$'}_raw" ] || { echo 0; return; }
+                  if [ "${'$'}_raw" -gt 100000 ] 2>/dev/null; then
+                    echo 0
+                  elif [ "${'$'}_raw" -gt 1000 ] 2>/dev/null; then
+                    echo ${'$'}((_raw/1000))
+                  elif [ "${'$'}_raw" -gt 200 ] 2>/dev/null; then
+                    echo ${'$'}((_raw/10))
+                  else
+                    echo ${'$'}_raw
+                  fi
+                }
+
+                read_temp_by_name() {
+                  _keys="${'$'}1"
+                  _best=0
+                  for _zone in /sys/class/thermal/thermal_zone*; do
+                    [ -d "${'$'}_zone" ] || continue
+                    [ -r "${'$'}_zone/type" ] && [ -r "${'$'}_zone/temp" ] || continue
+                    _name=$(cat "${'$'}_zone/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                    _raw=$(cat "${'$'}_zone/temp" 2>/dev/null)
+                    _norm=$(normalize_temp "${'$'}_raw")
+                    [ "${'$'}_norm" -ge 15 ] 2>/dev/null && [ "${'$'}_norm" -le 125 ] 2>/dev/null || continue
+                    for _key in ${'$'}_keys; do
+                      case "${'$'}_name" in
+                        *"${'$'}_key"*) echo "${'$'}_raw"; return ;;
+                      esac
+                    done
+                    [ "${'$'}_best" -eq 0 ] 2>/dev/null && _best=${'$'}_raw
+                  done
+                  echo ${'$'}_best
+                }
+
+                read_temp_any() {
+                  _best=0
+                  _best_norm=0
+                  for _zone in /sys/class/thermal/thermal_zone*; do
+                    [ -d "${'$'}_zone" ] || continue
+                    [ -r "${'$'}_zone/temp" ] || continue
+                    _name=$(cat "${'$'}_zone/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                    case "${'$'}_name" in
+                      *battery*|*batt*|*charger*|*usb*|*pa_therm*|*quiet_therm*) continue ;;
+                    esac
+                    _raw=$(cat "${'$'}_zone/temp" 2>/dev/null)
+                    _norm=$(normalize_temp "${'$'}_raw")
+                    [ "${'$'}_norm" -ge 15 ] 2>/dev/null && [ "${'$'}_norm" -le 125 ] 2>/dev/null || continue
+                    if [ "${'$'}_norm" -gt "${'$'}_best_norm" ] 2>/dev/null; then
+                      _best_norm=${'$'}_norm
+                      _best=${'$'}_raw
+                    fi
+                  done
+                  echo ${'$'}_best
+                }
+
+                cpu_temp=$(read_temp_by_name "cpu cpu-0 cpu0 cpu1 cpu2 cpu3 cpu4 cpu5 cpu6 cpu7 cpuss xcpu little big prime cluster tsens_tz_sensor apc0")
+                [ "$(normalize_temp "${'$'}cpu_temp")" -le 0 ] 2>/dev/null && cpu_temp=$(read_temp_any)
                 echo cpu_temp=${'$'}cpu_temp
 
-                echo bat_temp=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0)
+                bat_temp=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || cat /sys/class/power_supply/Battery/temp 2>/dev/null || echo 0)
+                echo bat_temp=${'$'}bat_temp
 
-                gpu_temp=-1
-                for _gkw in gpu adreno-lowf gpuss mali; do
-                  for _zi in ${'$'}(seq 0 49); do
-                    _tp="/sys/class/thermal/thermal_zone${'$'}{_zi}/type"
-                    _tv="/sys/class/thermal/thermal_zone${'$'}{_zi}/temp"
-                    [ -f "${'$'}_tp" ] && [ -f "${'$'}_tv" ] || continue
-                    _t=${'$'}(cat "${'$'}_tp" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                    case "${'$'}_t" in *"${'$'}_gkw"*) gpu_temp=${'$'}(cat "${'$'}_tv" 2>/dev/null || echo -1); break 2;; esac
-                  done
-                done
+                gpu_temp=$(read_temp_by_name "gpu gpuss gpu0 gpu-0 adreno mali g3d mfg ged")
+                [ "$(normalize_temp "${'$'}gpu_temp")" -le 0 ] 2>/dev/null && gpu_temp=${'$'}cpu_temp
                 echo gpu_temp=${'$'}gpu_temp
 
-                thermal_temp=-1
-                for _kw in soc skin mbts board; do
-                  for _zi in ${'$'}(seq 0 49); do
-                    _tp="/sys/class/thermal/thermal_zone${'$'}{_zi}/type"
-                    _tv="/sys/class/thermal/thermal_zone${'$'}{_zi}/temp"
-                    [ -f "${'$'}_tp" ] && [ -f "${'$'}_tv" ] || continue
-                    _t=${'$'}(cat "${'$'}_tp" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                    case "${'$'}_t" in *"${'$'}_kw"*)
-                      thermal_temp=${'$'}(cat "${'$'}_tv" 2>/dev/null || echo -1); break 2;;
-                    esac
-                  done
-                done
+                thermal_temp=$(read_temp_by_name "soc xo skin shell board ambient pmic quiet case modem ap md pa therm thermal")
+                [ "$(normalize_temp "${'$'}thermal_temp")" -le 0 ] 2>/dev/null && thermal_temp=${'$'}cpu_temp
                 echo thermal_temp=${'$'}thermal_temp
                 echo bat_level=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 0)
 
@@ -399,22 +428,50 @@ object RootUtils {
                 else       -> 0f
             }
 
+            fun validTemp(value: Float): Boolean = value in 15f..125f
+
+            val cpuTempC = normTemp(cpuTempRaw).takeIf(::validTemp) ?: 0f
+            val batTempC = normTemp(batTempRaw).takeIf(::validTemp) ?: 0f
+
+            val shellGpuTemp = normTemp(map["gpu_temp"]?.toLongOrNull() ?: 0L)
             val gpuTempC: Float = if (CimolAgent.isAvailable) {
                 val mc = CimolAgent.getGpuTempMilliC()
-                if (mc > 0) mc / 1000f else normTemp(map["gpu_temp"]?.toLongOrNull() ?: -1L)
+                val agent = if (mc > 0) mc / 1000f else 0f
+                agent.takeIf(::validTemp)
+                    ?: shellGpuTemp.takeIf(::validTemp)
+                    ?: cpuTempC
             } else {
-                normTemp(map["gpu_temp"]?.toLongOrNull() ?: -1L)
+                shellGpuTemp.takeIf(::validTemp) ?: cpuTempC
             }
 
+            val shellThermalTemp = normTemp(map["thermal_temp"]?.toLongOrNull() ?: 0L)
             val thermalTempC: Float = if (CimolAgent.isAvailable) {
                 val zones = CimolAgent.getThermalZones()
-                val best  = zones.firstOrNull { it.type.contains("soc", ignoreCase = true) }
-                    ?: zones.firstOrNull { it.type.contains("thermal", ignoreCase = true) }
-                    ?: zones.firstOrNull()
-                if (best != null && best.tempMilliC > 0) best.tempMilliC / 1000f
-                else normTemp(map["thermal_temp"]?.toLongOrNull() ?: -1L)
+                val best = zones
+                    .filter { it.tempMilliC > 0 }
+                    .maxByOrNull {
+                        val type = it.type.lowercase()
+                        val priority = when {
+                            "soc" in type || "cpu" in type -> 4
+                            "skin" in type || "thermal" in type -> 3
+                            "board" in type || "case" in type -> 2
+                            else -> 1
+                        }
+                        priority * 1_000_000L + it.tempMilliC.toLong()
+                    }
+                val agent = best?.let { it.tempMilliC / 1000f } ?: 0f
+                agent.takeIf(::validTemp)
+                    ?: shellThermalTemp.takeIf(::validTemp)
+                    ?: cpuTempC.takeIf(::validTemp)
+                    ?: gpuTempC.takeIf(::validTemp)
+                    ?: batTempC.takeIf(::validTemp)
+                    ?: 0f
             } else {
-                normTemp(map["thermal_temp"]?.toLongOrNull() ?: -1L)
+                shellThermalTemp.takeIf(::validTemp)
+                    ?: cpuTempC.takeIf(::validTemp)
+                    ?: gpuTempC.takeIf(::validTemp)
+                    ?: batTempC.takeIf(::validTemp)
+                    ?: 0f
             }
 
             dev.aether.manager.data.MonitorState(
@@ -425,18 +482,10 @@ object RootUtils {
                 gpuName        = map["gpu_name"]?.takeIf { it.isNotBlank() } ?: "",
                 ramUsedMb      = map["ram_used_mb"]?.toLongOrNull()  ?: 0L,
                 ramTotalMb     = map["ram_total_mb"]?.toLongOrNull() ?: 0L,
-                cpuTemp        = when {
-                    cpuTempRaw > 1000 -> cpuTempRaw / 1000f
-                    cpuTempRaw > 200  -> cpuTempRaw / 10f
-                    else              -> cpuTempRaw.toFloat()
-                },
+                cpuTemp        = cpuTempC,
                 gpuTemp        = gpuTempC,
                 thermalTemp    = thermalTempC,
-                batTemp        = when {
-                    batTempRaw > 1000 -> batTempRaw / 1000f
-                    batTempRaw > 200  -> batTempRaw / 10f
-                    else              -> batTempRaw.toFloat()
-                },
+                batTemp        = batTempC,
                 storageUsedGb  = (map["storage_used_kb"]?.toLongOrNull()  ?: 0L) / 1_048_576f,
                 storageTotalGb = (map["storage_total_kb"]?.toLongOrNull() ?: 0L) / 1_048_576f,
                 uptime         = (map["uptime"] ?: "").replace("_", " "),

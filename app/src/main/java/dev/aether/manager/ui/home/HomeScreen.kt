@@ -1,7 +1,6 @@
 package dev.aether.manager.ui.home
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,8 +37,6 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Storage
@@ -51,19 +47,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,6 +77,7 @@ import dev.aether.manager.data.UiState
 import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
 import dev.aether.manager.util.DeviceInfo
+import kotlinx.coroutines.delay
 import dev.aether.manager.util.SocType
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -97,7 +89,13 @@ fun HomeScreen(vm: MainViewModel) {
     val monitorState by vm.monitorState.collectAsState()
     val updateVm: UpdateViewModel = viewModel()
 
-    LaunchedEffect(Unit) { updateVm.checkUpdate() }
+    LaunchedEffect(Unit) {
+        updateVm.checkUpdate()
+        while (true) {
+            vm.refreshMonitor()
+            delay(1_000L)
+        }
+    }
     UpdateDialogHost(viewModel = updateVm)
 
     val info = (deviceState as? UiState.Success)?.data
@@ -190,10 +188,20 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 @Composable
 private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
-    var expanded by remember { mutableStateOf(false) }
+    val cpuFreq = normalizeCpuFreq(state.cpuFreq)
+    val freqSize = when {
+        cpuFreq.length >= 10 -> 23.sp
+        cpuFreq.length >= 8 -> 25.sp
+        else -> 30.sp
+    }
 
-    TappableCard(modifier = modifier, onClick = { expanded = !expanded }) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    TappableCard(modifier = modifier.height(178.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -203,54 +211,35 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
                 PillText("${state.cpuUsage}%")
             }
 
-            AnimatedContent(
-                targetState = expanded,
-                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
-                label = "cpu_card_content"
-            ) { isExpanded ->
-                if (!isExpanded) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("CPU", fontSize = 17.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-                        Text("FREKUENSI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(state.cpuFreq.ifBlank { "— MHz" }, fontSize = 30.sp, lineHeight = 30.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("CPU", fontSize = 13.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            CpuDetailChip("Tipe", info?.soc?.label ?: "—", color, Modifier.weight(1f))
-                            CpuDetailChip("SoC", info?.socRaw?.uppercase()?.take(10)?.ifBlank { "—" } ?: "—", color, Modifier.weight(1f))
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            CpuDetailChip("Governor", state.cpuGovernor.ifBlank { "—" }, color, Modifier.weight(1f))
-                            CpuDetailChip("Frekuensi", state.cpuFreq.ifBlank { "—" }, color, Modifier.weight(1f))
-                        }
-                    }
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "CPU",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "FREKUENSI",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = cpuFreq,
+                    fontSize = freqSize,
+                    lineHeight = 30.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Clip
+                )
             }
-        }
-    }
-}
 
-@Composable
-private fun CpuDetailChip(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = color.copy(alpha = 0.08f),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = color.copy(alpha = 0.7f))
-            Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            InfoLine(
+                label = "CPU Type",
+                value = info?.soc?.label ?: state.cpuGovernor.ifBlank { "Unknown" }
+            )
         }
     }
 }
@@ -581,6 +570,7 @@ private fun advertisedStorageLabel(rawGb: Float): String {
 }
 
 private fun fmtMb(mb: Long): String = if (mb >= 1024) "%.1f GB".format(mb / 1024f) else "$mb MB"
+private fun normalizeCpuFreq(value: String): String = value.replace("\n", " ").replace(Regex("\\s+"), " ").trim().ifBlank { "— MHz" }
 
 @Composable
 fun TabSectionTitle(
