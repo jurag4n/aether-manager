@@ -266,12 +266,16 @@ object RootUtils {
                 echo swap_used_mb=${'$'}(((sw_total-sw_free)/1024))
 
                 cpu_temp=0
-                for zone in 4 0 1 2 3 5 6 7; do
-                  path="/sys/class/thermal/thermal_zone${'$'}zone/temp"
-                  [ -f "${'$'}path" ] || continue
-                  t=$(cat "${'$'}path" 2>/dev/null)
-                  [ -n "${'$'}t" ] && [ "${'$'}t" -gt 0 ] 2>/dev/null && { cpu_temp=${'$'}t; break; }
+                for _zi in ${'$'}(seq 0 49); do
+                  _tp="/sys/class/thermal/thermal_zone${'$'}{_zi}/type"
+                  _tv="/sys/class/thermal/thermal_zone${'$'}{_zi}/temp"
+                  [ -f "${'$'}_tp" ] && [ -f "${'$'}_tv" ] || continue
+                  _t=${'$'}(cat "${'$'}_tp" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                  case "${'$'}_t" in *cpu*|*tsens_tz_sensor*|*cpuss*|*cpu-1-1*)
+                    cpu_temp=${'$'}(cat "${'$'}_tv" 2>/dev/null || echo 0); break;;
+                  esac
                 done
+                [ "${'$'}cpu_temp" -le 0 ] 2>/dev/null && cpu_temp=${'$'}(cat /sys/class/thermal/thermal_zone4/temp 2>/dev/null || echo 0)
                 echo cpu_temp=${'$'}cpu_temp
 
                 echo bat_temp=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0)
@@ -289,9 +293,16 @@ object RootUtils {
                 echo gpu_temp=${'$'}gpu_temp
 
                 thermal_temp=-1
-                for _tzone in /sys/class/thermal/thermal_zone*/temp; do
-                  _tv=${'$'}(cat "${'$'}_tzone" 2>/dev/null)
-                  [ -n "${'$'}_tv" ] && [ "${'$'}_tv" -gt 0 ] 2>/dev/null && { thermal_temp=${'$'}_tv; break; }
+                for _kw in soc skin mbts board; do
+                  for _zi in ${'$'}(seq 0 49); do
+                    _tp="/sys/class/thermal/thermal_zone${'$'}{_zi}/type"
+                    _tv="/sys/class/thermal/thermal_zone${'$'}{_zi}/temp"
+                    [ -f "${'$'}_tp" ] && [ -f "${'$'}_tv" ] || continue
+                    _t=${'$'}(cat "${'$'}_tp" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                    case "${'$'}_t" in *"${'$'}_kw"*)
+                      thermal_temp=${'$'}(cat "${'$'}_tv" 2>/dev/null || echo -1); break 2;;
+                    esac
+                  done
                 done
                 echo thermal_temp=${'$'}thermal_temp
                 echo bat_level=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 0)

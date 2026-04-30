@@ -55,11 +55,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -186,11 +190,10 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 @Composable
 private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
-    TappableCard(modifier = modifier.height(178.dp)) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
+    var expanded by remember { mutableStateOf(false) }
+
+    TappableCard(modifier = modifier, onClick = { expanded = !expanded }) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -199,12 +202,55 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
                 IconBadge(Icons.Outlined.Memory, color)
                 PillText("${state.cpuUsage}%")
             }
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("CPU", fontSize = 17.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-                Text("FREKUENSI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(state.cpuFreq.ifBlank { "— MHz" }, fontSize = 30.sp, lineHeight = 30.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+
+            AnimatedContent(
+                targetState = expanded,
+                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
+                label = "cpu_card_content"
+            ) { isExpanded ->
+                if (!isExpanded) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("CPU", fontSize = 17.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                        Text("FREKUENSI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(state.cpuFreq.ifBlank { "— MHz" }, fontSize = 30.sp, lineHeight = 30.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("CPU", fontSize = 13.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CpuDetailChip("Tipe", info?.soc?.label ?: "—", color, Modifier.weight(1f))
+                            CpuDetailChip("SoC", info?.socRaw?.uppercase()?.take(10)?.ifBlank { "—" } ?: "—", color, Modifier.weight(1f))
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CpuDetailChip("Governor", state.cpuGovernor.ifBlank { "—" }, color, Modifier.weight(1f))
+                            CpuDetailChip("Frekuensi", state.cpuFreq.ifBlank { "—" }, color, Modifier.weight(1f))
+                        }
+                    }
+                }
             }
-            InfoLine("CPU Type", info?.soc?.label ?: state.cpuGovernor.ifBlank { "Unknown" })
+        }
+    }
+}
+
+@Composable
+private fun CpuDetailChip(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = 0.08f),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = color.copy(alpha = 0.7f))
+            Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -359,7 +405,7 @@ private fun MemoryInfoCard(state: MonitorState) {
 }
 
 @Composable
-private fun TappableCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun TappableCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -378,7 +424,7 @@ private fun TappableCard(modifier: Modifier = Modifier, content: @Composable () 
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
-            ) { }
+            ) { onClick?.invoke() }
     ) { content() }
 }
 
