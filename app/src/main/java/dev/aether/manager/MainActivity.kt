@@ -413,7 +413,7 @@ private fun FloatingBottomBar(
                         // Long press → expand capsule; drag → switch tabs
                         .pointerInput(navItems, expanded) {
                             detectDragGesturesAfterLongPress(
-                                onLongPressStart = { _ ->
+                                onDragStart = { _ ->
                                     expanded = true
                                     dragIndex = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
                                     dragAccum = 0f
