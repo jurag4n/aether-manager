@@ -653,8 +653,11 @@ private fun InfoChip(label: String, value: String, icon: ImageVector,
     Surface(shape = RoundedCornerShape(14.dp),
         color    = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .08f),
         modifier = modifier) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            Alignment.CenterVertically, Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(.6f), lineHeight = 12.sp)
