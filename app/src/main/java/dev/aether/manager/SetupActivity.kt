@@ -16,24 +16,91 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.matchParentSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.QueryStats
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -43,6 +110,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -51,20 +119,22 @@ import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.i18n.ProvideStrings
 import dev.aether.manager.ui.AetherTheme
 import dev.aether.manager.util.RootManager
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.ui.util.lerp
 
 class SetupActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
             ),
             navigationBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
             )
         )
         setContent {
@@ -72,8 +142,11 @@ class SetupActivity : ComponentActivity() {
                 ProvideStrings {
                     SetupScreen(
                         onDone = { rootWasGranted ->
-                            val prefs = getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
-                            prefs.edit().putBoolean("setup_done", true).apply()
+                            getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
+                                .edit()
+                                .putBoolean("setup_done", true)
+                                .apply()
+
                             if (rootWasGranted) RootManager.markGranted()
                             startActivity(Intent(this, MainActivity::class.java))
                             finish()
@@ -84,10 +157,6 @@ class SetupActivity : ComponentActivity() {
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data / State
-// ─────────────────────────────────────────────────────────────────────────────
 
 private enum class PermState { IDLE, CHECKING, GRANTED, DENIED }
 
@@ -102,20 +171,15 @@ private data class PermItem(
     val title: String,
     val desc: String,
     val permissionType: String,
-    val required: Boolean = true,
+    val required: Boolean = false,
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FIX: Helper cek Accessibility Service aktif untuk package ini
-// Bug sebelumnya: ACCESSIBILITY selalu PermState.IDLE karena tidak pernah di-check
-// ─────────────────────────────────────────────────────────────────────────────
 private fun isAccessibilityEnabled(ctx: Context): Boolean {
     val enabled = Settings.Secure.getString(
         ctx.contentResolver,
         Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
     ) ?: return false
-    val pkg = ctx.packageName
-    return enabled.split(":").any { it.startsWith("$pkg/") }
+    return enabled.split(":").any { it.startsWith("${ctx.packageName}/") }
 }
 
 private fun isBatteryOptimizationIgnored(ctx: Context): Boolean {
@@ -129,308 +193,34 @@ private fun isUsageStatsGranted(ctx: Context): Boolean {
         val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             appOps.unsafeCheckOpNoThrow(
                 AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(), ctx.packageName
+                android.os.Process.myUid(),
+                ctx.packageName
             )
         } else {
             @Suppress("DEPRECATION")
             appOps.checkOpNoThrow(
                 AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(), ctx.packageName
+                android.os.Process.myUid(),
+                ctx.packageName
             )
         }
         mode == AppOpsManager.MODE_ALLOWED
-    } catch (e: Exception) { false }
+    } catch (_: Exception) {
+        false
+    }
 }
 
 private fun grantUsageStatsViaRoot(pkg: String): Boolean {
     return try {
-        val proc = Runtime.getRuntime().exec(arrayOf("su", "-c",
-            "appops set $pkg GET_USAGE_STATS allow"))
+        val proc = Runtime.getRuntime().exec(
+            arrayOf("su", "-c", "appops set $pkg GET_USAGE_STATS allow")
+        )
         proc.waitFor() == 0
-    } catch (e: Exception) { false }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Dot indicator — pill aktif + bouncy spring
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun PagerDotIndicator(
-    total: Int,
-    current: Int,
-    modifier: Modifier = Modifier
-) {
-    val primary = MaterialTheme.colorScheme.primary
-    Row(
-        modifier              = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment     = Alignment.CenterVertically
-    ) {
-        repeat(total) { i ->
-            val isActive = i == current
-            val width by animateDpAsState(
-                targetValue   = if (isActive) 28.dp else 7.dp,
-                animationSpec = spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow),
-                label         = "dot_w_$i"
-            )
-            val alpha by animateFloatAsState(
-                targetValue   = if (isActive) 1f else 0.28f,
-                animationSpec = tween(240, easing = FastOutSlowInEasing),
-                label         = "dot_a_$i"
-            )
-            Box(
-                modifier = Modifier
-                    .width(width)
-                    .height(7.dp)
-                    .clip(CircleShape)
-                    .background(primary.copy(alpha = alpha))
-            )
-        }
+    } catch (_: Exception) {
+        false
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Feature card — stagger entrance via index
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun FeatureCard(item: FeatureItem, index: Int) {
-    val enterAlpha = remember { Animatable(0f) }
-    val enterY     = remember { Animatable(30f) }
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(index * 90L)
-        launch { enterAlpha.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
-        launch { enterY.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) }
-    }
-
-    Surface(
-        shape    = RoundedCornerShape(20.dp),
-        color    = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer(alpha = enterAlpha.value, translationY = enterY.value)
-    ) {
-        Row(
-            modifier              = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector        = item.icon,
-                    contentDescription = null,
-                    tint               = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier           = Modifier.size(26.dp)
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    item.title,
-                    style      = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    item.desc,
-                    style      = MaterialTheme.typography.bodySmall,
-                    color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 18.sp
-                )
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Permission card — animasi lebih smooth + dot pulse
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun PermissionCard(
-    item: PermItem,
-    state: PermState,
-    index: Int,
-    onClick: () -> Unit
-) {
-    val isGranted  = state == PermState.GRANTED
-    val isDenied   = state == PermState.DENIED
-    val isChecking = state == PermState.CHECKING
-
-    val containerColor by animateColorAsState(
-        targetValue   = when {
-            isGranted -> MaterialTheme.colorScheme.secondaryContainer
-            isDenied  -> MaterialTheme.colorScheme.errorContainer
-            else      -> MaterialTheme.colorScheme.surfaceContainerHigh
-        },
-        animationSpec = tween(360, easing = FastOutSlowInEasing),
-        label         = "cc_${item.permissionType}"
-    )
-    val iconBg by animateColorAsState(
-        targetValue   = when {
-            isGranted -> MaterialTheme.colorScheme.secondary
-            isDenied  -> MaterialTheme.colorScheme.error
-            else      -> MaterialTheme.colorScheme.primaryContainer
-        },
-        animationSpec = tween(360, easing = FastOutSlowInEasing),
-        label         = "ib_${item.permissionType}"
-    )
-    val iconTint by animateColorAsState(
-        targetValue   = when {
-            isGranted -> MaterialTheme.colorScheme.onSecondary
-            isDenied  -> MaterialTheme.colorScheme.onError
-            else      -> MaterialTheme.colorScheme.onPrimaryContainer
-        },
-        animationSpec = tween(360, easing = FastOutSlowInEasing),
-        label         = "it_${item.permissionType}"
-    )
-    val dotColor by animateColorAsState(
-        targetValue   = when {
-            isGranted  -> Color(0xFF4CAF50)
-            isDenied   -> MaterialTheme.colorScheme.error
-            isChecking -> MaterialTheme.colorScheme.tertiary
-            else       -> MaterialTheme.colorScheme.outlineVariant
-        },
-        animationSpec = tween(360, easing = FastOutSlowInEasing),
-        label         = "dc_${item.permissionType}"
-    )
-
-    // Bounce saat granted
-    val cardScale = remember { Animatable(1f) }
-    LaunchedEffect(state) {
-        if (state == PermState.GRANTED) {
-            cardScale.animateTo(1.045f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
-            cardScale.animateTo(1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow))
-        }
-    }
-
-    // Stagger entrance
-    val enterAlpha = remember { Animatable(0f) }
-    val enterY     = remember { Animatable(22f) }
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(index * 80L)
-        launch { enterAlpha.animateTo(1f, tween(280, easing = FastOutSlowInEasing)) }
-        launch { enterY.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) }
-    }
-
-    Surface(
-        shape    = RoundedCornerShape(20.dp),
-        color    = containerColor,
-        onClick  = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(cardScale.value)
-            .graphicsLayer(alpha = enterAlpha.value, translationY = enterY.value)
-    ) {
-        Row(
-            modifier              = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Box(
-                modifier         = Modifier.size(52.dp).clip(CircleShape).background(iconBg),
-                contentAlignment = Alignment.Center
-            ) {
-                AnimatedContent(
-                    targetState = isGranted,
-                    transitionSpec = {
-                        (scaleIn(spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium)) +
-                                fadeIn(tween(200))) togetherWith
-                                (scaleOut(tween(120)) + fadeOut(tween(120)))
-                    },
-                    label = "icon_${item.permissionType}"
-                ) { granted ->
-                    Icon(
-                        imageVector        = if (granted) Icons.Outlined.CheckCircle else item.icon,
-                        contentDescription = null,
-                        tint               = iconTint,
-                        modifier           = Modifier.size(26.dp)
-                    )
-                }
-            }
-
-            Column(
-                modifier            = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        item.title,
-                        style      = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = MaterialTheme.colorScheme.onSurface,
-                        modifier   = Modifier.weight(1f, fill = false)
-                    )
-                    if (item.required) {
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
-                        ) {
-                            Text(
-                                "Wajib",
-                                fontSize      = 9.sp,
-                                fontWeight    = FontWeight.Bold,
-                                color         = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier      = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                letterSpacing = 0.3.sp
-                            )
-                        }
-                    }
-                }
-                AnimatedContent(
-                    targetState = when (state) {
-                        PermState.CHECKING -> "Memeriksa…"
-                        PermState.GRANTED  -> "Izin diberikan"
-                        PermState.DENIED   -> if (item.required) "Izin ditolak" else "Dilewati"
-                        PermState.IDLE     -> item.desc
-                    },
-                    transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
-                    label = "desc_${item.permissionType}"
-                ) { txt ->
-                    Text(
-                        txt,
-                        style      = MaterialTheme.typography.bodySmall,
-                        color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 18.sp
-                    )
-                }
-            }
-
-            // Dot pulse saat checking
-            Box(
-                modifier         = Modifier.size(12.dp).clip(CircleShape).background(dotColor),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isChecking) {
-                    val inf = rememberInfiniteTransition(label = "pulse_${item.permissionType}")
-                    val ps by inf.animateFloat(
-                        0.5f, 1.5f,
-                        infiniteRepeatable(
-                            tween(600, easing = FastOutSlowInEasing), RepeatMode.Reverse
-                        ),
-                        label = "ps"
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .scale(ps)
-                            .clip(CircleShape)
-                            .background(dotColor.copy(alpha = 0.4f))
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Lifecycle resume
-// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun OnLifecycleResume(onResume: () -> Unit) {
     val owner = LocalLifecycleOwner.current
@@ -443,29 +233,575 @@ private fun OnLifecycleResume(onResume: () -> Unit) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SetupScreen
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun SetupBackground(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .size(360.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = 110.dp, y = (-90).dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .size(260.dp)
+                .align(Alignment.BottomStart)
+                .offset(x = (-120).dp, y = 60.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        content()
+    }
+}
+
+@Composable
+private fun SetupHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Image(
+            painter = painterResource(id = R.mipmap.ic_launcher),
+            contentDescription = "Aether Manager",
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Aether Manager",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "Setup awal aplikasi",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun PagerDotIndicator(total: Int, current: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(total) { i ->
+            val active = i == current
+            val width by animateDpAsState(
+                targetValue = if (active) 30.dp else 8.dp,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "dot_width_$i"
+            )
+            val alpha by animateFloatAsState(
+                targetValue = if (active) 1f else 0.30f,
+                animationSpec = tween(260, easing = FastOutSlowInEasing),
+                label = "dot_alpha_$i"
+            )
+            Box(
+                modifier = Modifier
+                    .width(width)
+                    .height(8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = alpha))
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeroFeatureSpotlight() {
+    val inf = rememberInfiniteTransition(label = "hero_motion")
+    val floatY by inf.animateFloat(
+        initialValue = -4f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "hero_float"
+    )
+    val glow by inf.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.85f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1300, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "hero_glow"
+    )
+
+    Surface(
+        shape = RoundedCornerShape(32.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.40f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(188.dp)
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
+                            Color.Transparent
+                        )
+                    )
+                )
+                .padding(22.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(112.dp)
+                    .align(Alignment.Center)
+                    .graphicsLayer(translationY = floatY)
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .border(
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = glow)),
+                        RoundedCornerShape(32.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Speed,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(54.dp)
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f),
+                modifier = Modifier.align(Alignment.TopStart)
+            ) {
+                Text(
+                    "Smart Optimize",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f),
+                modifier = Modifier.align(Alignment.BottomEnd)
+            ) {
+                Text(
+                    "Root Mode Ready",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeatureCard(item: FeatureItem, index: Int) {
+    val alpha = remember { Animatable(0f) }
+    val y = remember { Animatable(26f) }
+
+    LaunchedEffect(Unit) {
+        delay(index * 80L)
+        launch { alpha.animateTo(1f, tween(360, easing = FastOutSlowInEasing)) }
+        launch { y.animateTo(0f, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer(alpha = alpha.value, translationY = y.value)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(25.dp)
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    item.desc,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusChip(text: String, color: Color) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = color.copy(alpha = 0.14f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.26f))
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+private fun PermissionCard(
+    item: PermItem,
+    state: PermState,
+    index: Int,
+    onClick: () -> Unit
+) {
+    val isGranted = state == PermState.GRANTED
+    val isDenied = state == PermState.DENIED
+    val isChecking = state == PermState.CHECKING
+
+    val containerColor by androidx.compose.animation.animateColorAsState(
+        targetValue = when {
+            isGranted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f)
+            isDenied -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.72f)
+            else -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f)
+        },
+        animationSpec = tween(330, easing = FastOutSlowInEasing),
+        label = "perm_container_${item.permissionType}"
+    )
+    val accentColor by androidx.compose.animation.animateColorAsState(
+        targetValue = when {
+            isGranted -> MaterialTheme.colorScheme.primary
+            isDenied -> MaterialTheme.colorScheme.error
+            isChecking -> MaterialTheme.colorScheme.tertiary
+            else -> MaterialTheme.colorScheme.outline
+        },
+        animationSpec = tween(330, easing = FastOutSlowInEasing),
+        label = "perm_accent_${item.permissionType}"
+    )
+
+    val alpha = remember { Animatable(0f) }
+    val y = remember { Animatable(20f) }
+    val scale = remember { Animatable(1f) }
+
+    LaunchedEffect(Unit) {
+        delay(index * 55L)
+        launch { alpha.animateTo(1f, tween(300, easing = FastOutSlowInEasing)) }
+        launch { y.animateTo(0f, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) }
+    }
+
+    LaunchedEffect(state) {
+        if (isGranted) {
+            scale.animateTo(1.025f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium))
+            scale.animateTo(1f, tween(120, easing = FastOutSlowInEasing))
+        }
+    }
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        color = containerColor,
+        border = BorderStroke(1.dp, accentColor.copy(alpha = if (isGranted || isDenied) 0.34f else 0.16f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale.value)
+            .graphicsLayer(alpha = alpha.value, translationY = y.value)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(accentColor.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                AnimatedContent(
+                    targetState = state,
+                    transitionSpec = {
+                        (scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(180))) togetherWith
+                            (scaleOut(tween(120)) + fadeOut(tween(120)))
+                    },
+                    label = "perm_icon_${item.permissionType}"
+                ) { target ->
+                    Icon(
+                        imageVector = if (target == PermState.GRANTED) Icons.Outlined.CheckCircle else item.icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        item.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (item.required) {
+                        StatusChip("Wajib", MaterialTheme.colorScheme.error)
+                    }
+                }
+
+                AnimatedContent(
+                    targetState = when (state) {
+                        PermState.CHECKING -> "Memeriksa izin…"
+                        PermState.GRANTED -> "Aktif dan siap digunakan"
+                        PermState.DENIED -> if (item.required) "Belum diberikan" else "Dilewati / belum aktif"
+                        PermState.IDLE -> item.desc
+                    },
+                    transitionSpec = {
+                        (slideInVertically { it / 2 } + fadeIn(tween(180))) togetherWith
+                            (slideOutVertically { -it / 2 } + fadeOut(tween(140)))
+                    },
+                    label = "perm_desc_${item.permissionType}"
+                ) { text ->
+                    Text(
+                        text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+
+            val pulse = rememberInfiniteTransition(label = "perm_pulse_${item.permissionType}")
+            val pulseScale by pulse.animateFloat(
+                initialValue = 0.92f,
+                targetValue = if (isChecking) 1.42f else 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(620, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "pulse_scale"
+            )
+            Box(
+                modifier = Modifier
+                    .size(13.dp)
+                    .scale(pulseScale)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = if (isChecking) 0.50f else 0.92f))
+            )
+        }
+    }
+}
+
+@Composable
+private fun PermissionSummaryCard(granted: Int, total: Int, rootOk: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "$granted/$total",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Permission Setup",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    if (rootOk) "Root aktif. Lengkapi izin lain agar fitur berjalan stabil."
+                    else "Root wajib aktif sebelum masuk ke aplikasi.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+private fun AetherNextButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val scale = remember { Animatable(1f) }
+    val inf = rememberInfiniteTransition(label = "next_motion")
+    val arrowX by inf.animateFloat(
+        initialValue = 0f,
+        targetValue = if (enabled) 8f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(760, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "arrow_x"
+    )
+    val glowAlpha by inf.animateFloat(
+        initialValue = 0.18f,
+        targetValue = if (enabled) 0.42f else 0.18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "button_glow"
+    )
+
+    Box(Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(horizontal = 8.dp, vertical = 7.dp)
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha))
+        )
+        FilledTonalButton(
+            onClick = {
+                scope.launch {
+                    scale.animateTo(0.965f, tween(70, easing = FastOutSlowInEasing))
+                    scale.animateTo(1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium))
+                }
+                onClick()
+            },
+            enabled = enabled,
+            shape = RoundedCornerShape(50),
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(58.dp)
+                .scale(scale.value)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                AnimatedContent(
+                    targetState = text,
+                    transitionSpec = {
+                        (slideInHorizontally { it / 2 } + fadeIn(tween(180))) togetherWith
+                            (slideOutHorizontally { -it / 2 } + fadeOut(tween(130)))
+                    },
+                    label = "next_text"
+                ) { label ->
+                    Text(label, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer(translationX = arrowX)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
-    val ctx     = LocalContext.current
-    val scope   = rememberCoroutineScope()
-    val s       = LocalStrings.current
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val s = LocalStrings.current
     val density = LocalDensity.current
 
-    var rootState    by remember { mutableStateOf(PermState.IDLE) }
-    var notifState   by remember { mutableStateOf(PermState.IDLE) }
-    var writeState   by remember { mutableStateOf(PermState.IDLE) }
-    var storState    by remember { mutableStateOf(PermState.IDLE) }
+    var rootState by remember { mutableStateOf(PermState.IDLE) }
+    var notifState by remember { mutableStateOf(PermState.IDLE) }
+    var writeState by remember { mutableStateOf(PermState.IDLE) }
+    var storState by remember { mutableStateOf(PermState.IDLE) }
     var batteryState by remember { mutableStateOf(PermState.IDLE) }
-    var usageState   by remember { mutableStateOf(PermState.IDLE) }
-    // FIX: accessState punya state sendiri — tidak lagi IDLE permanen
-    var accessState  by remember { mutableStateOf(PermState.IDLE) }
+    var usageState by remember { mutableStateOf(PermState.IDLE) }
+    var accessState by remember { mutableStateOf(PermState.IDLE) }
 
     val includeStorage = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
 
-    // ── Launchers ────────────────────────────────────────────────────────────
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> notifState = if (granted) PermState.GRANTED else PermState.DENIED }
@@ -476,312 +812,273 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 
     val writeSettingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) {
-        writeState = if (Settings.System.canWrite(ctx)) PermState.GRANTED else PermState.DENIED
-    }
+    ) { writeState = if (Settings.System.canWrite(ctx)) PermState.GRANTED else PermState.DENIED }
 
     val batteryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) {
-        batteryState = if (isBatteryOptimizationIgnored(ctx)) PermState.GRANTED else PermState.DENIED
-    }
+    ) { batteryState = if (isBatteryOptimizationIgnored(ctx)) PermState.GRANTED else PermState.DENIED }
 
     val usageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) {
-        usageState = if (isUsageStatsGranted(ctx)) PermState.GRANTED else PermState.DENIED
-    }
+    ) { usageState = if (isUsageStatsGranted(ctx)) PermState.GRANTED else PermState.DENIED }
 
-    // FIX: Launcher aksesibilitas — cek hasilnya saat kembali dari Settings
     val accessibilityLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) {
-        accessState = if (isAccessibilityEnabled(ctx)) PermState.GRANTED else PermState.DENIED
-    }
+    ) { accessState = if (isAccessibilityEnabled(ctx)) PermState.GRANTED else PermState.DENIED }
 
-    // ── Re-check semua saat ON_RESUME ────────────────────────────────────────
-    OnLifecycleResume {
-        if (notifState != PermState.IDLE) {
-            val ok = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
-                        PackageManager.PERMISSION_GRANTED
-            else true
-            if (ok) notifState = PermState.GRANTED
-        }
-        if (writeState != PermState.IDLE && Settings.System.canWrite(ctx))
-            writeState = PermState.GRANTED
+    fun refreshPermissionStates() {
+        val notifOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+        } else true
+
+        if (notifState != PermState.IDLE || notifOk) notifState = if (notifOk) PermState.GRANTED else notifState
+        if (writeState != PermState.IDLE && Settings.System.canWrite(ctx)) writeState = PermState.GRANTED
+        if (batteryState != PermState.IDLE && isBatteryOptimizationIgnored(ctx)) batteryState = PermState.GRANTED
+        if (usageState != PermState.IDLE && isUsageStatsGranted(ctx)) usageState = PermState.GRANTED
+        if (accessState != PermState.IDLE) accessState = if (isAccessibilityEnabled(ctx)) PermState.GRANTED else PermState.DENIED
+
         if (includeStorage && storState != PermState.IDLE) {
             val ok = ContextCompat.checkSelfPermission(
-                ctx, Manifest.permission.READ_EXTERNAL_STORAGE
+                ctx,
+                Manifest.permission.READ_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED
             if (ok) storState = PermState.GRANTED
         }
-        if (batteryState != PermState.IDLE && isBatteryOptimizationIgnored(ctx))
-            batteryState = PermState.GRANTED
-        if (usageState != PermState.IDLE && isUsageStatsGranted(ctx))
-            usageState = PermState.GRANTED
-        // FIX: re-check aksesibilitas setiap kali balik dari Settings
-        if (accessState != PermState.IDLE) {
-            accessState = if (isAccessibilityEnabled(ctx)) PermState.GRANTED else PermState.DENIED
-        }
     }
 
-    // ── Permission items ──────────────────────────────────────────────────────
+    OnLifecycleResume { refreshPermissionStates() }
+
     val permItems = remember(includeStorage) {
         buildList {
-            add(PermItem(
-                Icons.Outlined.AdminPanelSettings,
-                "Akses Root",
-                "Diperlukan untuk manajemen kernel dan pengaturan sistem tingkat rendah",
-                "ROOT", required = true
-            ))
-            add(PermItem(
-                Icons.Outlined.NotificationsActive,
-                "Notifikasi",
-                "Tampilkan pemberitahuan status optimasi dan peringatan sistem",
-                "NOTIFICATION", required = false
-            ))
+            add(
+                PermItem(
+                    Icons.Outlined.AdminPanelSettings,
+                    "Akses Root",
+                    "Aktifkan kontrol performa tingkat sistem.",
+                    "ROOT",
+                    required = true
+                )
+            )
+            add(
+                PermItem(
+                    Icons.Outlined.NotificationsActive,
+                    "Notifikasi",
+                    "Info status optimasi, peringatan, dan proses background.",
+                    "NOTIFICATION"
+                )
+            )
             if (includeStorage) {
-                add(PermItem(
-                    Icons.Outlined.FolderOpen,
-                    "Penyimpanan",
-                    "Baca dan simpan konfigurasi profil serta log sistem",
-                    "STORAGE", required = false
-                ))
+                add(
+                    PermItem(
+                        Icons.Outlined.FolderOpen,
+                        "Penyimpanan",
+                        "Simpan konfigurasi, profil, dan log aplikasi.",
+                        "STORAGE"
+                    )
+                )
             }
-            add(PermItem(
-                Icons.Outlined.BatteryChargingFull,
-                "Jangan Batasi Baterai",
-                "Jalankan optimasi latar belakang tanpa dibatasi penghemat daya",
-                "BATTERY", required = false
-            ))
-            add(PermItem(
-                Icons.Outlined.QueryStats,
-                "Akses Penggunaan",
-                "Pantau statistik pemakaian aplikasi untuk profil per-aplikasi",
-                "USAGE_STATS", required = false
-            ))
-            add(PermItem(
-                Icons.Outlined.Tune,
-                "Ubah Pengaturan Sistem",
-                "Terapkan tweak performa dan layar secara langsung",
-                "WRITE_SETTINGS", required = false
-            ))
+            add(
+                PermItem(
+                    Icons.Outlined.BatteryChargingFull,
+                    "Optimasi Baterai",
+                    "Cegah sistem membatasi proses Aether Manager.",
+                    "BATTERY"
+                )
+            )
+            add(
+                PermItem(
+                    Icons.Outlined.QueryStats,
+                    "Akses Penggunaan",
+                    "Baca statistik aplikasi untuk mode per-aplikasi.",
+                    "USAGE_STATS"
+                )
+            )
+            add(
+                PermItem(
+                    Icons.Outlined.Tune,
+                    "Pengaturan Sistem",
+                    "Terapkan tweak sistem, layar, dan performa.",
+                    "WRITE_SETTINGS"
+                )
+            )
         }
     }
 
-    // ── Completion ────────────────────────────────────────────────────────────
-    val rootOk = rootState == PermState.GRANTED
     fun PermState.decided() = this == PermState.GRANTED || this == PermState.DENIED
-
-    // FIX: semua permission harus sudah "decided" (bukan IDLE/CHECKING)
-    // sebelum bisa lanjut ke halaman Done
+    val rootOk = rootState == PermState.GRANTED
     val allDecided = rootOk &&
-            notifState.decided() &&
-            batteryState.decided() &&
-            usageState.decided() &&
-            writeState.decided() &&
-            (!includeStorage || storState.decided())
+        notifState.decided() &&
+        batteryState.decided() &&
+        usageState.decided() &&
+        writeState.decided() &&
+        (!includeStorage || storState.decided())
 
-    // ── Pager ─────────────────────────────────────────────────────────────────
-    val totalPages  = 3
-    val pagerState  = rememberPagerState { totalPages }
+    val totalPermissions = permItems.size
+    val grantedPermissions = permItems.count { item ->
+        when (item.permissionType) {
+            "ROOT" -> rootState == PermState.GRANTED
+            "NOTIFICATION" -> notifState == PermState.GRANTED
+            "WRITE_SETTINGS" -> writeState == PermState.GRANTED
+            "STORAGE" -> storState == PermState.GRANTED
+            "BATTERY" -> batteryState == PermState.GRANTED
+            "USAGE_STATS" -> usageState == PermState.GRANTED
+            else -> false
+        }
+    }
+
+    val totalPages = 3
+    val pagerState = rememberPagerState { totalPages }
     val currentPage = pagerState.currentPage
+    val canProceed = currentPage != 1 || allDecided
 
     fun nextPage() = scope.launch {
         pagerState.animateScrollToPage(
-            currentPage + 1,
-            animationSpec = tween(380, easing = FastOutSlowInEasing)
+            page = currentPage + 1,
+            animationSpec = tween(520, easing = FastOutSlowInEasing)
         )
     }
+
     fun prevPage() = scope.launch {
         pagerState.animateScrollToPage(
-            currentPage - 1,
-            animationSpec = tween(340, easing = FastOutSlowInEasing)
+            page = currentPage - 1,
+            animationSpec = tween(440, easing = FastOutSlowInEasing)
         )
     }
 
-    // FIX: page 1 (izin) tidak bisa lanjut sampai root granted + semua perm diputuskan
-    val canProceed = when (currentPage) {
-        1    -> allDecided
-        else -> true
-    }
-
-    // ── Auto-check saat landing di page perms ────────────────────────────────
     LaunchedEffect(currentPage) {
         if (currentPage == 1) {
-            val notifOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
-                        PackageManager.PERMISSION_GRANTED
-            else true
-            if (notifState == PermState.IDLE && notifOk) notifState = PermState.GRANTED
-            if (writeState == PermState.IDLE && Settings.System.canWrite(ctx))
-                writeState = PermState.GRANTED
+            refreshPermissionStates()
+            if (writeState == PermState.IDLE && Settings.System.canWrite(ctx)) writeState = PermState.GRANTED
+            if (batteryState == PermState.IDLE && isBatteryOptimizationIgnored(ctx)) batteryState = PermState.GRANTED
+            if (usageState == PermState.IDLE && isUsageStatsGranted(ctx)) usageState = PermState.GRANTED
+            if (accessState == PermState.IDLE && isAccessibilityEnabled(ctx)) accessState = PermState.GRANTED
             if (includeStorage && storState == PermState.IDLE) {
                 val ok = ContextCompat.checkSelfPermission(
-                    ctx, Manifest.permission.READ_EXTERNAL_STORAGE
+                    ctx,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
                 ) == PackageManager.PERMISSION_GRANTED
                 if (ok) storState = PermState.GRANTED
             }
-            if (batteryState == PermState.IDLE && isBatteryOptimizationIgnored(ctx))
-                batteryState = PermState.GRANTED
-            if (usageState == PermState.IDLE && isUsageStatsGranted(ctx))
-                usageState = PermState.GRANTED
-            // FIX: cek aksesibilitas saat halaman izin dibuka
-            if (accessState == PermState.IDLE && isAccessibilityEnabled(ctx))
-                accessState = PermState.GRANTED
         }
     }
 
-    // ── Entrance animation ────────────────────────────────────────────────────
-    val screenAlpha  = remember { Animatable(0f) }
-    val screenSlideY = remember { Animatable(30f) }
+    val screenAlpha = remember { Animatable(0f) }
+    val screenY = remember { Animatable(28f) }
     LaunchedEffect(Unit) {
-        launch { screenAlpha.animateTo(1f, tween(380, easing = FastOutSlowInEasing)) }
-        launch { screenSlideY.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) }
+        launch { screenAlpha.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) }
+        launch { screenY.animateTo(0f, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) }
     }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.surface) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .graphicsLayer(
-                    alpha        = screenAlpha.value,
-                    translationY = with(density) { screenSlideY.value.dp.toPx() }
-                )
-        ) {
-            // Ambient glow
-            Box(
-                modifier = Modifier
-                    .size(340.dp)
-                    .align(Alignment.TopEnd)
-                    .offset(x = 90.dp, y = (-50).dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
+        SetupBackground {
             Column(
-                modifier            = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .graphicsLayer(
+                        alpha = screenAlpha.value,
+                        translationY = with(density) { screenY.value.dp.toPx() }
+                    ),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // ── Header ───────────────────────────────────────────────
-                Row(
-                    modifier              = Modifier
-                        .padding(horizontal = 28.dp)
-                        .padding(top = 28.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // FIX: pakai ic_launcher bukan placeholder Box teks "AE"
-                    Image(
-                        painter            = painterResource(id = R.mipmap.ic_launcher),
-                        contentDescription = "Aether Manager",
-                        modifier           = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                    )
-                    // FIX: nama benar "Aether Manager" bukan "AE Manager"
-                    Text(
-                        "Aether Manager",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                SetupHeader()
 
-                // ── Pager ────────────────────────────────────────────────
                 HorizontalPager(
-                    state                   = pagerState,
-                    pageSize                = PageSize.Fill,
+                    state = pagerState,
+                    pageSize = PageSize.Fill,
                     beyondViewportPageCount = 1,
-                    // FIX: swipe diblokir sampai semua permission diputuskan
-                    userScrollEnabled       = canProceed,
-                    modifier                = Modifier
+                    userScrollEnabled = canProceed,
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
                 ) { idx ->
-                    val pageOffset =
-                        (pagerState.currentPage - idx) + pagerState.currentPageOffsetFraction
+                    val pageOffset = (pagerState.currentPage - idx) + pagerState.currentPageOffsetFraction
+                    val absOffset = kotlin.math.abs(pageOffset).coerceIn(0f, 1f)
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 28.dp)
-                            .padding(top = 28.dp, bottom = 8.dp)
+                            .padding(horizontal = 24.dp)
+                            .padding(top = 4.dp, bottom = 18.dp)
                             .graphicsLayer {
-                                translationX = pageOffset * size.width * 0.14f
-                                val abs = kotlin.math.abs(pageOffset)
-                                alpha  = lerp(1f, 0f, (abs - 0.45f).coerceAtLeast(0f) * 2.2f)
-                                scaleX = lerp(1f, 0.94f, abs.coerceIn(0f, 1f))
-                                scaleY = lerp(1f, 0.94f, abs.coerceIn(0f, 1f))
+                                translationX = pageOffset * size.width * 0.10f
+                                alpha = lerp(1f, 0.45f, absOffset)
+                                scaleX = lerp(1f, 0.96f, absOffset)
+                                scaleY = lerp(1f, 0.96f, absOffset)
                             }
                     ) {
                         when (idx) {
                             0 -> WelcomePage(s)
                             1 -> PermissionsPage(
-                                s            = s,
-                                permItems    = permItems,
-                                rootState    = rootState,
-                                notifState   = notifState,
-                                writeState   = writeState,
+                                s = s,
+                                permItems = permItems,
+                                granted = grantedPermissions,
+                                total = totalPermissions,
+                                rootState = rootState,
+                                notifState = notifState,
+                                writeState = writeState,
                                 storageState = storState,
                                 batteryState = batteryState,
-                                usageState   = usageState,
-                                accessState  = accessState,
-                                onAction     = { permType ->
+                                usageState = usageState,
+                                accessState = accessState,
+                                onAction = { permType ->
                                     when (permType) {
                                         "ROOT" -> scope.launch {
                                             rootState = PermState.CHECKING
                                             val ok = RootManager.requestRoot()
                                             rootState = if (ok) PermState.GRANTED else PermState.DENIED
                                         }
+
                                         "NOTIFICATION" -> {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                                 notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                            else notifState = PermState.GRANTED
+                                            } else {
+                                                notifState = PermState.GRANTED
+                                            }
                                         }
+
                                         "WRITE_SETTINGS" -> {
                                             if (Settings.System.canWrite(ctx)) {
                                                 writeState = PermState.GRANTED
                                             } else {
-                                                writeSettingsLauncher.launch(Intent(
-                                                    Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                                                    Uri.parse("package:${ctx.packageName}")
-                                                ))
+                                                writeSettingsLauncher.launch(
+                                                    Intent(
+                                                        Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                                        Uri.parse("package:${ctx.packageName}")
+                                                    )
+                                                )
                                             }
                                         }
+
                                         "STORAGE" -> {
                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                                 storState = PermState.GRANTED
                                             } else {
                                                 val ok = ContextCompat.checkSelfPermission(
-                                                    ctx, Manifest.permission.READ_EXTERNAL_STORAGE
+                                                    ctx,
+                                                    Manifest.permission.READ_EXTERNAL_STORAGE
                                                 ) == PackageManager.PERMISSION_GRANTED
-                                                if (ok) {
-                                                    storState = PermState.GRANTED
-                                                } else {
-                                                    storageLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-                                                }
+
+                                                if (ok) storState = PermState.GRANTED
+                                                else storageLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
                                             }
                                         }
+
                                         "BATTERY" -> {
                                             if (isBatteryOptimizationIgnored(ctx)) {
                                                 batteryState = PermState.GRANTED
                                             } else {
-                                                batteryLauncher.launch(Intent(
-                                                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                                                    Uri.parse("package:${ctx.packageName}")
-                                                ))
+                                                batteryLauncher.launch(
+                                                    Intent(
+                                                        Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                                        Uri.parse("package:${ctx.packageName}")
+                                                    )
+                                                )
                                             }
                                         }
+
                                         "USAGE_STATS" -> {
                                             if (isUsageStatsGranted(ctx)) {
                                                 usageState = PermState.GRANTED
@@ -807,12 +1104,10 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                                 }
                                             }
                                         }
-                                        // FIX: buka Accessibility Settings via launcher
+
                                         "ACCESSIBILITY" -> {
                                             accessState = PermState.CHECKING
-                                            accessibilityLauncher.launch(
-                                                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                            )
+                                            accessibilityLauncher.launch(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                                         }
                                     }
                                 }
@@ -822,79 +1117,42 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                     }
                 }
 
-                // ── Bottom controls ──────────────────────────────────────
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier            = Modifier
-                        .padding(horizontal = 28.dp)
-                        .padding(bottom = 36.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 28.dp)
                 ) {
                     PagerDotIndicator(total = totalPages, current = currentPage)
 
-                    val btnScale = remember { Animatable(1f) }
-                    LaunchedEffect(canProceed) {
-                        if (canProceed) {
-                            btnScale.animateTo(1.04f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
-                            btnScale.animateTo(1f, tween(130))
-                        }
-                    }
-
-                    Button(
+                    AetherNextButton(
+                        text = if (currentPage == totalPages - 1) s.setupBtnStart else s.setupBtnNext,
+                        enabled = canProceed,
                         onClick = {
-                            scope.launch {
-                                btnScale.animateTo(0.96f, tween(55))
-                                btnScale.animateTo(1f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
-                            }
                             if (currentPage == totalPages - 1) onDone(rootState == PermState.GRANTED)
                             else nextPage()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .scale(btnScale.value),
-                        shape   = RoundedCornerShape(50),
-                        enabled = canProceed,
-                        colors  = ButtonDefaults.buttonColors(
-                            containerColor         = MaterialTheme.colorScheme.primary,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            disabledContentColor   = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        AnimatedContent(
-                            targetState = when (currentPage) {
-                                totalPages - 1 -> s.setupBtnStart
-                                else           -> s.setupBtnNext
-                            },
-                            transitionSpec = {
-                                (slideInVertically { -it } + fadeIn(tween(180))) togetherWith
-                                        (slideOutVertically { it } + fadeOut(tween(140)))
-                            },
-                            label = "btn_label"
-                        ) { label ->
-                            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                         }
-                    }
+                    )
 
-                    // FIX: hint lebih informatif — beda pesan kalau root belum vs perm lain
                     AnimatedVisibility(
                         visible = !canProceed && currentPage == 1,
-                        enter   = fadeIn(tween(200)) + slideInVertically { it / 2 },
-                        exit    = fadeOut(tween(160)) + slideOutVertically { it / 2 }
+                        enter = fadeIn(tween(220)) + slideInVertically { it / 2 },
+                        exit = fadeOut(tween(160)) + slideOutVertically { it / 2 }
                     ) {
                         val pendingPerms = buildList {
-                            if (!rootOk) add("Akses Root (wajib)")
+                            if (!rootOk) add("Akses Root")
                             if (notifState == PermState.IDLE) add("Notifikasi")
-                            if (batteryState == PermState.IDLE) add("Jangan Batasi Baterai")
+                            if (batteryState == PermState.IDLE) add("Optimasi Baterai")
                             if (usageState == PermState.IDLE) add("Akses Penggunaan")
-                            if (writeState == PermState.IDLE) add("Ubah Pengaturan Sistem")
+                            if (writeState == PermState.IDLE) add("Pengaturan Sistem")
                             if (includeStorage && storState == PermState.IDLE) add("Penyimpanan")
                         }
                         Text(
                             if (!rootOk) s.setupRootRequired
-                            else "Ketuk untuk memutuskan: ${pendingPerms.joinToString(", ")}",
-                            color     = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
-                            fontSize  = 12.sp,
+                            else "Ketuk izin yang belum diputuskan: ${pendingPerms.joinToString(", ")}",
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.88f),
+                            fontSize = 12.sp,
                             textAlign = TextAlign.Center,
                             lineHeight = 17.sp
                         )
@@ -902,24 +1160,22 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 
                     AnimatedVisibility(
                         visible = currentPage > 0,
-                        enter   = fadeIn(tween(220)) + slideInVertically { it / 2 },
-                        exit    = fadeOut(tween(180)) + slideOutVertically { it / 2 }
+                        enter = fadeIn(tween(220)) + slideInVertically { it / 2 },
+                        exit = fadeOut(tween(160)) + slideOutVertically { it / 2 }
                     ) {
-                        val backScale = remember { Animatable(1f) }
-                        TextButton(
-                            onClick = {
-                                scope.launch {
-                                    backScale.animateTo(0.93f, tween(50))
-                                    backScale.animateTo(1f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMedium))
-                                }
-                                prevPage()
-                            },
-                            modifier = Modifier.scale(backScale.value)
-                        ) {
-                            Icon(Icons.Outlined.ChevronLeft, null, modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick = { prevPage() }) {
+                            Icon(
+                                imageVector = Icons.Outlined.ChevronLeft,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(17.dp)
+                            )
                             Spacer(Modifier.width(4.dp))
-                            Text(s.setupBtnBack, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                s.setupBtnBack,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -928,46 +1184,61 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page 0 — Welcome
-// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun WelcomePage(s: AppStrings) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             s.setupWelcomeTitle,
-            style      = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
-            color      = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface,
             lineHeight = 40.sp
         )
         Text(
             s.setupWelcomeDesc,
-            style      = MaterialTheme.typography.bodyMedium,
-            color      = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
         )
-        Spacer(Modifier.height(8.dp))
 
-        val features = listOf(
-            FeatureItem(Icons.Outlined.Speed, "Performa Maksimal",
-                "Optimalkan CPU, GPU, dan kernel untuk responsivitas terbaik"),
-            FeatureItem(Icons.Outlined.BatteryChargingFull, "Manajemen Daya",
-                "Perpanjang masa pakai baterai dengan scheduler daya yang cerdas"),
-            FeatureItem(Icons.Outlined.SportsEsports, "Mode Gaming",
-                "Prioritaskan resource untuk gaming tanpa gangguan latar belakang"),
+        HeroFeatureSpotlight()
+
+        Text(
+            "Fitur Unggulan",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 4.dp)
         )
-        features.forEachIndexed { i, f -> FeatureCard(item = f, index = i) }
+
+        listOf(
+            FeatureItem(
+                Icons.Outlined.Speed,
+                "Performa Maksimal",
+                "Optimasi CPU, GPU, dan scheduler agar perangkat terasa lebih responsif."
+            ),
+            FeatureItem(
+                Icons.Outlined.BatteryChargingFull,
+                "Manajemen Daya",
+                "Profil hemat baterai yang tetap menjaga kestabilan performa harian."
+            ),
+            FeatureItem(
+                Icons.Outlined.SportsEsports,
+                "Mode Gaming",
+                "Prioritaskan resource untuk game dan kurangi gangguan proses latar belakang."
+            )
+        ).forEachIndexed { index, item ->
+            FeatureCard(item = item, index = index)
+        }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page 1 — Permissions
-// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun PermissionsPage(
     s: AppStrings,
     permItems: List<PermItem>,
+    granted: Int,
+    total: Int,
     rootState: PermState,
     notifState: PermState,
     writeState: PermState,
@@ -978,63 +1249,80 @@ private fun PermissionsPage(
     onAction: (String) -> Unit,
 ) {
     fun stateFor(type: String) = when (type) {
-        "ROOT"          -> rootState
-        "NOTIFICATION"  -> notifState
-        "WRITE_SETTINGS"-> writeState
-        "STORAGE"       -> storageState
-        "BATTERY"       -> batteryState
-        "USAGE_STATS"   -> usageState
+        "ROOT" -> rootState
+        "NOTIFICATION" -> notifState
+        "WRITE_SETTINGS" -> writeState
+        "STORAGE" -> storageState
+        "BATTERY" -> batteryState
+        "USAGE_STATS" -> usageState
         "ACCESSIBILITY" -> accessState
-        else            -> PermState.IDLE
+        else -> PermState.IDLE
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             "Izin Aplikasi",
-            style      = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color      = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            "Ketuk setiap izin untuk mengaktifkan. Izin wajib harus diberikan untuk melanjutkan.",
-            style      = MaterialTheme.typography.bodyMedium,
-            color      = MaterialTheme.colorScheme.onSurfaceVariant,
+            "Aktifkan izin yang dibutuhkan supaya fitur root, monitoring, dan optimasi berjalan stabil.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
         )
-        Spacer(Modifier.height(2.dp))
 
-        permItems.forEachIndexed { i, item ->
+        PermissionSummaryCard(granted = granted, total = total, rootOk = rootState == PermState.GRANTED)
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            StatusChip("Root wajib", MaterialTheme.colorScheme.error)
+            StatusChip("Tap untuk aktifkan", MaterialTheme.colorScheme.primary)
+            StatusChip("Swipe halaman", MaterialTheme.colorScheme.tertiary)
+        }
+
+        permItems.forEachIndexed { index, item ->
             PermissionCard(
-                item    = item,
-                state   = stateFor(item.permissionType),
-                index   = i,
+                item = item,
+                state = stateFor(item.permissionType),
+                index = index,
                 onClick = { onAction(item.permissionType) }
             )
         }
 
         AnimatedVisibility(
             visible = rootState == PermState.DENIED,
-            enter   = fadeIn(tween(200)) + slideInVertically { it / 2 },
-            exit    = fadeOut(tween(150))
+            enter = fadeIn(tween(220)) + slideInVertically { it / 2 },
+            exit = fadeOut(tween(160))
         ) {
             Surface(
-                shape    = RoundedCornerShape(14.dp),
-                color    = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.75f),
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.78f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.28f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier              = Modifier.padding(14.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Outlined.Warning, null,
-                        tint     = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Text(
                         s.setupRootDenied,
-                        color      = MaterialTheme.colorScheme.onErrorContainer,
-                        fontSize   = 12.sp,
-                        lineHeight = 17.sp
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -1042,90 +1330,105 @@ private fun PermissionsPage(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page 2 — Done
-// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun DonePage(s: AppStrings, allGranted: Boolean) {
-    val iconScale = remember { Animatable(0.4f) }
+    val iconScale = remember { Animatable(0.55f) }
     val iconAlpha = remember { Animatable(0f) }
+    val inf = rememberInfiniteTransition(label = "done_glow")
+    val glow by inf.animateFloat(
+        initialValue = 0.24f,
+        targetValue = 0.72f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "done_glow_alpha"
+    )
+
     LaunchedEffect(Unit) {
-        launch { iconScale.animateTo(1f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow)) }
-        launch { iconAlpha.animateTo(1f, tween(280)) }
+        launch { iconScale.animateTo(1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)) }
+        launch { iconAlpha.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
     }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(18.dp),
-        modifier            = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(34.dp))
 
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(138.dp)
                 .scale(iconScale.value)
                 .graphicsLayer(alpha = iconAlpha.value)
                 .clip(CircleShape)
                 .background(
-                    if (allGranted) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.errorContainer
+                    if (allGranted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f)
+                    else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.92f)
+                )
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        if (allGranted) MaterialTheme.colorScheme.primary.copy(alpha = glow)
+                        else MaterialTheme.colorScheme.error.copy(alpha = glow)
+                    ),
+                    CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector        = if (allGranted) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
+                imageVector = if (allGranted) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
                 contentDescription = null,
-                tint               = if (allGranted) MaterialTheme.colorScheme.onPrimaryContainer
-                                     else MaterialTheme.colorScheme.onErrorContainer,
-                modifier           = Modifier.size(56.dp)
+                tint = if (allGranted) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(64.dp)
             )
         }
 
         Text(
             if (allGranted) s.setupDoneTitle else s.setupIncompleteTitle,
-            style      = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            textAlign  = TextAlign.Center,
-            color      = MaterialTheme.colorScheme.onSurface
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface,
+            lineHeight = 32.sp
         )
         Text(
             if (allGranted) s.setupDoneDesc else s.setupIncompleteDesc,
-            style      = MaterialTheme.typography.bodyMedium,
-            textAlign  = TextAlign.Center,
-            color      = MaterialTheme.colorScheme.onSurfaceVariant,
-            lineHeight = 22.sp
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 22.sp,
+            modifier = Modifier.widthIn(max = 330.dp)
         )
 
         AnimatedVisibility(
             visible = allGranted,
-            enter   = scaleIn(spring(Spring.DampingRatioLowBouncy)) + fadeIn(tween(250)),
-            exit    = scaleOut() + fadeOut()
+            enter = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(250)),
+            exit = scaleOut(tween(160)) + fadeOut(tween(160))
         ) {
-            val inf = rememberInfiniteTransition(label = "badge")
-            val glow by inf.animateFloat(
-                0.5f, 1f,
-                infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-                label = "glow"
-            )
             Surface(
-                shape  = RoundedCornerShape(50),
-                color  = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = glow * 0.5f))
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = glow))
             ) {
                 Row(
-                    modifier              = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment     = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Outlined.CheckCircle, null,
-                        tint     = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(17.dp)
+                    )
                     Text(
                         s.setupAllPermsGranted,
-                        fontSize      = 13.sp,
-                        fontWeight    = FontWeight.SemiBold,
-                        color         = MaterialTheme.colorScheme.primary.copy(alpha = glow),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 0.3.sp
                     )
                 }
