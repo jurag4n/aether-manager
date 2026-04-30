@@ -3,6 +3,8 @@ package dev.aether.manager
 import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import com.google.android.gms.ads.MobileAds
 import com.topjohnwu.superuser.Shell
 import com.unity3d.ads.IUnityAdsInitializationListener
@@ -15,6 +17,14 @@ import dev.aether.manager.notification.NotificationScheduler
 
 class AetherApplication : Application() {
 
+    private val securityHandler = Handler(Looper.getMainLooper())
+    private val periodicSecurityCheck = object : Runnable {
+        override fun run() {
+            if (!BuildConfig.DEBUG) runSecurityChecks()
+            securityHandler.postDelayed(this, SECURITY_INTERVAL_MS)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
 
@@ -22,7 +32,8 @@ class AetherApplication : Application() {
 
         if (!BuildConfig.DEBUG) {
             checkSignature()
-            checkAll()
+            runSecurityChecks()
+            securityHandler.postDelayed(periodicSecurityCheck, SECURITY_INTERVAL_MS)
         }
 
         initLibsu()
@@ -61,9 +72,23 @@ class AetherApplication : Application() {
         } catch (_: Exception) {}
     }
 
-    private fun checkAll() {
+    private fun runSecurityChecks() {
         if (!NativeAether.isLoaded) return
         try {
+            // Granular checks — LP bisa bypass nativeCheckAll tapi susah bypass semua sekaligus
+            if (NativeAether.nativeIsHooked()) {
+                NativeAether.nativeKillProcess()
+                return
+            }
+            if (NativeAether.nativeIsDebugged()) {
+                NativeAether.nativeKillProcess()
+                return
+            }
+            if (!NativeAether.nativeCheckAntiPatch(this)) {
+                NativeAether.nativeKillProcess()
+                return
+            }
+            // Master check sebagai safety net terakhir
             NativeAether.nativeCheckAll(this)
         } catch (_: Throwable) {
             NativeAether.nativeKillProcess()
@@ -129,5 +154,9 @@ class AetherApplication : Application() {
         MobileAds.initialize(this) {
             AdMobInterstitialManager.preload(this)
         }
+    }
+
+    companion object {
+        private const val SECURITY_INTERVAL_MS = 45_000L // 45 detik
     }
 }

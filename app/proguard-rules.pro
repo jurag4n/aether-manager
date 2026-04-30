@@ -22,6 +22,10 @@
     public static boolean tryLoad();
     public static boolean isLoaded();
     public static native boolean nativeCheckSignature(java.lang.String);
+    public static native java.lang.String nativeGetApkHash(android.content.Context);
+    public static native boolean nativeCheckIntegrity(android.content.Context, java.lang.String);
+    public static native boolean nativeIsHooked();
+    public static native boolean nativeIsDebugged();
     public static native boolean nativeCheckAntiPatch(android.content.Context);
     public static native boolean nativeCheckUnityIntact();
     public static native boolean nativeCheckAll(android.content.Context);
@@ -30,6 +34,7 @@
     public static native java.lang.String nativeGetGithubApi();
     public static native java.lang.String[] nativeGetAdblockDnsKeywords();
     public static native java.lang.String[] nativeGetHostsSignatures();
+    public static native java.lang.String nativeGetPackageName();
 }
 
 -keep class dev.aether.manager.CimolAgent {
