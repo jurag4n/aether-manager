@@ -1,31 +1,22 @@
-# ── Repackage semua ke root, izinkan mixed case ───────────────────────────────
 -repackageclasses ''
 -allowaccessmodification
 -overloadaggressively
 
-# ── Optimasi R8 maksimal ──────────────────────────────────────────────────────
 -optimizationpasses 7
 -optimizations !code/simplification/cast,field/*,class/merging/*,code/allocation/variable
 
-# ── Attributes wajib ─────────────────────────────────────────────────────────
--keepattributes Signature,*Annotation*,InnerClasses,EnclosingMethod
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+-dontusemixedcaseclassnames
 
-# =============================================================================
-# AETHER MANAGER — CORE (wajib di AndroidManifest, tidak bisa di-rename)
-# =============================================================================
-
--keep public class dev.aether.manager.MainActivity { <init>(); }
--keep public class dev.aether.manager.SplashActivity { <init>(); }
--keep public class dev.aether.manager.SetupActivity { <init>(); }
--keep public class dev.aether.manager.AetherApplication { <init>(); }
--keep public class dev.aether.manager.service.AetherService { <init>(); }
--keep public class dev.aether.manager.service.BootReceiver { <init>(); }
-
-# =============================================================================
-# JNI — libaether.so
-# =============================================================================
+-keep public class dev.aether.manager.MainActivity
+-keep public class dev.aether.manager.SplashActivity
+-keep public class dev.aether.manager.SetupActivity
+-keep public class dev.aether.manager.AetherApplication
 
 -keep class dev.aether.manager.NativeAether {
     public static boolean tryLoad();
@@ -45,10 +36,6 @@
     public static native java.lang.String[] nativeGetHostsSignatures();
     public static native java.lang.String nativeGetPackageName();
 }
-
-# =============================================================================
-# JNI — libcimolagent.so
-# =============================================================================
 
 -keep class dev.aether.manager.CimolAgent {
     public static boolean tryLoad();
@@ -82,18 +69,17 @@
     <init>(...);
 }
 
-# Safety net untuk semua native method
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
 
-# =============================================================================
-# KOTLIN
-# =============================================================================
-
 -keep class kotlin.Metadata { *; }
--keepclassmembernames class kotlinx.coroutines.** { volatile <fields>; }
--dontwarn kotlinx.coroutines.**
+
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembernames class kotlinx.coroutines.** {
+    volatile <fields>;
+}
 
 -assumenosideeffects class kotlin.jvm.internal.Intrinsics {
     public static void check*(...);
@@ -101,13 +87,11 @@
     public static void parameter*(...);
 }
 
-# =============================================================================
-# KOTLINX SERIALIZATION
-# =============================================================================
-
+-keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt
--dontwarn kotlinx.serialization.**
--keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
 -keepclasseswithmembers class kotlinx.serialization.json.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
@@ -119,10 +103,6 @@
     <fields>;
 }
 
-# =============================================================================
-# JETPACK COMPOSE
-# =============================================================================
-
 -assumenosideeffects class androidx.compose.runtime.ComposerKt {
     void sourceInformation(...);
     void sourceInformationMarkerStart(...);
@@ -132,52 +112,31 @@
     void traceEventEnd();
 }
 
-# =============================================================================
-# OKHTTP — hanya yang wajib, jangan keepnames seluruh namespace
-# =============================================================================
-
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -keep class okhttp3.internal.publicsuffix.PublicSuffixDatabase { *; }
--keepclassmembers class okhttp3.** { <init>(...); }
+-keepnames class okhttp3.** { *; }
 
-# =============================================================================
-# RETROFIT
-# =============================================================================
+-dontwarn kotlinx.serialization.**
 
 -dontwarn retrofit2.**
--keepclassmembers,allowobfuscation class * {
+-keep class retrofit2.** { *; }
+-keepclasseswithmembers class * {
     @retrofit2.http.* <methods>;
 }
--keep,allowobfuscation,allowshrinking interface retrofit2.Call
--keep,allowobfuscation,allowshrinking class retrofit2.Response
-
-# =============================================================================
-# LIBSU
-# =============================================================================
 
 -keep class com.topjohnwu.superuser.** { *; }
 -keepclassmembers class com.topjohnwu.superuser.** { *; }
 
-# =============================================================================
-# ADS
-# =============================================================================
-
 -keep class com.unity3d.ads.** { *; }
+-keepclassmembers class com.unity3d.ads.** { *; }
+
 -keep class com.google.android.gms.ads.** { *; }
 -dontwarn com.google.android.gms.ads.**
 -keep class com.google.ads.** { *; }
 
-# =============================================================================
-# MMKV
-# =============================================================================
-
 -keep class com.tencent.mmkv.** { *; }
 -keepclassmembers class com.tencent.mmkv.** { *; }
-
-# =============================================================================
-# ROOM
-# =============================================================================
 
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
@@ -185,17 +144,10 @@
 -keep @androidx.room.Dao class * { *; }
 -dontwarn androidx.room.**
 
-# =============================================================================
-# LOTTIE / COIL
-# =============================================================================
-
 -keep class com.airbnb.lottie.** { *; }
 -dontwarn com.airbnb.lottie.**
--dontwarn coil.**
 
-# =============================================================================
-# LOGGING — strip di release
-# =============================================================================
+-dontwarn coil.**
 
 -assumenosideeffects class timber.log.Timber {
     public static *** v(...);
@@ -212,6 +164,7 @@
     public *** w(...);
     public *** e(...);
 }
+
 -assumenosideeffects class android.util.Log {
     public static int v(...);
     public static int d(...);
@@ -221,13 +174,10 @@
     public static int wtf(...);
 }
 
-# =============================================================================
-# PARCELABLE / SERIALIZABLE / ENUM
-# =============================================================================
-
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
+
 -keepclassmembers class * implements java.io.Serializable {
     static final long serialVersionUID;
     private void writeObject(java.io.ObjectOutputStream);
@@ -235,16 +185,13 @@
     java.lang.Object writeReplace();
     java.lang.Object readResolve();
 }
+
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);
     public final ** name();
     public final int ordinal();
 }
-
-# =============================================================================
-# SUPPRESS WARNINGS
-# =============================================================================
 
 -dontwarn java.lang.invoke.**
 -dontwarn javax.annotation.**
@@ -254,10 +201,6 @@
 -dontwarn org.openjsse.**
 -dontwarn **$$Lambda$*
 -dontwarn io.ktor.**
-
-# =============================================================================
-# OBFUSCATION DICTIONARY
-# =============================================================================
 
 -obfuscationdictionary      proguard-dictionary.txt
 -classobfuscationdictionary proguard-dictionary.txt

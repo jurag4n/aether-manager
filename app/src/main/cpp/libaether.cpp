@@ -897,8 +897,8 @@ Java_dev_aether_manager_NativeAether_nativeCheckSignature(JNIEnv *env, jobject, 
     DEVLOG(" %s",hex);
     int ok=check_sig_native(hex);
     env->ReleaseStringUTFChars(sigJ,hex);
-    if(!ok){ DEVLOG("Signature mismatch"); aether_kill(); }
-    else   { DEVLOG("Signature Okey"); }
+    if(!ok){ DEVLOG("SignError"); aether_kill(); }
+    else   { DEVLOG("@AetherDev22"); }
     return ok?JNI_TRUE:JNI_FALSE;
 }
 
