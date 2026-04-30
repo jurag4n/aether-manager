@@ -15,12 +15,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.aether.manager.data.MainViewModel
@@ -53,7 +50,7 @@ fun HomeScreen(vm: MainViewModel) {
             .fillMaxSize()
             .verticalScroll(scroll)
             .padding(horizontal = 16.dp)
-            .padding(top = 12.dp, bottom = 100.dp),
+            .padding(top = 12.dp, bottom = 104.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Hero device card
@@ -90,7 +87,7 @@ fun HomeScreen(vm: MainViewModel) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared section label (used by other screens too)
+// Shared section label
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -166,7 +163,7 @@ private fun HeroCard(info: DeviceInfo) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Monitor section — bento grid layout
+// Monitor section — bento grid, no arcs, bold text style
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -174,7 +171,6 @@ private fun MonitorSection(state: MonitorState, onRefresh: () -> Unit) {
     val s = LocalStrings.current
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // Section label
         TabSectionTitle(
             icon     = Icons.Outlined.Analytics,
             title    = s.homeMonitor,
@@ -187,7 +183,7 @@ private fun MonitorSection(state: MonitorState, onRefresh: () -> Unit) {
             }
         )
 
-        // Row 1 — CPU full width (wide card)
+        // Row 1 — CPU (full width)
         CpuCard(state)
 
         // Row 2 — GPU + Battery (2 equal columns)
@@ -207,8 +203,8 @@ private fun MonitorSection(state: MonitorState, onRefresh: () -> Unit) {
             TempCard("Battery", Icons.Outlined.BatteryFull, state.batTemp,     Color(0xFF2ECC71), 40f, Modifier.weight(1f))
         }
 
-        // Row 4 — Storage / detail card
-        SectionLabel(Icons.Outlined.Dns, "Storage & System")
+        // Row 4 — Memory / storage
+        SectionLabel(Icons.Outlined.Dns, "Memory & System")
         StorageCard(state)
     }
 }
@@ -232,22 +228,20 @@ private fun SectionLabel(icon: ImageVector, text: String) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CPU — full width card, arc left + detail right
+// CPU — full width, bold freq + % badge + governor
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun CpuCard(state: MonitorState) {
-    val animVal  by animateFloatAsState(state.cpuUsage.coerceIn(0,100)/100f, tween(800, easing = FastOutSlowInEasing), label = "cpu")
-    val arcColor = when {
+    val usageColor = when {
         state.cpuUsage >= 90 -> MaterialTheme.colorScheme.error
         state.cpuUsage >= 70 -> MaterialTheme.colorScheme.tertiary
         else                 -> MaterialTheme.colorScheme.primary
     }
-    val track = MaterialTheme.colorScheme.surfaceContainerHighest
 
     Surface(
-        shape  = RoundedCornerShape(20.dp),
-        color  = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape    = RoundedCornerShape(20.dp),
+        color    = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -255,46 +249,61 @@ private fun CpuCard(state: MonitorState) {
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Arc gauge
-            Box(modifier = Modifier.size(70.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                    val sw  = 8.dp.toPx(); val pad = sw / 2f
-                    val tl  = Offset(pad, pad)
-                    val sz  = androidx.compose.ui.geometry.Size(size.width - sw, size.height - sw)
-                    drawArc(track,    135f, 270f,           false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
-                    if (animVal > 0f)
-                        drawArc(arcColor, 135f, 270f*animVal, false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
-                }
-                Text("${state.cpuUsage}%", fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface)
+            // Icon container
+            Box(
+                modifier         = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
+                    .background(usageColor.copy(.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Outlined.Memory, null, tint = usageColor, modifier = Modifier.size(22.dp))
             }
 
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text("CPU", style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    Icon(Icons.Outlined.Memory, null, tint = arcColor, modifier = Modifier.size(16.dp))
+            // Main content
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Freq — headline
+                Text(
+                    state.cpuFreq.ifBlank { "— MHz" },
+                    fontSize   = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color      = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 24.sp
+                )
+                // Governor label
+                Text(
+                    state.cpuGovernor.ifBlank { "—" },
+                    fontSize = 12.sp,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Right side: % badge + temp
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Usage badge
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = usageColor.copy(.12f)
+                ) {
+                    Text(
+                        "${state.cpuUsage}%",
+                        modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        fontSize   = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = usageColor
+                    )
                 }
-                Text(state.cpuFreq.ifBlank { "— MHz" }, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                // progress bar
-                ThinBar(animVal, arcColor)
-                // governor + temp
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Tune, null, modifier = Modifier.size(11.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(state.cpuGovernor.ifBlank { "—" }, style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (state.cpuTemp > 0f) {
-                        val hot = state.cpuTemp > 70f
-                        Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Thermostat, null, modifier = Modifier.size(11.dp),
-                                tint = if (hot) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("%.1f°C".format(state.cpuTemp), style = MaterialTheme.typography.labelSmall,
-                                color = if (hot) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                // Temp
+                if (state.cpuTemp > 0f) {
+                    val hot = state.cpuTemp > 70f
+                    val tColor = if (hot) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Icon(Icons.Outlined.Thermostat, null, tint = tColor, modifier = Modifier.size(12.dp))
+                        Text("%.1f°C".format(state.cpuTemp), fontSize = 12.sp, color = tColor, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -303,23 +312,32 @@ private fun CpuCard(state: MonitorState) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GPU & Battery — 2x2 arc cards
+// GPU — bento card, bold freq + load chip + chipset name
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun GpuCard(state: MonitorState, modifier: Modifier = Modifier) {
-    ArcSquareCard(
-        label    = "GPU",
-        value    = state.gpuUsage,
-        subText  = state.gpuFreq.ifBlank { "— MHz" },
-        color    = MaterialTheme.colorScheme.tertiary,
-        icon     = Icons.Outlined.GridView,
-        modifier = modifier
+    val color = MaterialTheme.colorScheme.tertiary
+    BentoMonitorCard(
+        icon        = Icons.Outlined.GridView,
+        iconColor   = color,
+        headline    = state.gpuFreq.ifBlank { "— MHz" },
+        subLabel    = "Frekuensi",
+        chip1Label  = "${state.gpuUsage}%",
+        chip1Sub    = "Beban",
+        chip2Label  = "Adreno",
+        chip2Sub    = "GPU",
+        modifier    = modifier
     )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Battery — bento card
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
 private fun BatteryCard(state: MonitorState, modifier: Modifier = Modifier) {
+    val s = LocalStrings.current
     val color = when {
         state.batLevel <= 15 -> MaterialTheme.colorScheme.error
         state.batLevel <= 30 -> MaterialTheme.colorScheme.tertiary
@@ -330,63 +348,117 @@ private fun BatteryCard(state: MonitorState, modifier: Modifier = Modifier) {
         state.batLevel <= 50 -> Icons.Outlined.Battery3Bar
         else                 -> Icons.Outlined.BatteryFull
     }
-    val s = LocalStrings.current
-    ArcSquareCard(
-        label       = s.homeBatStatusLabel,
-        value       = state.batLevel,
-        subText     = if (state.batTemp > 0f) "%.1f°C".format(state.batTemp) else "—",
-        color       = color,
-        icon        = icon,
-        modifier    = modifier,
-        invertColor = true
+    val statusShort = when {
+        state.batStatus.equals("Charging", ignoreCase = true)     -> "Charging"
+        state.batStatus.equals("Full", ignoreCase = true)         -> "Full"
+        state.batStatus.equals("Not charging", ignoreCase = true) -> "Not chg."
+        else                                                       -> "Discharging"
+    }
+    BentoMonitorCard(
+        icon       = icon,
+        iconColor  = color,
+        headline   = "${state.batLevel}%",
+        subLabel   = "SUHU",
+        chip1Label = if (state.batTemp > 0f) "%.0f°C".format(state.batTemp) else "—°C",
+        chip1Sub   = "Baterai",
+        chip2Label = statusShort,
+        chip2Sub   = "Status",
+        modifier   = modifier
     )
 }
 
-@Composable
-private fun ArcSquareCard(
-    label: String, value: Int, subText: String,
-    color: Color, icon: ImageVector,
-    modifier: Modifier = Modifier, invertColor: Boolean = false
-) {
-    val animVal by animateFloatAsState(value.coerceIn(0,100)/100f, tween(800, easing = FastOutSlowInEasing), label = "arc_sq")
-    val arcColor = if (invertColor) color else when {
-        value >= 90 -> MaterialTheme.colorScheme.error
-        value >= 70 -> MaterialTheme.colorScheme.tertiary
-        else        -> color
-    }
-    val track = MaterialTheme.colorScheme.surfaceContainerHighest
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared bento card — icon top-left, headline big, 2 info chips bottom
+// ─────────────────────────────────────────────────────────────────────────────
 
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = modifier) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.3.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Icon(icon, null, tint = arcColor, modifier = Modifier.size(14.dp))
-            }
-            Box(
-                modifier         = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
-                contentAlignment = Alignment.Center
+@Composable
+private fun BentoMonitorCard(
+    icon: ImageVector,
+    iconColor: Color,
+    headline: String,
+    subLabel: String,
+    chip1Label: String,
+    chip1Sub: String,
+    chip2Label: String,
+    chip2Sub: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape    = RoundedCornerShape(20.dp),
+        color    = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier
+    ) {
+        Column(
+            modifier            = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Top row: icon + sub-label badge
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
             ) {
-                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                    val sw  = 8.dp.toPx(); val pad = sw / 2f
-                    val tl  = Offset(pad, pad)
-                    val sz  = androidx.compose.ui.geometry.Size(size.width - sw, size.height - sw)
-                    drawArc(track,    135f, 270f,           false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
-                    if (animVal > 0f)
-                        drawArc(arcColor, 135f, 270f*animVal, false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
+                Box(
+                    modifier         = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
+                        .background(iconColor.copy(.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = iconColor, modifier = Modifier.size(18.dp))
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${value}%", fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface)
-                    Text(subText, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Text(
+                        subLabel,
+                        modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        fontSize   = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.5.sp
+                    )
                 }
+            }
+
+            // Headline value
+            Text(
+                headline,
+                fontSize   = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color      = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 28.sp,
+                maxLines   = 1
+            )
+
+            // Bottom chips row
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                BentoChip(chip1Label, chip1Sub, Modifier.weight(1f))
+                BentoChip(chip2Label, chip2Sub, Modifier.weight(1f))
             }
         }
     }
 }
 
+@Composable
+private fun BentoChip(value: String, label: String, modifier: Modifier = Modifier) {
+    Surface(
+        shape    = RoundedCornerShape(12.dp),
+        color    = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier
+    ) {
+        Column(
+            modifier            = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Temperature card (2x2 grid item)
+// Temperature card — bold °C, no progress bar, colored icon badge
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -394,16 +466,18 @@ private fun TempCard(
     label: String, icon: ImageVector, temp: Float,
     color: Color, maxTemp: Float, modifier: Modifier = Modifier
 ) {
-    val isHot    = temp > maxTemp
-    val accent   = if (isHot) MaterialTheme.colorScheme.error else color
+    val isHot  = temp > maxTemp
+    val accent = if (isHot) MaterialTheme.colorScheme.error else color
     val animTemp by animateFloatAsState(temp.coerceAtLeast(0f), tween(600, easing = FastOutSlowInEasing), label = "tmp_$label")
-    val pct      = if (maxTemp > 0f) (temp / (maxTemp * 1.2f)).coerceIn(0f, 1f) else 0f
-    val animPct  by animateFloatAsState(pct, tween(800), label = "pct_$label")
-    val track    = MaterialTheme.colorScheme.surfaceContainerHighest
 
     Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = modifier) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            // Icon row
+            Row(
+                Modifier.fillMaxWidth(),
+                Arrangement.SpaceBetween,
+                Alignment.CenterVertically
+            ) {
                 Box(
                     modifier         = Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(accent.copy(.12f)),
                     contentAlignment = Alignment.Center
@@ -412,25 +486,32 @@ private fun TempCard(
                 }
                 if (isHot) Icon(Icons.Outlined.Warning, null, tint = accent, modifier = Modifier.size(13.dp))
             }
+
+            // Label + temp
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(label, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     if (temp > 0f) "%.1f°C".format(animTemp) else "—",
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold, color = accent
+                    fontSize   = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color      = accent,
+                    lineHeight = 24.sp
                 )
             }
-            Box(modifier = Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(track)) {
-                Box(modifier = Modifier.fillMaxWidth(animPct).fillMaxHeight().clip(CircleShape)
-                    .background(Brush.horizontalGradient(listOf(accent.copy(.4f), accent))))
-            }
-            Text("Max ${maxTemp.toInt()}°C", style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .6f))
+
+            // Max label (no bar)
+            Text(
+                "Max ${maxTemp.toInt()}°C",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .5f)
+            )
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Storage card (list rows)
+// Memory / Storage card (list rows with wavy progress style)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -443,59 +524,15 @@ private fun StorageCard(state: MonitorState) {
         Column {
             RamRow(state.ramUsedMb, state.ramTotalMb)
             RowDivider()
-            StorageRow(state.storageUsedGb, state.storageTotalGb)
             if (state.swapTotalMb > 0L) {
+                ZramRow(state.swapUsedMb, state.swapTotalMb)
                 RowDivider()
-                SwapRow(state.swapUsedMb, state.swapTotalMb)
             }
+            StorageRow(state.storageUsedGb, state.storageTotalGb)
             RowDivider()
             BatteryDetailRow(state.batCurrentMa, state.batVoltage, state.batStatus)
             RowDivider()
             UptimeRow(state.cpuGovernor, state.uptime)
-        }
-    }
-}
-
-@Composable
-private fun RowDivider() = HorizontalDivider(
-    modifier  = Modifier.padding(start = 54.dp, end = 16.dp),
-    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .35f),
-    thickness = 0.5.dp
-)
-
-@Composable
-private fun MetricRow(
-    icon: ImageVector, label: String,
-    valueText: String, subText: String,
-    color: Color, barPct: Float? = null
-) {
-    val anim by animateFloatAsState(barPct ?: 0f, tween(800, easing = FastOutSlowInEasing), label = "mrow")
-    Row(
-        modifier              = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier         = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(color.copy(.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(17.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text(label, style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-                Text(valueText, style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold, color = color)
-            }
-            if (barPct != null) {
-                ThinBar(anim, color)
-                Text(subText, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                Text(subText, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
         }
     }
 }
@@ -509,18 +546,18 @@ private fun RamRow(usedMb: Long, totalMb: Long) {
 }
 
 @Composable
-private fun StorageRow(usedGb: Float, totalGb: Float) {
-    val pct = if (totalGb > 0f) (usedGb/totalGb).coerceIn(0f,1f) else 0f
-    val col = if (pct > .9f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
-    MetricRow(Icons.Outlined.Storage, "Storage",
-        "${(pct*100).toInt()}%", "%.1f / %.1f GB".format(usedGb, totalGb), col, pct)
+private fun ZramRow(usedMb: Long, totalMb: Long) {
+    val pct = if (totalMb > 0) (usedMb.toFloat()/totalMb).coerceIn(0f,1f) else 0f
+    MetricRow(Icons.Outlined.Compress, "ZRAM",
+        "${(pct*100).toInt()}%", "${fmtMb(usedMb)} / ${fmtMb(totalMb)}", MaterialTheme.colorScheme.secondary, pct)
 }
 
 @Composable
-private fun SwapRow(usedMb: Long, totalMb: Long) {
-    val pct = if (totalMb > 0) (usedMb.toFloat()/totalMb).coerceIn(0f,1f) else 0f
-    MetricRow(Icons.Outlined.SwapVert, "Swap",
-        "${(pct*100).toInt()}%", "${fmtMb(usedMb)} / ${fmtMb(totalMb)}", MaterialTheme.colorScheme.tertiary, pct)
+private fun StorageRow(usedGb: Float, totalGb: Float) {
+    val pct = if (totalGb > 0f) (usedGb/totalGb).coerceIn(0f,1f) else 0f
+    val col = if (pct > .9f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
+    MetricRow(Icons.Outlined.Storage, "Penyimpanan Internal",
+        "${(pct*100).toInt()}%", "%.1f / %.1f GB".format(usedGb, totalGb), col, pct)
 }
 
 @Composable
@@ -560,20 +597,53 @@ private fun UptimeRow(governor: String, uptime: String) {
         "${s.homeLabelGovernor}: ${governor.ifBlank { "—" }}", col)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Thin progress bar helper
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun RowDivider() = HorizontalDivider(
+    modifier  = Modifier.padding(start = 54.dp, end = 16.dp),
+    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .35f),
+    thickness = 0.5.dp
+)
 
 @Composable
-private fun ThinBar(fraction: Float, color: Color, height: Dp = 3.dp) {
-    Box(
-        modifier = Modifier.fillMaxWidth().height(height)
-            .clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest)
+private fun MetricRow(
+    icon: ImageVector, label: String,
+    valueText: String, subText: String,
+    color: Color, barPct: Float? = null
+) {
+    val anim by animateFloatAsState(barPct ?: 0f, tween(800, easing = FastOutSlowInEasing), label = "mrow")
+    Row(
+        modifier              = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(CircleShape)
-                .background(Brush.horizontalGradient(listOf(color.copy(.55f), color)))
-        )
+            modifier         = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(color.copy(.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(17.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text(label, style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                Text(valueText, style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold, color = color)
+            }
+            // Wavy/thin bar (keep for memory rows, skip for non-pct rows)
+            if (barPct != null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(2.5.dp).clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(anim).fillMaxHeight().clip(CircleShape)
+                            .background(Brush.horizontalGradient(listOf(color.copy(.4f), color)))
+                    )
+                }
+            }
+            Text(subText, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -584,7 +654,7 @@ private fun ThinBar(fraction: Float, color: Color, height: Dp = 3.dp) {
 @Composable
 private fun HeroSkeleton() {
     Card(shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         elevation = CardDefaults.cardElevation(0.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
@@ -605,7 +675,7 @@ private fun HeroSkeleton() {
 private fun HeroError(msg: String, onRetry: () -> Unit) {
     val s = LocalStrings.current
     Card(shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         elevation = CardDefaults.cardElevation(0.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
@@ -624,10 +694,10 @@ private fun HeroError(msg: String, onRetry: () -> Unit) {
 @Composable
 private fun BootloopBanner(info: DeviceInfo, vm: MainViewModel) {
     Card(shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         elevation = CardDefaults.cardElevation(0.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -643,7 +713,7 @@ private fun BootloopBanner(info: DeviceInfo, vm: MainViewModel) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Misc
+// Misc helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -654,9 +724,9 @@ private fun InfoChip(label: String, value: String, icon: ImageVector,
         color    = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .08f),
         modifier = modifier) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier              = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment     = Alignment.CenterVertically
         ) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
