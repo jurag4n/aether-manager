@@ -209,9 +209,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         monitorJob = viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
                 if (!_applyStatus.value.running) {
-                    try { _monitorState.value = RootEngine.getMonitorState() } catch (_: Exception) {}
+                    try {
+                        // Refresh CPU/GPU/memory/temperature stats every second instead of
+                        // the previous three-second interval.  A shorter delay makes
+                        // the real‑time monitor feel more responsive.
+                        _monitorState.value = RootEngine.getMonitorState()
+                    } catch (_: Exception) {}
                 }
-                delay(3000)
+                delay(1000)
             }
             monitorStarted = false
         }
@@ -301,7 +306,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 snack(msg)
             }
 
-            autoBackupIfEnabled()
+            // Kick off the auto‑backup after the apply has completed.  Launching
+            // this asynchronously prevents the backup process (which may take
+            // several hundred milliseconds) from blocking the apply operation.
+            viewModelScope.launch {
+                autoBackupIfEnabled()
+            }
 
         } catch (e: Exception) {
             _applyingTweak.value = false
