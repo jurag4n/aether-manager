@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -252,8 +253,14 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                 targetState = currentScreen,
                 transitionSpec = {
                     val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                    (slideInHorizontally { it * dir / 4 } + fadeIn(tween(220))) togetherWith
-                            (slideOutHorizontally { -it * dir / 4 } + fadeOut(tween(150)))
+                    val slideSpec = spring<Int>(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                    (slideInHorizontally(animationSpec = slideSpec) { it * dir / 5 } +
+                            fadeIn(tween(170, easing = FastOutSlowInEasing))) togetherWith
+                            (slideOutHorizontally(animationSpec = slideSpec) { -it * dir / 5 } +
+                                    fadeOut(tween(120, easing = FastOutSlowInEasing)))
                 },
                 label = "screen_transition"
             ) { screen ->
@@ -286,17 +293,8 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     UpdateDialogHost(viewModel = updateVm)
 }
 // ─────────────────────────────────────────────────────────────────────────────
-// FloatingBottomBar — iOS 26-style hold-to-expand + drag-to-switch capsule
+// FloatingBottomBar — hold-to-expand capsule + drag-to-switch tab
 // ─────────────────────────────────────────────────────────────────────────────
-//
-// Behaviour:
-//   • Normal state  → compact pill (icon-only tabs + settings + power)
-//   • Hold (LongPress on any nav item) → capsule expands, all items show
-//     full label + icon, selected item highlighted; user can drag left/right
-//     to switch tabs; release → capsule shrinks back smoothly
-//   • Tap (short press) → instant navigate, no expansion
-//
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FloatingBottomBar(
     navItems: List<NavItem>,
@@ -306,186 +304,155 @@ private fun FloatingBottomBar(
     onPowerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // ── Expansion state ───────────────────────────────────────────────────────
     var expanded by remember { mutableStateOf(false) }
-    // Drag tracking (pixel offset accumulated during hold-drag)
-    var dragAccum by remember { mutableStateOf(0f) }
-    // Which item index is highlighted while dragging
-    var dragIndex by remember { mutableIntStateOf(navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)) }
+    var dragX by remember { mutableStateOf(0f) }
+    var navRailWidthPx by remember { mutableStateOf(1f) }
 
-    // Keep dragIndex in sync when screen changes externally
-    LaunchedEffect(currentScreen) {
-        if (!expanded) dragIndex = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
+    val selectedIndex = navItems
+        .indexOfFirst { it.screen == currentScreen }
+        .coerceAtLeast(0)
+
+    var dragIndex by remember { mutableIntStateOf(selectedIndex) }
+    val activeIndex = if (expanded) dragIndex else selectedIndex
+
+    LaunchedEffect(selectedIndex, expanded) {
+        if (!expanded) dragIndex = selectedIndex
     }
 
-    // ── Animation values ──────────────────────────────────────────────────────
-    val expandSpec = spring<Float>(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium)
-    val collapseSpec = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+    val latestRailWidth by rememberUpdatedState(navRailWidthPx)
+    val latestCurrentScreen by rememberUpdatedState(currentScreen)
 
-    val expandProgress by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0f,
-        animationSpec = if (expanded) expandSpec else collapseSpec,
-        label = "capsule_expand"
+    fun indexFromX(x: Float, width: Float): Int {
+        val safeWidth = width.coerceAtLeast(1f)
+        val slot = safeWidth / navItems.size.coerceAtLeast(1)
+        return (x.coerceIn(0f, safeWidth - 1f) / slot)
+            .toInt()
+            .coerceIn(0, navItems.lastIndex)
+    }
+
+    val barScale by animateFloatAsState(
+        targetValue = if (expanded) 1.035f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "bottom_bar_scale"
     )
 
-    // Outer capsule vertical scale — subtle squish on long-press start
-    val capsuleScale by animateFloatAsState(
-        targetValue = if (expanded) 1.04f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "capsule_scale"
+    val navItemWidth by animateDpAsState(
+        targetValue = if (expanded) 96.dp else 52.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "nav_item_width"
     )
 
-    // ── Drag threshold per item (px → will be set after layout) ──────────────
-    val itemWidthPx = remember { mutableStateOf(0f) }
+    val navItemHeight by animateDpAsState(
+        targetValue = if (expanded) 52.dp else 48.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "nav_item_height"
+    )
+
+    val itemGap = 6.dp
+    val indicatorOffset by animateDpAsState(
+        targetValue = (navItemWidth + itemGap) * activeIndex.toFloat(),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "nav_capsule_offset"
+    )
 
     Surface(
         shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        shadowElevation = 20.dp,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+        shadowElevation = 22.dp,
         tonalElevation = 8.dp,
         modifier = modifier
             .navigationBarsPadding()
             .padding(horizontal = 18.dp, vertical = 14.dp)
-            .scale(scaleX = 1f, scaleY = capsuleScale)
+            .scale(barScale)
     ) {
         Row(
-            modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ── Nav items ─────────────────────────────────────────────────────
-            navItems.forEachIndexed { idx, item ->
-                val isSelected = currentScreen == item.screen
-                val isHighlighted = expanded && dragIndex == idx
-
-                // Item width: expanded shows label, collapsed is icon-only
-                val itemWidth by animateDpAsState(
-                    targetValue = when {
-                        expanded        -> 76.dp   // icon + label
-                        isSelected      -> 62.dp   // selected pill
-                        else            -> 48.dp
-                    },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
-                    label = "item_width_$idx"
-                )
-
-                val bgAlpha by animateFloatAsState(
-                    targetValue = when {
-                        isHighlighted -> 1f
-                        !expanded && isSelected -> 1f
-                        else -> 0f
-                    },
-                    animationSpec = tween(200),
-                    label = "item_bg_$idx"
-                )
-                val iconTint by animateColorAsState(
-                    targetValue = if (isHighlighted || (!expanded && isSelected))
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = tween(200),
-                    label = "item_tint_$idx"
-                )
-                val bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha)
-
+            Box(
+                modifier = Modifier
+                    .onGloballyPositioned { coords ->
+                        navRailWidthPx = coords.size.width.toFloat().coerceAtLeast(1f)
+                    }
+                    .pointerInput(navItems) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { offset ->
+                                expanded = true
+                                dragX = offset.x.coerceIn(0f, latestRailWidth)
+                                val newIndex = indexFromX(dragX, latestRailWidth)
+                                dragIndex = newIndex
+                                if (navItems[newIndex].screen != latestCurrentScreen) {
+                                    onScreenChange(navItems[newIndex].screen)
+                                }
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragX = (dragX + dragAmount.x).coerceIn(0f, latestRailWidth)
+                                val newIndex = indexFromX(dragX, latestRailWidth)
+                                if (newIndex != dragIndex) {
+                                    dragIndex = newIndex
+                                    onScreenChange(navItems[newIndex].screen)
+                                }
+                            },
+                            onDragEnd = {
+                                expanded = false
+                                dragX = 0f
+                            },
+                            onDragCancel = {
+                                expanded = false
+                                dragX = 0f
+                            }
+                        )
+                    }
+            ) {
                 Box(
                     modifier = Modifier
-                        .height(48.dp)
-                        .width(itemWidth)
-                        .onGloballyPositioned { coords ->
-                            if (itemWidthPx.value == 0f) {
-                                itemWidthPx.value = coords.size.width.toFloat()
-                            }
-                        }
+                        .offset(x = indicatorOffset)
+                        .width(navItemWidth)
+                        .height(navItemHeight)
                         .clip(RoundedCornerShape(50))
-                        .background(bgColor)
-                        // Short tap → navigate
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) {
-                            if (!expanded) {
-                                onScreenChange(item.screen)
-                                dragIndex = idx
-                            }
-                        }
-                        // Long press → expand capsule; drag → switch tabs
-                        .pointerInput(navItems, expanded) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { _ ->
-                                    expanded = true
-                                    dragIndex = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
-                                    dragAccum = 0f
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    dragAccum += dragAmount.x
-                                    val threshold = if (itemWidthPx.value > 0f) itemWidthPx.value else 80f
-                                    val steps = (dragAccum / threshold).toInt()
-                                    if (steps != 0) {
-                                        val newIdx = (dragIndex + steps).coerceIn(0, navItems.lastIndex)
-                                        if (newIdx != dragIndex) {
-                                            dragIndex = newIdx
-                                            dragAccum -= steps * threshold
-                                        }
-                                    }
-                                },
-                                onDragEnd = {
-                                    onScreenChange(navItems[dragIndex].screen)
-                                    expanded = false
-                                    dragAccum = 0f
-                                },
-                                onDragCancel = {
-                                    expanded = false
-                                    dragAccum = 0f
-                                }
-                            )
-                        },
-                    contentAlignment = Alignment.Center
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(itemGap),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isHighlighted || (!expanded && isSelected)) item.selectedIcon else item.unselectedIcon,
-                            contentDescription = item.label,
-                            tint = iconTint,
-                            modifier = Modifier.size(22.dp)
+                    navItems.forEachIndexed { index, item ->
+                        CapsuleNavItem(
+                            item = item,
+                            selected = activeIndex == index,
+                            expanded = expanded,
+                            width = navItemWidth,
+                            height = navItemHeight,
+                            onClick = {
+                                dragIndex = index
+                                onScreenChange(item.screen)
+                            }
                         )
-                        // Label — slides in when expanded
-                        AnimatedVisibility(
-                            visible = expandProgress > 0.4f,
-                            enter = fadeIn(tween(120)) + expandHorizontally(
-                                animationSpec = tween(180),
-                                expandFrom = Alignment.Start
-                            ),
-                            exit = shrinkHorizontally(
-                                animationSpec = tween(120),
-                                shrinkTowards = Alignment.Start
-                            ) + fadeOut(tween(80))
-                        ) {
-                            Text(
-                                text = item.label,
-                                modifier = Modifier.padding(start = 5.dp),
-                                color = iconTint,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Black,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
                     }
                 }
             }
 
-            // ── Settings + Power (hidden while capsule is expanded) ───────────
             AnimatedVisibility(
-                visible = expandProgress < 0.3f,
-                enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),
-                exit = shrinkHorizontally(tween(120)) + fadeOut(tween(80))
+                visible = !expanded,
+                enter = fadeIn(tween(140, easing = FastOutSlowInEasing)) +
+                        expandHorizontally(animationSpec = tween(180, easing = FastOutSlowInEasing)),
+                exit = shrinkHorizontally(animationSpec = tween(120, easing = FastOutSlowInEasing)) +
+                        fadeOut(tween(90, easing = FastOutSlowInEasing))
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FloatingActionIcon(Icons.Outlined.Settings, onSettingsClick)
@@ -497,10 +464,89 @@ private fun FloatingBottomBar(
 }
 
 @Composable
+private fun CapsuleNavItem(
+    item: NavItem,
+    selected: Boolean,
+    expanded: Boolean,
+    width: Dp,
+    height: Dp,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.94f else 1f,
+        animationSpec = tween(120, easing = FastOutSlowInEasing),
+        label = "capsule_nav_item_scale"
+    )
+
+    val tint by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(170, easing = FastOutSlowInEasing),
+        label = "capsule_nav_item_tint"
+    )
+
+    Box(
+        modifier = Modifier
+            .width(width)
+            .height(height)
+            .scale(scale)
+            .clip(RoundedCornerShape(50))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                contentDescription = item.label,
+                tint = tint,
+                modifier = Modifier.size(22.dp)
+            )
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(tween(120, easing = FastOutSlowInEasing)) +
+                        expandHorizontally(
+                            animationSpec = tween(170, easing = FastOutSlowInEasing),
+                            expandFrom = Alignment.Start
+                        ),
+                exit = shrinkHorizontally(
+                    animationSpec = tween(100, easing = FastOutSlowInEasing),
+                    shrinkTowards = Alignment.Start
+                ) + fadeOut(tween(80, easing = FastOutSlowInEasing))
+            ) {
+                Text(
+                    text = item.label,
+                    modifier = Modifier.padding(start = 6.dp),
+                    color = tint,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.90f else 1f, tween(140), label = "action_icon_scale")
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.90f else 1f,
+        animationSpec = tween(140, easing = FastOutSlowInEasing),
+        label = "action_icon_scale"
+    )
 
     Box(
         modifier = Modifier
@@ -513,7 +559,12 @@ private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
             ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(23.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(23.dp)
+        )
     }
 }
 
@@ -521,7 +572,11 @@ private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
 private fun FloatingPowerIcon(onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.90f else 1f, tween(140), label = "power_icon_scale")
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.90f else 1f,
+        animationSpec = tween(140, easing = FastOutSlowInEasing),
+        label = "power_icon_scale"
+    )
 
     Box(
         modifier = Modifier
@@ -535,6 +590,11 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
             ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp))
+        Icon(
+            imageVector = Icons.Outlined.PowerSettingsNew,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(25.dp)
+        )
     }
 }
