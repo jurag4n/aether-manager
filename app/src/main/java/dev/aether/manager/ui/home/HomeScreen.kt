@@ -582,13 +582,13 @@ private fun cleanGpuName(value: String): String {
 private fun shortGpuName(value: String): String {
     val cleaned = cleanGpuName(value)
     return when {
-        cleaned.contains("Adreno", ignoreCase = true) -> "Adreno"
-        cleaned.contains("Mali", ignoreCase = true) -> "Mali"
+        cleaned.contains("Adreno", ignoreCase = true)     -> "Adreno"
+        cleaned.contains("Mali", ignoreCase = true)       -> "Mali"
         cleaned.contains("Immortalis", ignoreCase = true) -> "Immortalis"
-        cleaned.contains("PowerVR", ignoreCase = true) -> "PowerVR"
-        cleaned.contains("Xclipse", ignoreCase = true) -> "Xclipse"
-        cleaned.equals("GPU", ignoreCase = true) -> "GPU"
-        else -> cleaned.takeBefore(" ").take(10).ifBlank { "GPU" }
+        cleaned.contains("PowerVR", ignoreCase = true)    -> "PowerVR"
+        cleaned.contains("Xclipse", ignoreCase = true)    -> "Xclipse"
+        cleaned.equals("GPU", ignoreCase = true)          -> "GPU"
+        else -> cleaned.substringBefore(" ").take(10).ifBlank { "GPU" }
     }
 }
 
