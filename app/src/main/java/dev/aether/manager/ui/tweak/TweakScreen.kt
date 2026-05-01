@@ -83,6 +83,8 @@ fun TweakScreen(
     val scroll = rememberScrollState()
 
     var expandedCard by rememberSaveable { mutableStateOf<String?>(null) }
+    // Track expansion state of the Device Info card separately from other cards
+    var deviceInfoExpanded by rememberSaveable { mutableStateOf(false) }
     var activeProfile by rememberSaveable { mutableStateOf("balance") }
     var thermalProfile by rememberSaveable {
         mutableStateOf(if (tweaks.thermalProfile.isBlank()) "default" else tweaks.thermalProfile)
@@ -202,7 +204,11 @@ fun TweakScreen(
             .padding(top = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        DeviceInfoCard()
+        // Device info is collapsed by default and expands when clicked
+        DeviceInfoCard(
+            expanded = deviceInfoExpanded,
+            onClick = { deviceInfoExpanded = !deviceInfoExpanded }
+        )
 
         ActiveProfileCard(
             expanded = expandedCard == "active_profile",
@@ -834,24 +840,32 @@ private fun ExpandableTweakCard(
 }
 
 @Composable
-private fun DeviceInfoCard() {
+private fun DeviceInfoCard(
+    expanded: Boolean,
+    onClick: () -> Unit
+) {
+    // Gather device info values
     val deviceName = rememberDeviceName()
     val codeName = Build.DEVICE ?: "Unknown"
     val androidVersion = "Android ${Build.VERSION.RELEASE}"
     val kernel = System.getProperty("os.version") ?: "Unknown"
 
+    // Use a Surface with an onClick to provide default Material ripple
     Surface(
+        onClick = onClick,
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
+            // Animate height changes smoothly
             .animateContentSize(smoothSpring())
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Header row: icon and title; removed the "Live" status chip
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -871,12 +885,17 @@ private fun DeviceInfoCard() {
                         modifier = Modifier.size(23.dp)
                     )
                 }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(
                         text = "Device Info",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "Ringkas dan clean",
@@ -886,22 +905,32 @@ private fun DeviceInfoCard() {
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                StatusPill(text = "Live", active = true)
             }
 
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+            // Details section: only visible when expanded
+            if (expanded) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            // Fade and scale the details for a subtle appearance animation
+                            alpha = 1f
+                            scaleX = 1f
+                            scaleY = 1f
+                        }
+                        .animateContentSize(smoothSpring())
                 ) {
-                    DeviceInfoLine(label = "Nama Perangkat", value = deviceName)
-                    DeviceInfoLine(label = "Android", value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
-                    DeviceInfoLine(label = "CodeName", value = codeName)
-                    DeviceInfoLine(label = "Kernel", value = kernel)
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        DeviceInfoLine(label = "Nama Perangkat", value = deviceName)
+                        DeviceInfoLine(label = "Android", value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
+                        DeviceInfoLine(label = "CodeName", value = codeName)
+                        DeviceInfoLine(label = "Kernel", value = kernel)
+                    }
                 }
             }
         }
@@ -1638,6 +1667,7 @@ private fun normalizeLabel(value: String): String {
 }
 
 private fun <T> smoothSpring() = spring<T>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessLow
+    // A softer spring for smoother, gentler animations
+    dampingRatio = Spring.DampingRatioMediumBouncy,
+    stiffness = Spring.StiffnessVeryLow
 )

@@ -3,16 +3,16 @@ package dev.aether.manager.data
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import dev.aether.manager.util.RootUtils
+import dev.aether.manager.util.RootEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 object AppProfileRepository {
 
-    private const val PROFILE_DIR    = "${RootUtils.CONF_DIR}/app_profiles"
-    private const val MONITOR_SCRIPT = "${RootUtils.CONF_DIR}/app_monitor.sh"
-    private const val SERVICE_SCRIPT = "${RootUtils.CONF_DIR}/app_monitor_service.sh"
+    private const val PROFILE_DIR    = "${RootEngine.CONF_DIR}/app_profiles"
+    private const val MONITOR_SCRIPT = "${RootEngine.CONF_DIR}/app_monitor.sh"
+    private const val SERVICE_SCRIPT = "${RootEngine.CONF_DIR}/app_monitor_service.sh"
 
     // ── Public API ────────────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ object AppProfileRepository {
 
     suspend fun loadProfile(packageName: String): AppProfile = withContext(Dispatchers.IO) {
         val path = "$PROFILE_DIR/${packageName}.json"
-        val raw = RootUtils.sh("cat $path 2>/dev/null").stdout.trim()
+        val raw = RootEngine.sh("cat $path 2>/dev/null").stdout.trim()
         if (raw.isEmpty()) return@withContext AppProfile(packageName)
         try {
             val j = JSONObject(raw)
@@ -82,17 +82,17 @@ object AppProfileRepository {
         }
         val content = json.toString()
         val path = "$PROFILE_DIR/${profile.packageName}.json"
-        RootUtils.sh("mkdir -p $PROFILE_DIR && printf '%s' '${content.replace("'", "'\\''")}' > $path")
+        RootEngine.sh("mkdir -p $PROFILE_DIR && printf '%s' '${content.replace("'", "'\\''")}' > $path")
         writeMonitorScript()
     }
 
     suspend fun deleteProfile(packageName: String) = withContext(Dispatchers.IO) {
-        RootUtils.sh("rm -f $PROFILE_DIR/${packageName}.json")
+        RootEngine.sh("rm -f $PROFILE_DIR/${packageName}.json")
         writeMonitorScript()
     }
 
     suspend fun loadAllProfiles(): Map<String, AppProfile> = withContext(Dispatchers.IO) {
-        val list = RootUtils.sh("ls $PROFILE_DIR/*.json 2>/dev/null").stdout
+        val list = RootEngine.sh("ls $PROFILE_DIR/*.json 2>/dev/null").stdout
             .lines().filter { it.endsWith(".json") }
         list.associate { path ->
             val pkg = path.substringAfterLast("/").removeSuffix(".json")
@@ -101,7 +101,7 @@ object AppProfileRepository {
     }
 
     suspend fun startMonitor() = withContext(Dispatchers.IO) {
-        RootUtils.sh(
+RootEngine.sh(
             "pkill -f app_monitor.sh 2>/dev/null || true",
             "nohup $MONITOR_SCRIPT >/dev/null 2>&1 &"
         )
@@ -111,23 +111,23 @@ object AppProfileRepository {
         // FIX: restore semua tweak ke default sebelum matikan monitor,
         // supaya governor, refresh rate, GPU governor, dll tidak nyangkut.
         restoreDefaults()
-        RootUtils.sh("pkill -f app_monitor.sh 2>/dev/null || true")
+        RootEngine.sh("pkill -f app_monitor.sh 2>/dev/null || true")
     }
 
     suspend fun resetMonitor() = withContext(Dispatchers.IO) {
         restoreDefaults()
-        RootUtils.sh("pkill -f app_monitor.sh 2>/dev/null || true")
+        RootEngine.sh("pkill -f app_monitor.sh 2>/dev/null || true")
     }
 
     suspend fun resetAllProfiles() = withContext(Dispatchers.IO) {
         restoreDefaults()
-        RootUtils.sh("pkill -f app_monitor.sh 2>/dev/null || true")
-        RootUtils.sh("rm -f $PROFILE_DIR/*.json 2>/dev/null || true")
-        RootUtils.sh("rm -f $MONITOR_SCRIPT $SERVICE_SCRIPT $PROFILE_DIR/.default_rr 2>/dev/null || true")
+        RootEngine.sh("pkill -f app_monitor.sh 2>/dev/null || true")
+        RootEngine.sh("rm -f $PROFILE_DIR/*.json 2>/dev/null || true")
+        RootEngine.sh("rm -f $MONITOR_SCRIPT $SERVICE_SCRIPT $PROFILE_DIR/.default_rr 2>/dev/null || true")
     }
 
     suspend fun isMonitorRunning(): Boolean {
-        val out = RootUtils.sh("pgrep -f app_monitor.sh").stdout.trim()
+        val out = RootEngine.sh("pgrep -f app_monitor.sh").stdout.trim()
         return out.isNotEmpty()
     }
 
@@ -136,10 +136,10 @@ object AppProfileRepository {
     private suspend fun restoreDefaults() = withContext(Dispatchers.IO) {
         // Baca default RR yang di-snapshot saat monitor pertama kali jalan
         val defRrFile = "$PROFILE_DIR/.default_rr"
-        val defRr = RootUtils.sh("cat $defRrFile 2>/dev/null").stdout.trim()
+        val defRr = RootEngine.sh("cat $defRrFile 2>/dev/null").stdout.trim()
             .ifEmpty { "60" }
 
-        RootUtils.sh(
+        RootEngine.sh(
             // ── CPU governor → schedutil / ondemand (fallback) ──────────────
             """
             _AVAIL=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors \
@@ -230,14 +230,14 @@ object AppProfileRepository {
     // ── Script generation ─────────────────────────────────────────────────
 
     private suspend fun writeMonitorScript() = withContext(Dispatchers.IO) {
-        val profilesRaw = RootUtils.sh("ls $PROFILE_DIR/*.json 2>/dev/null").stdout
+        val profilesRaw = RootEngine.sh("ls $PROFILE_DIR/*.json 2>/dev/null").stdout
             .lines().filter { it.endsWith(".json") }
 
         val cases = StringBuilder()
         val profilePkgs = mutableListOf<String>()
         for (path in profilesRaw) {
             val pkg = path.substringAfterLast("/").removeSuffix(".json")
-            val raw = RootUtils.sh("cat $path 2>/dev/null").stdout.trim()
+            val raw = RootEngine.sh("cat $path 2>/dev/null").stdout.trim()
             if (raw.isEmpty()) continue
             try {
                 val j = JSONObject(raw)
@@ -544,7 +544,7 @@ while true; do
 done
 """
         val escaped = script.replace("'", "'\\''")
-        RootUtils.sh(
+        RootEngine.sh(
             "mkdir -p $PROFILE_DIR",
             "printf '%s' '$escaped' > $MONITOR_SCRIPT",
             "chmod +x $MONITOR_SCRIPT"
@@ -559,7 +559,7 @@ pkill -f app_monitor.sh 2>/dev/null
 nohup $MONITOR_SCRIPT >/dev/null 2>&1 &
 """
         val escaped = svc.replace("'", "'\\''")
-        RootUtils.sh(
+        RootEngine.sh(
             "printf '%s' '$escaped' > $SERVICE_SCRIPT",
             "chmod +x $SERVICE_SCRIPT"
         )

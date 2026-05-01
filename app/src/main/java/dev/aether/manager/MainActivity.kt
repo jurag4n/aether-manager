@@ -33,10 +33,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,7 +62,7 @@ import dev.aether.manager.ui.settings.SettingsScreen
 import dev.aether.manager.ui.tweak.TweakScreen
 import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
-import dev.aether.manager.util.RootUtils
+import dev.aether.manager.util.RootEngine
 
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
@@ -212,41 +208,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
         NavItem(Screen.APPS,  s.navApps,  Icons.Filled.Apps,  Icons.Outlined.Apps),
     )
 
-    var bottomNavVisible by remember { mutableStateOf(true) }
-    val scrollAwareNavConnection = remember {
-        object : NestedScrollConnection {
-            private var scrollBuffer = 0f
-
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val dy = available.y
-
-                when {
-                    dy < -3f -> {
-                        scrollBuffer = (scrollBuffer + dy).coerceAtLeast(-64f)
-                        if (scrollBuffer <= -18f) {
-                            bottomNavVisible = false
-                            scrollBuffer = 0f
-                        }
-                    }
-                    dy > 3f -> {
-                        scrollBuffer = (scrollBuffer + dy).coerceAtMost(64f)
-                        if (scrollBuffer >= 12f) {
-                            bottomNavVisible = true
-                            scrollBuffer = 0f
-                        }
-                    }
-                    else -> Unit
-                }
-
-                return Offset.Zero
-            }
-        }
-    }
-
-    LaunchedEffect(currentScreen) {
-        bottomNavVisible = true
-    }
-
     if (showLicense) {
         dev.aether.manager.ui.license.LicenseScreen(onBack = {
             showLicense = false
@@ -286,7 +247,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .nestedScroll(scrollAwareNavConnection)
         ) {
             AnimatedContent(
                 targetState = currentScreen,
@@ -304,10 +264,9 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                 }
             }
 
-            FloatingBottomCluster(
+            FloatingBottomBar(
                 navItems = navItems,
                 currentScreen = currentScreen,
-                visible = bottomNavVisible,
                 onScreenChange = { currentScreen = it },
                 onSettingsClick = { showSettings = true },
                 onPowerClick = { showReboot = true },
@@ -318,8 +277,8 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     if (showReboot) {
         RebootBottomSheet(
             onDismiss        = { showReboot = false },
-            onReboot         = { vm.reboot(RootUtils.RebootMode.NORMAL) },
-            onRebootRecovery = { vm.reboot(RootUtils.RebootMode.RECOVERY) },
+            onReboot         = { vm.reboot(RootEngine.RebootMode.NORMAL) },
+            onRebootRecovery = { vm.reboot(RootEngine.RebootMode.RECOVERY) },
             onReloadUI       = { vm.refresh() }
         )
     }
@@ -327,116 +286,32 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     UpdateDialogHost(viewModel = updateVm)
 }
 // ─────────────────────────────────────────────────────────────────────────────
-// Bottom nav cluster — Settings/Reboot dipisah dari tab utama
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun FloatingBottomCluster(
-    navItems: List<NavItem>,
-    currentScreen: Screen,
-    visible: Boolean,
-    onScreenChange: (Screen) -> Unit,
-    onSettingsClick: () -> Unit,
-    onPowerClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var isNavSliding by remember { mutableStateOf(false) }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically(
-            animationSpec = tween(220, easing = FastOutSlowInEasing),
-            initialOffsetY = { it + 28 }
-        ) + fadeIn(tween(150, easing = FastOutSlowInEasing)),
-        exit = slideOutVertically(
-            animationSpec = tween(190, easing = FastOutSlowInEasing),
-            targetOffsetY = { it + 28 }
-        ) + fadeOut(tween(110, easing = FastOutSlowInEasing)),
-        modifier = modifier
-            .navigationBarsPadding()
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 14.dp)
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            FloatingBottomBar(
-                navItems = navItems,
-                currentScreen = currentScreen,
-                onScreenChange = onScreenChange,
-                onSlidingChange = { isNavSliding = it }
-            )
-
-            AnimatedVisibility(
-                visible = !isNavSliding,
-                enter = fadeIn(tween(120, easing = FastOutSlowInEasing)) + expandHorizontally(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    expandFrom = Alignment.Start
-                ),
-                exit = shrinkHorizontally(
-                    animationSpec = tween(110, easing = FastOutSlowInEasing),
-                    shrinkTowards = Alignment.Start
-                ) + fadeOut(tween(90, easing = FastOutSlowInEasing))
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    FloatingUtilityBar(
-                        onSettingsClick = onSettingsClick,
-                        onPowerClick = onPowerClick
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FloatingUtilityBar(
-    onSettingsClick: () -> Unit,
-    onPowerClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        shadowElevation = 16.dp,
-        tonalElevation = 7.dp,
-        modifier = modifier
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FloatingActionIcon(Icons.Outlined.Settings, onSettingsClick)
-            FloatingPowerIcon(onPowerClick)
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // FloatingBottomBar — iOS 26-style hold-to-expand + drag-to-switch capsule
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// Behaviour:
+//   • Normal state  → compact pill (icon-only tabs + settings + power)
+//   • Hold (LongPress on any nav item) → capsule expands, all items show
+//     full label + icon, selected item highlighted; user can drag left/right
+//     to switch tabs; release → capsule shrinks back smoothly
+//   • Tap (short press) → instant navigate, no expansion
+//
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FloatingBottomBar(
     navItems: List<NavItem>,
     currentScreen: Screen,
     onScreenChange: (Screen) -> Unit,
-    modifier: Modifier = Modifier,
-    onSlidingChange: (Boolean) -> Unit = {}
+    onSettingsClick: () -> Unit,
+    onPowerClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     // ── Expansion state ───────────────────────────────────────────────────────
     var expanded by remember { mutableStateOf(false) }
-    // Drag tracking dibuat stabil: pointerInput tidak boleh restart saat expanded/currentScreen berubah.
+    // Drag tracking (pixel offset accumulated during hold-drag)
     var dragAccum by remember { mutableStateOf(0f) }
+    // Which item index is highlighted while dragging
     var dragIndex by remember { mutableIntStateOf(navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)) }
-    val latestScreen by rememberUpdatedState(currentScreen)
-    val latestOnScreenChange by rememberUpdatedState(onScreenChange)
 
     // Keep dragIndex in sync when screen changes externally
     LaunchedEffect(currentScreen) {
@@ -469,6 +344,8 @@ private fun FloatingBottomBar(
         shadowElevation = 20.dp,
         tonalElevation = 8.dp,
         modifier = modifier
+            .navigationBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 14.dp)
             .scale(scaleX = 1f, scaleY = capsuleScale)
     ) {
         Row(
@@ -517,7 +394,9 @@ private fun FloatingBottomBar(
                         .height(48.dp)
                         .width(itemWidth)
                         .onGloballyPositioned { coords ->
-                            itemWidthPx.value = coords.size.width.toFloat().coerceAtLeast(1f)
+                            if (itemWidthPx.value == 0f) {
+                                itemWidthPx.value = coords.size.width.toFloat()
+                            }
                         }
                         .clip(RoundedCornerShape(50))
                         .background(bgColor)
@@ -532,38 +411,34 @@ private fun FloatingBottomBar(
                             }
                         }
                         // Long press → expand capsule; drag → switch tabs
+                        // Remove `expanded` from pointerInput key so gesture remains active
                         .pointerInput(navItems) {
                             detectDragGesturesAfterLongPress(
                                 onDragStart = { _ ->
                                     expanded = true
-                                    onSlidingChange(true)
-                                    dragIndex = navItems.indexOfFirst { it.screen == latestScreen }.coerceAtLeast(0)
+                                    dragIndex = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
                                     dragAccum = 0f
                                 },
                                 onDrag = { change, dragAmount ->
                                     change.consume()
                                     dragAccum += dragAmount.x
-
-                                    val threshold = (itemWidthPx.value * 0.72f).coerceAtLeast(42f)
+                                    val threshold = if (itemWidthPx.value > 0f) itemWidthPx.value else 80f
                                     val steps = (dragAccum / threshold).toInt()
                                     if (steps != 0) {
                                         val newIdx = (dragIndex + steps).coerceIn(0, navItems.lastIndex)
                                         if (newIdx != dragIndex) {
                                             dragIndex = newIdx
-                                            latestOnScreenChange(navItems[newIdx].screen)
+                                            dragAccum -= steps * threshold
                                         }
-                                        dragAccum -= steps * threshold
                                     }
                                 },
                                 onDragEnd = {
-                                    latestOnScreenChange(navItems[dragIndex].screen)
+                                    onScreenChange(navItems[dragIndex].screen)
                                     expanded = false
-                                    onSlidingChange(false)
                                     dragAccum = 0f
                                 },
                                 onDragCancel = {
                                     expanded = false
-                                    onSlidingChange(false)
                                     dragAccum = 0f
                                 }
                             )
@@ -606,6 +481,23 @@ private fun FloatingBottomBar(
                     }
                 }
             }
+
+            // ── Settings + Power actions. Fade out completely while capsule is expanded.
+            // Remove dependence on expandProgress threshold to avoid flicker/glitch.  When
+            // `expanded` is true (user is dragging), we hide these actions.  Using
+            // AnimatedVisibility ensures a smooth fade/shrink animation for show/hide.
+            AnimatedVisibility(
+                visible = !expanded,
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) +
+                        expandHorizontally(animationSpec = tween(durationMillis = 220)),
+                exit = shrinkHorizontally(animationSpec = tween(durationMillis = 220)) +
+                        fadeOut(animationSpec = tween(durationMillis = 180))
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FloatingActionIcon(Icons.Outlined.Settings, onSettingsClick)
+                    FloatingPowerIcon(onPowerClick)
+                }
+            }
         }
     }
 }
@@ -639,9 +531,9 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
 
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(54.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable(
                 interactionSource = interactionSource,
@@ -649,6 +541,6 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
             ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+        Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp))
     }
 }

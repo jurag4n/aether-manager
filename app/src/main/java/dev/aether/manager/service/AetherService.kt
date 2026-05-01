@@ -13,7 +13,7 @@ import dev.aether.manager.R
 import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.getStringsForLanguage
 import dev.aether.manager.i18n.loadSavedLanguage
-import dev.aether.manager.util.RootUtils
+import dev.aether.manager.util.RootEngine
 import dev.aether.manager.util.TweakApplier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +62,7 @@ class AetherService : Service() {
         if (isReapplying) return  // hindari concurrent shell execution
         isReapplying = true
         try {
-            val tweaks = RootUtils.readTweaksConf()
+            val tweaks = RootEngine.readTweaksConf()
             if (tweaks.isEmpty()) return
             TweakApplier.apply(tweaks)
         } catch (_: Exception) {
@@ -137,33 +137,33 @@ class BootReceiver : BroadcastReceiver() {
         // ── Bootloop detection ────────────────────────────────────────────────
         // Simpan timestamp boot terakhir. Jika 3 boot berturut-turut dalam < 5 menit
         // (tanda bootloop akibat tweak), aktifkan safe mode otomatis.
-        val RAPID_BOOT_FILE   = "${RootUtils.CONF_DIR}/rapid_boot_ts"
-        val RAPID_BOOT_COUNT  = "${RootUtils.CONF_DIR}/rapid_boot_count"
+        val RAPID_BOOT_FILE   = "${RootEngine.CONF_DIR}/rapid_boot_ts"
+        val RAPID_BOOT_COUNT  = "${RootEngine.CONF_DIR}/rapid_boot_count"
         val now = System.currentTimeMillis()
 
         try {
-            val lastTs    = RootUtils.readFile(RAPID_BOOT_FILE).trim().toLongOrNull() ?: 0L
-            val rapidCnt  = RootUtils.readFile(RAPID_BOOT_COUNT).trim().toIntOrNull() ?: 0
+            val lastTs    = RootEngine.readFile(RAPID_BOOT_FILE).trim().toLongOrNull() ?: 0L
+            val rapidCnt  = RootEngine.readFile(RAPID_BOOT_COUNT).trim().toIntOrNull() ?: 0
             val timeDiff  = now - lastTs
 
             val newRapidCnt = if (timeDiff < 5 * 60 * 1000L) rapidCnt + 1 else 1
-            RootUtils.writeFile(RAPID_BOOT_FILE, now.toString())
-            RootUtils.writeFile(RAPID_BOOT_COUNT, newRapidCnt.toString())
+            RootEngine.writeFile(RAPID_BOOT_FILE, now.toString())
+            RootEngine.writeFile(RAPID_BOOT_COUNT, newRapidCnt.toString())
 
-            if (newRapidCnt >= 3 && !RootUtils.fileExists(RootUtils.SAFE_MODE_FILE)) {
+            if (newRapidCnt >= 3 && !RootEngine.fileExists(RootEngine.SAFE_MODE_FILE)) {
                 // 3+ reboot cepat = kemungkinan bootloop akibat tweak → aktifkan safe mode
-                RootUtils.toggleSafeMode(true)
+                RootEngine.toggleSafeMode(true)
                 // Reset counter supaya tidak terus-menerus trigger
-                RootUtils.writeFile(RAPID_BOOT_COUNT, "0")
+                RootEngine.writeFile(RAPID_BOOT_COUNT, "0")
                 return  // Jangan apply tweak di boot ini
             }
         } catch (_: Exception) { /* Tidak kritis, lanjut */ }
 
         // Increment boot count
         val bootCount = try {
-            val raw = RootUtils.readFile(RootUtils.BOOT_COUNT_FILE).trim().toIntOrNull() ?: 0
+            val raw = RootEngine.readFile(RootEngine.BOOT_COUNT_FILE).trim().toIntOrNull() ?: 0
             val next = raw + 1
-            RootUtils.writeFile(RootUtils.BOOT_COUNT_FILE, next.toString())
+            RootEngine.writeFile(RootEngine.BOOT_COUNT_FILE, next.toString())
             next
         } catch (_: Exception) { 1 }
 
@@ -180,11 +180,11 @@ class BootReceiver : BroadcastReceiver() {
 
         try {
             // Cek safe mode
-            if (RootUtils.fileExists(RootUtils.SAFE_MODE_FILE)) {
+            if (RootEngine.fileExists(RootEngine.SAFE_MODE_FILE)) {
                 return
             }
 
-            val tweaks = RootUtils.readTweaksConf()
+            val tweaks = RootEngine.readTweaksConf()
             if (tweaks.isEmpty()) {
                 return
             }

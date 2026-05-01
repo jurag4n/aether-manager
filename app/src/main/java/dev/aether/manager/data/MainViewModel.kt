@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dev.aether.manager.util.BackupManager
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.RootManager
-import dev.aether.manager.util.RootUtils
+import dev.aether.manager.util.RootEngine
 import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
 import kotlinx.coroutines.Dispatchers
@@ -162,7 +162,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun initFromCachedRoot() {
-        val hasRoot = RootUtils.hasRoot()
+        val hasRoot = RootEngine.hasRoot()
         _rootGranted.value = hasRoot
         if (hasRoot) {
             loadAll()
@@ -174,7 +174,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() = viewModelScope.launch {
         _deviceInfo.value = UiState.Loading
-        val hasRoot = RootUtils.hasRoot()
+        val hasRoot = RootEngine.hasRoot()
         _rootGranted.value = hasRoot
         if (hasRoot) {
             loadAll()
@@ -185,7 +185,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshMonitor() = viewModelScope.launch {
-        _monitorState.value = RootUtils.getMonitorState()
+        _monitorState.value = RootEngine.getMonitorState()
     }
 
     private fun startMonitorLoop() {
@@ -194,7 +194,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         monitorJob = viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
                 if (!_applyStatus.value.running) {
-                    try { _monitorState.value = RootUtils.getMonitorState() } catch (_: Exception) {}
+                    try { _monitorState.value = RootEngine.getMonitorState() } catch (_: Exception) {}
                 }
                 delay(3000)
             }
@@ -211,7 +211,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun loadAll() {
         try {
-            val info = RootUtils.getDeviceInfo()
+            val info = RootEngine.getDeviceInfo()
             _deviceInfo.value = UiState.Success(info)
             loadTweaks()
         } catch (e: Exception) {
@@ -220,7 +220,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun loadTweaks() {
-        val map = RootUtils.readTweaksConf()
+        val map = RootEngine.readTweaksConf()
         _tweaks.value = mapToTweaksState(map)
     }
 
@@ -265,7 +265,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _applyingTweak.value = true
 
         try {
-            val result = TweakApplier.writeAndApply(RootUtils.TWEAKS_CONF, map)
+                val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
 
             _applyingTweak.value = false
             _applyStatus.value = ApplyStatus(
@@ -305,14 +305,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         try {
             // Tulis profile file
-            RootUtils.writeFile(RootUtils.PROFILE_FILE, profile)
+            RootEngine.writeFile(RootEngine.PROFILE_FILE, profile)
 
             // Update state lokal dengan profile baru, lalu apply
             val newState = _tweaks.value.copy()
             val map = tweaksStateToMap(newState).toMutableMap()
             map["profile"] = profile
 
-            val result = TweakApplier.writeAndApply(RootUtils.TWEAKS_CONF, map)
+            val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
 
             // Update UI state dari map
             _tweaks.value = mapToTweaksState(map)
@@ -326,9 +326,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
 
             // Refresh device info supaya profile badge update
-            val info = RootUtils.getDeviceInfo()
+            val info = RootEngine.getDeviceInfo()
             _deviceInfo.value = UiState.Success(info)
-            _monitorState.value = RootUtils.getMonitorState()
+            _monitorState.value = RootEngine.getMonitorState()
             snack("Profile → ${profile.replaceFirstChar { it.uppercaseChar() }} (${result.totalMs}ms)")
 
         } catch (e: Exception) {
@@ -387,9 +387,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         put("touch_sample_rate", s.touchSampleRate)
         put("ksm",               if (s.ksm)             "1" else "0")
         put("ksm_aggressive",    if (s.ksmAggressive)   "1" else "0")
-        // Profile dibaca dari RootUtils.PROFILE_FILE, tidak disimpan di TweaksState
+        // Profile dibaca dari RootEngine.PROFILE_FILE, tidak disimpan di TweaksState
         // tapi dibutuhkan script — baca dari disk saat ini
-        put("profile", RootUtils.readProfileSync())
+        put("profile", RootEngine.readProfileSync())
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -482,12 +482,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ─────────────────────────────────────────────────────────────────────────
 
     fun toggleSafeMode(enable: Boolean) = viewModelScope.launch {
-        RootUtils.toggleSafeMode(enable)
+        RootEngine.toggleSafeMode(enable)
         refresh()
     }
 
-    fun reboot(mode: RootUtils.RebootMode) = viewModelScope.launch {
-        RootUtils.reboot(mode)
+    fun reboot(mode: RootEngine.RebootMode) = viewModelScope.launch {
+        RootEngine.reboot(mode)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -540,7 +540,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun resetTweaks() = viewModelScope.launch(Dispatchers.IO) {
-        RootUtils.resetTweaks()
+        RootEngine.resetTweaks()
         loadTweaks()
         snack("Tweaks direset ke default")
     }
@@ -626,7 +626,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun resetToDefaults() = viewModelScope.launch(Dispatchers.IO) {
-        RootUtils.resetTweaks()
+        RootEngine.resetTweaks()
         loadTweaks()
         snack("Tweaks direset ke default")
     }

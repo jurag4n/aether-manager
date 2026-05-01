@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
  */
 object BackupManager {
 
-    private const val BACKUP_DIR = "${RootUtils.CONF_DIR}/backups"
+    private const val BACKUP_DIR = "${RootEngine.CONF_DIR}/backups"
 
     data class BackupEntry(
         val filename : String,   // e.g. "20260417_143022.json"
@@ -26,16 +26,16 @@ object BackupManager {
 
     /** Tulis snapshot config sekarang ke file JSON. Return nama file jika berhasil. */
     suspend fun createBackup(): String? = withContext(Dispatchers.IO) {
-        val ts = RootUtils.sh("date +%Y%m%d_%H%M%S").stdout.trim()
+        val ts = RootEngine.sh("date +%Y%m%d_%H%M%S").stdout.trim()
         if (ts.isBlank()) return@withContext null
         val filename = "$ts.json"
         val dest = "$BACKUP_DIR/$filename"
 
         val script = """
             mkdir -p $BACKUP_DIR
-            tweaks=$(cat ${RootUtils.TWEAKS_CONF} 2>/dev/null || echo "")
-            profile=$(cat ${RootUtils.PROFILE_FILE} 2>/dev/null || echo "balance")
-            safe=$([ -f ${RootUtils.SAFE_MODE_FILE} ] && echo true || echo false)
+            tweaks=$(cat ${RootEngine.TWEAKS_CONF} 2>/dev/null || echo "")
+            profile=$(cat ${RootEngine.PROFILE_FILE} 2>/dev/null || echo "balance")
+            safe=$([ -f ${RootEngine.SAFE_MODE_FILE} ] && echo true || echo false)
             # Encode tweaks.conf sebagai JSON object sederhana key=value → "key":"value"
             pairs=""
             while IFS='=' read -r k v; do
@@ -48,13 +48,13 @@ object BackupManager {
             echo ok
         """.trimIndent()
 
-        val r = RootUtils.sh(script)
+        val r = RootEngine.sh(script)
         if (r.stdout.contains("ok")) filename else null
     }
 
     /** Daftar backup tersedia, terbaru dulu. */
     suspend fun listBackups(): List<BackupEntry> = withContext(Dispatchers.IO) {
-        val out = RootUtils.sh("ls -t $BACKUP_DIR/*.json 2>/dev/null").stdout
+        val out = RootEngine.sh("ls -t $BACKUP_DIR/*.json 2>/dev/null").stdout
         out.lines()
             .filter { it.endsWith(".json") }
             .mapNotNull { path ->
@@ -62,7 +62,7 @@ object BackupManager {
                 val ts = name.removeSuffix(".json")   // "20260417_143022"
                 val human = parseTimestamp(ts) ?: ts
                 // Baca profile dari isi file
-                val profileLine = RootUtils.sh(
+                val profileLine = RootEngine.sh(
                     "grep -o '\"profile\":\"[^\"]*\"' $path 2>/dev/null | head -1"
                 ).stdout.trim()
                 val profile = Regex("\"profile\":\"([^\"]+)\"")
@@ -80,25 +80,25 @@ object BackupManager {
             # Ekstrak tweaks block: isi antara "tweaks":{ ... }
             tweaks_block=$(echo "${'$'}content" | grep -o '"tweaks":{[^}]*}' | sed 's/"tweaks":{//;s/}$//')
             # Tulis ulang tweaks.conf: konversi "key":"value" → key=value
-            rm -f ${RootUtils.TWEAKS_CONF}
-            echo "${'$'}tweaks_block" | tr ',' '\n' | sed 's/^[[:space:]]*"//;s/":[[:space:]]*"/=/;s/"[[:space:]]*$//' | grep '=' >> ${RootUtils.TWEAKS_CONF}
+            rm -f ${RootEngine.TWEAKS_CONF}
+            echo "${'$'}tweaks_block" | tr ',' '\n' | sed 's/^[[:space:]]*"//;s/":[[:space:]]*"/=/;s/"[[:space:]]*$//' | grep '=' >> ${RootEngine.TWEAKS_CONF}
             # Profile
             profile=$(echo "${'$'}content" | grep -o '"profile":"[^"]*"' | sed 's/"profile":"//;s/"//')
-            [ -n "${'$'}profile" ] && echo "${'$'}profile" > ${RootUtils.PROFILE_FILE}
+            [ -n "${'$'}profile" ] && echo "${'$'}profile" > ${RootEngine.PROFILE_FILE}
             # Safe mode
             safe=$(echo "${'$'}content" | grep -o '"safe_mode":[a-z]*' | sed 's/"safe_mode"://')
-            if [ "${'$'}safe" = "true" ]; then touch ${RootUtils.SAFE_MODE_FILE}
-            else rm -f ${RootUtils.SAFE_MODE_FILE}; fi
+            if [ "${'$'}safe" = "true" ]; then touch ${RootEngine.SAFE_MODE_FILE}
+            else rm -f ${RootEngine.SAFE_MODE_FILE}; fi
             echo ok
         """.trimIndent()
 
-        val r = RootUtils.sh(script)
+        val r = RootEngine.sh(script)
         r.stdout.contains("ok")
     }
 
     /** Hapus satu file backup. */
     suspend fun deleteBackup(filename: String): Boolean = withContext(Dispatchers.IO) {
-        RootUtils.sh("rm -f $BACKUP_DIR/$filename").exitCode == 0
+        RootEngine.sh("rm -f $BACKUP_DIR/$filename").exitCode == 0
     }
 
     // ── Reset to default ──────────────────────────────────────────────────
@@ -110,8 +110,8 @@ object BackupManager {
     suspend fun resetToDefaults(): Boolean = withContext(Dispatchers.IO) {
         val script = """
             # 1. Hapus semua config file
-            rm -f ${RootUtils.TWEAKS_CONF} ${RootUtils.SAFE_MODE_FILE}
-            echo balance > ${RootUtils.PROFILE_FILE}
+            rm -f ${RootEngine.TWEAKS_CONF} ${RootEngine.SAFE_MODE_FILE}
+            echo balance > ${RootEngine.PROFILE_FILE}
 
             # 2. Revert CPU governor ke schedutil (default Android modern)
             for p in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
@@ -167,7 +167,7 @@ object BackupManager {
             echo ok
         """.trimIndent()
 
-        val r = RootUtils.sh(script)
+        val r = RootEngine.sh(script)
         r.stdout.contains("ok")
     }
 
