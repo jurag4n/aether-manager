@@ -35,7 +35,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import dev.aether.manager.data.*
 import dev.aether.manager.i18n.LocalStrings
-import dev.aether.manager.ui.home.TabSectionTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -140,8 +139,8 @@ private fun ProfileFilter.label(): String = when (this) {
 }
 
 private fun ProfileFilter.icon(): ImageVector = when (this) {
-    ProfileFilter.ALL         -> Icons.Outlined.Apps
-    ProfileFilter.PERFORMANCE -> Icons.Outlined.Speed
+    ProfileFilter.ALL         -> Icons.Outlined.Dashboard
+    ProfileFilter.PERFORMANCE -> Icons.Outlined.Bolt
     ProfileFilter.BALANCED    -> Icons.Outlined.Tune
     ProfileFilter.POWER_SAVE  -> Icons.Outlined.BatterySaver
 }
@@ -223,11 +222,6 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Spacer(Modifier.height(12.dp))
-
-            TabSectionTitle(
-                icon  = Icons.Outlined.Apps,
-                title = "Per-App Profile"
-            )
 
             AppProfileStatusCard(
                 enabled     = state.monitorRunning,
@@ -352,175 +346,24 @@ private fun SearchFilterBar(
     onQueryChange: (String) -> Unit,
     onFilterChange: (ProfileFilter) -> Unit
 ) {
-    var focused by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
-
-    val borderColor by animateColorAsState(
-        if (focused || expanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.10f),
-        tween(180),
-        label = "search_filter_border"
-    )
-    val iconTint by animateColorAsState(
-        if (focused) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.onSurfaceVariant,
-        tween(180),
-        label = "search_filter_icon"
-    )
-    val arrowRotation by animateFloatAsState(
-        if (expanded) 180f else 0f,
-        tween(180),
-        label = "search_filter_arrow"
-    )
-
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, borderColor),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
+        SearchAppField(
+            query = query,
+            onQueryChange = onQueryChange,
+            modifier = Modifier.weight(1f)
+        )
+
+        FilterDropdown(
+            selected = selectedFilter,
+            onSelect = onFilterChange,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 14.dp, end = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Outlined.Search,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(19.dp)
-            )
-
-            Spacer(Modifier.width(10.dp))
-
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodySmall.copy(
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier
-                    .weight(1f)
-                    .onFocusChanged { focused = it.isFocused },
-                decorationBox = { innerTextField ->
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                        if (query.isEmpty()) {
-                            Text(
-                                text = "Search App",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.64f),
-                                maxLines = 1
-                            )
-                        }
-                        innerTextField()
-                    }
-                }
-            )
-
-            AnimatedVisibility(
-                visible = query.isNotEmpty(),
-                enter = scaleIn(tween(120)) + fadeIn(tween(120)),
-                exit = scaleOut(tween(100)) + fadeOut(tween(100))
-            ) {
-                IconButton(
-                    onClick = { onQueryChange("") },
-                    modifier = Modifier.size(30.dp)
-                ) {
-                    Icon(
-                        Icons.Filled.Clear,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(15.dp)
-                    )
-                }
-            }
-
-            VerticalDivider(
-                modifier = Modifier
-                    .height(24.dp)
-                    .padding(horizontal = 6.dp),
-                thickness = 0.7.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
-            )
-
-            Box {
-                Row(
-                    modifier = Modifier
-                        .height(42.dp)
-                        .widthIn(min = 118.dp, max = 138.dp)
-                        .clip(RoundedCornerShape(15.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { expanded = true }
-                        )
-                        .padding(horizontal = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        selectedFilter.icon(),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Text(
-                        text = selectedFilter.label(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        Icons.Filled.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .rotate(arrowRotation)
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    profileFilters.forEach { filter ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    filter.label(),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = if (filter == selectedFilter) FontWeight.SemiBold else FontWeight.Normal
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    filter.icon(),
-                                    contentDescription = null,
-                                    tint = if (filter == selectedFilter) MaterialTheme.colorScheme.primary
-                                           else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
-                            onClick = {
-                                expanded = false
-                                onFilterChange(filter)
-                            }
-                        )
-                    }
-                }
-            }
-        }
+                .widthIn(min = 136.dp, max = 156.dp)
+                .height(52.dp)
+        )
     }
 }
 
@@ -629,10 +472,12 @@ private fun FilterDropdown(
             shape = RoundedCornerShape(18.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
-            modifier = Modifier.height(52.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
@@ -649,7 +494,7 @@ private fun FilterDropdown(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.weight(1f)
                 )
                 Icon(
                     Icons.Filled.KeyboardArrowDown,
@@ -735,7 +580,7 @@ private fun AppProfileStatusCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Outlined.Apps,
+                    Icons.Outlined.Dashboard,
                     contentDescription = null,
                     tint = accent,
                     modifier = Modifier.size(22.dp)
@@ -971,7 +816,7 @@ private fun AppListItem(
                     )
 
                     CompactProfileDropdown(
-                        icon = Icons.Outlined.Speed,
+                        icon = Icons.Outlined.Bolt,
                         title = "Performance Profile",
                         selectedLabel = profileModeLabel(currentProfile),
                         options = profileOptions.map { option ->
