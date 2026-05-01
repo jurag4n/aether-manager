@@ -48,7 +48,7 @@ object TweakApplier {
 
     private fun runScript(script: String): String {
         // Pastikan shell interactive sudah siap
-        if (Shell.isAppGrantedRoot() != true) {
+        if (!Shell.isAppGrantedRoot()!!) {
              // Jika belum granted di session ini, coba init
              Shell.getShell()
         }
@@ -76,14 +76,14 @@ object TweakApplier {
         val t0 = System.currentTimeMillis()
 
         // Tulis conf + apply dalam SATU Shell batch
-        val dir = confPath.substringBeforeLast('/')
-        val confLines = tweaks.entries.joinToString("\n") { (k, v) -> "$k=$v" }
-        val writeConf = buildString {
-            appendLine("mkdir -p $dir")
-            appendLine("cat > \$confPath << 'AEOF'")
-            appendLine(confLines)
-            appendLine("AEOF")
+        val confContent = tweaks.entries.joinToString("\\n") { (k, v) ->
+            "$k=${v.replace("'", "'\"'\"'")}"
         }
+        val dir = confPath.substringBeforeLast('/')
+        val writeConf = """
+mkdir -p $dir
+printf '$confContent\n' > $confPath
+""".trimIndent()
 
         val output = runScript(writeConf + "\n" + buildFullScript(tweaks))
         ApplyResult(

@@ -80,17 +80,16 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
                 val monitorWasOff = !s.monitorRunning
                 // Auto-start monitor if there's any enabled profile and monitor is off
                 if (hasEnabled && monitorWasOff) {
-                    // Automatically start the monitor when enabling the first profile.
                     AppProfileRepository.startMonitor()
                     _state.value = s.copy(profiles = updated, monitorRunning = true)
-                    // Suppress success toast; UI reflects the running state.
+                    snack("Profile disimpan Monitor aktif otomatis")
                 } else {
                     // Regenerate script with updated profiles even if monitor is already running
                     if (s.monitorRunning) {
                         AppProfileRepository.startMonitor() // restart to reload script
                     }
                     _state.value = s.copy(profiles = updated)
-                    // Suppress success toast; UI reflects the updated state.
+                    snack("Profile disimpan")
                 }
             }
             _editingProfile.value = null
@@ -103,10 +102,10 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     fun toggleMonitor(enable: Boolean) = viewModelScope.launch(Dispatchers.IO) {
         if (enable) {
             AppProfileRepository.startMonitor()
-            // Suppress success toast; UI and monitor state will update accordingly.
+            snack("Monitor aktif profile akan diapply otomatis")
         } else {
             AppProfileRepository.stopMonitor()
-            // Suppress success toast; UI and monitor state will update accordingly.
+            snack("Monitor dimatikan")
         }
         val s = _state.value
         if (s is AppsUiState.Ready) {
@@ -122,7 +121,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
             updated.remove(packageName)
             _state.value = s.copy(profiles = updated)
         }
-        // Do not show a toast on success; UI reflects the removal.
+        snack("Profile dihapus")
     }
 
     fun resetMonitor() = viewModelScope.launch(Dispatchers.IO) {
@@ -131,7 +130,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
         if (s is AppsUiState.Ready) {
             _state.value = s.copy(monitorRunning = false)
         }
-        // Suppress success toast when resetting the monitor.
+        snack("Monitor di-reset")
     }
 
     fun resetAllProfiles() = viewModelScope.launch(Dispatchers.IO) {
@@ -140,7 +139,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
         if (s is AppsUiState.Ready) {
             _state.value = s.copy(profiles = emptyMap(), monitorRunning = false)
         }
-        // Suppress success toast when all profiles are removed.
+        snack("Semua app profile dihapus")
     }
 
     fun snack(msg: String) { _snack.value = msg }

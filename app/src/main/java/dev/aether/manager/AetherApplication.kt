@@ -80,21 +80,21 @@ class AetherApplication : Application() {
         try {
             // Granular checks — LP bisa bypass nativeCheckAll tapi susah bypass semua sekaligus
             if (NativeAether.nativeIsHooked()) {
-                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
+                NativeAether.nativeKillProcess()
                 return
             }
             if (NativeAether.nativeIsDebugged()) {
-                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
+                NativeAether.nativeKillProcess()
                 return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
-                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
+                NativeAether.nativeKillProcess()
                 return
             }
             // Master check sebagai safety net terakhir
             NativeAether.nativeCheckAll(this)
         } catch (_: Throwable) {
-            if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
+            NativeAether.nativeKillProcess()
         }
     }
 
@@ -105,14 +105,15 @@ class AetherApplication : Application() {
                 .setFlags(Shell.FLAG_REDIRECT_STDERR)
                 .setTimeout(10)
         )
-        // Jangan pre-init shell di sini — Shell.getShell() trigger popup Magisk/KSU/APatch.
-        // Root hanya di-request dari SetupActivity via RootManager.requestRoot().
+        // Pre-init root shell di background agar ViewModel tidak perlu tunggu
+        // saat pertama kali request root (menghindari home kosong / loading lama)
+        Shell.getShell { /* pre-init root shell di background */ }
     }
 
     private fun initUnityAds() {
         val gameId = AdManager.GAME_ID
         if (gameId.isEmpty()) {
-            // MobileAds belum tentu initialized di sini — biarkan initAdMob() yang handle preload
+            AdMobInterstitialManager.preload(this)
             return
         }
 
@@ -151,7 +152,7 @@ class AetherApplication : Application() {
         try {
             NativeAether.nativeCheckUnityIntact()
         } catch (_: Exception) {
-            if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
+            NativeAether.nativeKillProcess()
         }
     }
 

@@ -62,10 +62,10 @@ object AdMobInterstitialManager {
         // Invalidasi dulu agar tidak bisa di-show dua kali
         ad = null
 
-        // Set pendingOnDone SEBELUM show() agar tidak race dengan
-        // onAdFailedToShowFullScreenContent yang bisa fire sebelum baris berikutnya
-        pendingOnDone = onDone
         interstitial.show(activity)
+        // onDone dipanggil dari FullScreenContentCallback.onAdDismissedFullScreenContent
+        // yang sudah diset di setupCallbacks(); kita simpan closure via tag
+        pendingOnDone = onDone
     }
 
     // Simpan onDone sementara antara show() dan callback dismiss
