@@ -463,6 +463,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applyTweakToState(state: TweaksState, key: String, value: Boolean): TweaksState =
         when (key) {
+            // ── snake_case (canonical keys dari conf file) ────────────────
             "schedboost"       -> state.copy(schedboost = value)
             "cpu_boost"        -> state.copy(cpuBoost = value)
             "gpu_throttle_off" -> state.copy(gpuThrottleOff = value)
@@ -484,12 +485,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "touch_boost"      -> state.copy(touchBoost = value)
             "ksm"              -> state.copy(ksm = value)
             "ksm_aggressive"   -> state.copy(ksmAggressive = value)
-            // New toggles for modern tweak engine
-            "networkStable"    -> state.copy(networkStable = value)
+            "network_stable"   -> state.copy(networkStable = value)
             "swap"             -> state.copy(swap = value)
+            "kill_background"  -> state.copy(killBackground = value)
+            "cpu_freq_lock"    -> state.copy(cpuFreqLock = value)
+            // ── camelCase aliases — digunakan oleh TweakScreen.kt ─────────
+            // FIX: TweakScreen memanggil setTweak() dengan camelCase keys;
+            // tanpa aliases ini semua toggle di TweakScreen tidak berpengaruh
+            // karena jatuh ke `else -> state` dan apply channel tidak membawa
+            // perubahan apapun.
+            "cpuBoost"         -> state.copy(cpuBoost = value)
+            "gpuThrottleOff"   -> state.copy(gpuThrottleOff = value)
+            "tcpBbr"           -> state.copy(tcpBbr = value)
+            "networkStable"    -> state.copy(networkStable = value)
             "killBackground"   -> state.copy(killBackground = value)
             "cpuFreqLock"      -> state.copy(cpuFreqLock = value)
-            // For backward compatibility: privateDns simply toggles dnsProvider on/off (Cloudflare default)
+            "lmkAggressive"    -> state.copy(lmkAggressive = value)
+            "ioLatencyOpt"     -> state.copy(ioLatencyOpt = value)
+            "vmDirtyOpt"       -> state.copy(vmDirtyOpt = value)
+            "fastAnim"         -> state.copy(fastAnim = value)
+            "entropyBoost"     -> state.copy(entropyBoost = value)
+            "clearCache"       -> state.copy(clearCache = value)
+            "cpuFreqEnable"    -> state.copy(cpuFreqEnable = value)
+            "gpuFreqLock"      -> state.copy(gpuFreqLock = value)
+            "touchBoost"       -> state.copy(touchBoost = value)
+            "ksmAggressive"    -> state.copy(ksmAggressive = value)
+            "cpusetOpt"        -> state.copy(cpusetOpt = value)
+            "mtkBoost"         -> state.copy(mtkBoost = value)
+            "ioScheduler"      -> state.copy(ioLatencyOpt = value)
+            // privateDns: toggle DNS provider on/off (Cloudflare default)
             "privateDns"       -> state.copy(dnsProvider = if (value) "Cloudflare" else "")
             else               -> state
         }

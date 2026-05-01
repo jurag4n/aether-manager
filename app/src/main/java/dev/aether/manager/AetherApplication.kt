@@ -102,6 +102,9 @@ class AetherApplication : Application() {
                 .setFlags(Shell.FLAG_REDIRECT_STDERR)
                 .setTimeout(10)
         )
+        // Pre-init root shell di background agar ViewModel tidak perlu tunggu
+        // saat pertama kali request root (menghindari home kosong / loading lama)
+        Shell.preinitRootShell()
     }
 
     private fun initUnityAds() {
