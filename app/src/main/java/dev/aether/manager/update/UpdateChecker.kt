@@ -47,15 +47,12 @@ sealed class UpdateResult {
 object UpdateChecker {
 
     private const val TAG           = "UpdateChecker"
-    private const val FALLBACK_REPO = "aetherdev01/aether-manager"
+    private const val FALLBACK_API  = "https://api.github.com/repos/aetherdev01/aether-manager/releases/latest"
 
-    // Repo path diambil dari native layer (XOR-encoded di libaether.so).
+    // Full API URL diambil dari native layer (XOR-encoded di libaether.so).
     // Fallback ke konstanta hardcode jika library belum dimuat.
-    private val repo: String
-        get() = if (NativeAether.isLoaded) NativeAether.nativeGetGithubApi() else FALLBACK_REPO
-
     private val API: String
-        get() = "https://api.github.com/repos/$repo/releases/latest"
+        get() = if (NativeAether.isLoaded) NativeAether.nativeGetGithubApi() else FALLBACK_API
 
     private val client by lazy {
         OkHttpClient.Builder()
