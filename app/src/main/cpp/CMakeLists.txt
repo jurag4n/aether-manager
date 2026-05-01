@@ -16,7 +16,6 @@ set(COMMON_COMPILE_OPTIONS
     -fno-unwind-tables
     -fno-asynchronous-unwind-tables
     -fomit-frame-pointer
-    -fno-merge-constants
     -D_FORTIFY_SOURCE=2
     -DANDROID
     -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.
