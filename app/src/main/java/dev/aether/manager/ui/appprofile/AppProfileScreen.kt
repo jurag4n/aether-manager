@@ -139,8 +139,8 @@ private fun ProfileFilter.label(): String = when (this) {
 }
 
 private fun ProfileFilter.icon(): ImageVector = when (this) {
-    ProfileFilter.ALL         -> Icons.Outlined.Dashboard
-    ProfileFilter.PERFORMANCE -> Icons.Outlined.Bolt
+    ProfileFilter.ALL         -> Icons.Outlined.Apps
+    ProfileFilter.PERFORMANCE -> Icons.Outlined.Speed
     ProfileFilter.BALANCED    -> Icons.Outlined.Tune
     ProfileFilter.POWER_SAVE  -> Icons.Outlined.BatterySaver
 }
@@ -349,7 +349,7 @@ private fun SearchFilterBar(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         SearchAppField(
             query = query,
@@ -361,8 +361,8 @@ private fun SearchFilterBar(
             selected = selectedFilter,
             onSelect = onFilterChange,
             modifier = Modifier
-                .widthIn(min = 136.dp, max = 156.dp)
-                .height(52.dp)
+                .width(142.dp)
+                .height(50.dp)
         )
     }
 }
@@ -398,7 +398,7 @@ private fun SearchAppField(
         modifier = modifier.onFocusChanged { focused = it.isFocused },
         decorationBox = { innerTextField ->
             Surface(
-                shape  = RoundedCornerShape(18.dp),
+                shape  = RoundedCornerShape(17.dp),
                 color  = MaterialTheme.colorScheme.surfaceContainerHigh,
                 border = BorderStroke(
                     borderWidth,
@@ -406,7 +406,7 @@ private fun SearchAppField(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .height(50.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp),
@@ -469,7 +469,7 @@ private fun FilterDropdown(
     Box(modifier) {
         Surface(
             onClick = { expanded = true },
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(17.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
             modifier = Modifier.fillMaxSize()
@@ -482,7 +482,7 @@ private fun FilterDropdown(
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
                 Icon(
-                    selected.icon(),
+                    Icons.Outlined.FilterList,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp)
@@ -511,7 +511,7 @@ private fun FilterDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(18.dp)
         ) {
             profileFilters.forEach { filter ->
                 DropdownMenuItem(
@@ -531,6 +531,16 @@ private fun FilterDropdown(
                             modifier = Modifier.size(18.dp)
                         )
                     },
+                    trailingIcon = {
+                        if (filter == selected) {
+                            Icon(
+                                Icons.Outlined.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    },
                     onClick = {
                         expanded = false
                         onSelect(filter)
@@ -549,7 +559,7 @@ private fun AppProfileStatusCard(
     onToggle: () -> Unit
 ) {
     val bg by animateColorAsState(
-        if (enabled) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f)
+        if (enabled) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.46f)
         else MaterialTheme.colorScheme.surfaceContainerHigh,
         tween(220),
         label = "profile_status_bg"
@@ -564,23 +574,23 @@ private fun AppProfileStatusCard(
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = bg,
-        border = BorderStroke(1.dp, accent.copy(alpha = if (enabled) 0.22f else 0.10f)),
+        border = BorderStroke(1.dp, accent.copy(alpha = if (enabled) 0.20f else 0.10f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(accent.copy(alpha = 0.14f)),
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(accent.copy(alpha = 0.13f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Outlined.Dashboard,
+                    Icons.Outlined.Apps,
                     contentDescription = null,
                     tint = accent,
                     modifier = Modifier.size(22.dp)
@@ -594,12 +604,12 @@ private fun AppProfileStatusCard(
                 Text(
                     text = "App Profile",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
                 )
                 Text(
-                    text = if (enabled) "Enabled • $activeCount active from $totalApps apps"
-                           else "Disabled • profile tidak berjalan",
+                    text = if (enabled) "$activeCount active • $totalApps apps" else "Disabled • tap switch to enable",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -607,26 +617,15 @@ private fun AppProfileStatusCard(
                 )
             }
 
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = { onToggle() },
-                    modifier = Modifier.scale(0.88f),
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary
-                    )
+            Switch(
+                checked = enabled,
+                onCheckedChange = { onToggle() },
+                modifier = Modifier.scale(0.86f),
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
                 )
-                Text(
-                    text = if (enabled) "Enabled" else "Disabled",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = accent
-                )
-            }
+            )
         }
     }
 }
@@ -663,6 +662,7 @@ private fun EmptyListHint(isSearch: Boolean) {
 // App List Item
 // ─────────────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AppListItem(
     app: AppInfo,
@@ -681,16 +681,16 @@ private fun AppListItem(
     }
 
     val cardBg by animateColorAsState(
-        if (isEnabled) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.16f)
+        if (isEnabled) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.13f)
         else MaterialTheme.colorScheme.surfaceContainerLow,
         tween(220),
         label = "app_card_bg"
     )
     val cardBorder by animateColorAsState(
         when {
-            expanded  -> MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-            isEnabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-            else      -> MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+            expanded  -> MaterialTheme.colorScheme.primary.copy(alpha = 0.36f)
+            isEnabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+            else      -> MaterialTheme.colorScheme.outline.copy(alpha = 0.07f)
         },
         tween(220),
         label = "app_card_border"
@@ -702,7 +702,7 @@ private fun AppListItem(
     )
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         color = cardBg,
         border = BorderStroke(1.dp, cardBorder),
         modifier = Modifier.fillMaxWidth()
@@ -710,32 +710,36 @@ private fun AppListItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .animateContentSize(
+                    animationSpec = tween(220, easing = FastOutSlowInEasing)
+                )
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(18.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = onClick
-                    ),
+                    )
+                    .padding(2.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(13.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 AppIconView(
                     bitmap = iconBitmap,
                     label = app.label,
                     isEnabled = isEnabled,
                     size = 46.dp,
-                    cornerSize = 13.dp
+                    cornerSize = 14.dp
                 )
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
                         app.label,
@@ -748,14 +752,20 @@ private fun AppListItem(
                     Text(
                         app.packageName,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        verticalAlignment = Alignment.CenterVertically
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        AppChip(
+                            label = if (isEnabled) "Enabled" else "Disabled",
+                            icon = Icons.Outlined.CheckCircle,
+                            active = isEnabled
+                        )
                         AppChip(
                             label = profileModeLabel(profile),
                             icon = filterForProfile(profile).icon(),
@@ -763,7 +773,7 @@ private fun AppListItem(
                         )
                         AppChip(
                             label = refreshRateLabel(currentProfile.refreshRate),
-                            icon = Icons.Filled.DisplaySettings,
+                            icon = Icons.Outlined.DisplaySettings,
                             active = isEnabled
                         )
                     }
@@ -772,9 +782,9 @@ private fun AppListItem(
                 Box(
                     modifier = Modifier
                         .size(34.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(13.dp))
                         .background(
-                            if (expanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                            if (expanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
                             else MaterialTheme.colorScheme.surfaceContainerHigh
                         ),
                     contentAlignment = Alignment.Center
@@ -794,18 +804,18 @@ private fun AppListItem(
             AnimatedVisibility(
                 visible = expanded,
                 enter = fadeIn(tween(120)) + expandVertically(
-                    animationSpec = tween(240, easing = FastOutSlowInEasing),
+                    animationSpec = tween(220, easing = FastOutSlowInEasing),
                     expandFrom = Alignment.Top
                 ),
-                exit = fadeOut(tween(100)) + shrinkVertically(
-                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                exit = fadeOut(tween(90)) + shrinkVertically(
+                    animationSpec = tween(160, easing = FastOutSlowInEasing),
                     shrinkTowards = Alignment.Top
                 )
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     HorizontalDivider(
                         thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
                     )
 
                     ProfileSwitchRow(
@@ -816,7 +826,7 @@ private fun AppListItem(
                     )
 
                     CompactProfileDropdown(
-                        icon = Icons.Outlined.Bolt,
+                        icon = Icons.Outlined.Speed,
                         title = "Performance Profile",
                         selectedLabel = profileModeLabel(currentProfile),
                         options = profileOptions.map { option ->
@@ -832,14 +842,14 @@ private fun AppListItem(
                     )
 
                     CompactProfileDropdown(
-                        icon = Icons.Filled.DisplaySettings,
+                        icon = Icons.Outlined.DisplaySettings,
                         title = "Refresh Rate",
                         selectedLabel = refreshRateLabel(currentProfile.refreshRate),
                         options = refreshRateOptions.map { (key, label) ->
                             DropOption(
                                 key = key,
                                 label = label,
-                                icon = Icons.Filled.Refresh
+                                icon = Icons.Outlined.Refresh
                             )
                         },
                         onSelect = { key ->
@@ -871,9 +881,9 @@ private fun ProfileSwitchRow(
     )
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
+        shape = RoundedCornerShape(17.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.70f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.07f))
     ) {
         Row(
             modifier = Modifier
@@ -882,16 +892,24 @@ private fun ProfileSwitchRow(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { onCheckedChange(!checked) }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 13.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                Icons.Outlined.CheckCircle,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Outlined.CheckCircle,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(1.dp)
@@ -903,8 +921,7 @@ private fun ProfileSwitchRow(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = if (checked) "Profile aktif untuk aplikasi ini"
-                           else "Profile belum aktif",
+                    text = if (checked) "Aktif untuk aplikasi ini" else "Nonaktif untuk aplikasi ini",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -938,35 +955,46 @@ private fun CompactProfileDropdown(
     )
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
+        shape = RoundedCornerShape(17.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.70f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.07f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 13.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
 
             Box {
                 Surface(
                     onClick = { expanded = true },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(50),
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
                 ) {
@@ -980,7 +1008,8 @@ private fun CompactProfileDropdown(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Icon(
                             Icons.Filled.KeyboardArrowDown,
@@ -997,25 +1026,36 @@ private fun CompactProfileDropdown(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(18.dp)
                 ) {
                     options.forEach { option ->
+                        val selected = option.label == selectedLabel
                         DropdownMenuItem(
                             text = {
                                 Text(
                                     option.label,
                                     style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = if (option.label == selectedLabel) FontWeight.SemiBold else FontWeight.Normal
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                                 )
                             },
                             leadingIcon = {
                                 Icon(
                                     option.icon,
                                     contentDescription = null,
-                                    tint = if (option.label == selectedLabel) MaterialTheme.colorScheme.primary
+                                    tint = if (selected) MaterialTheme.colorScheme.primary
                                            else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
+                            },
+                            trailingIcon = {
+                                if (selected) {
+                                    Icon(
+                                        Icons.Outlined.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
                             },
                             onClick = {
                                 expanded = false
@@ -1035,27 +1075,34 @@ private fun CompactProfileDropdown(
 
 @Composable
 private fun AppChip(label: String, icon: ImageVector, active: Boolean) {
-    val bg  = if (active) MaterialTheme.colorScheme.primaryContainer
+    val bg  = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
               else MaterialTheme.colorScheme.surfaceContainerHigh
-    val fg  = if (active) MaterialTheme.colorScheme.onPrimaryContainer
+    val fg  = if (active) MaterialTheme.colorScheme.primary
               else MaterialTheme.colorScheme.onSurfaceVariant
-    val brd = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
-              else MaterialTheme.colorScheme.outlineVariant
+    val brd = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+              else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
 
     Surface(
-        shape    = RoundedCornerShape(8.dp),
+        shape    = RoundedCornerShape(50),
         color    = bg,
-        border   = BorderStroke(0.5.dp, brd),
-        modifier = Modifier.height(22.dp)
+        border   = BorderStroke(0.6.dp, brd),
+        modifier = Modifier.height(24.dp)
     ) {
         Row(
-            modifier              = Modifier.padding(horizontal = 7.dp),
+            modifier              = Modifier.padding(horizontal = 8.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Icon(icon, null, modifier = Modifier.size(11.dp), tint = fg)
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                color = fg, fontSize = 10.sp, maxLines = 1)
+            Icon(icon, null, modifier = Modifier.size(12.dp), tint = fg)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = fg,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -1197,7 +1244,7 @@ fun AppProfileEditor(
             )
 
             // ── CPU Governor ─────────────────────────────────────────
-            EditorSection(icon = Icons.Filled.Memory, title = s.appProfileCpuGovernor) {
+            EditorSection(icon = Icons.Outlined.Memory, title = s.appProfileCpuGovernor) {
                 GovernorSelector(
                     selected = draft.cpuGovernor,
                     onSelect = { draft = draft.copy(cpuGovernor = it) },
@@ -1206,7 +1253,7 @@ fun AppProfileEditor(
             }
 
             // ── Refresh Rate ─────────────────────────────────────────
-            EditorSection(icon = Icons.Filled.DisplaySettings, title = s.appProfileRefreshRate) {
+            EditorSection(icon = Icons.Outlined.DisplaySettings, title = s.appProfileRefreshRate) {
                 RefreshRateSelector(
                     selected = draft.refreshRate,
                     onSelect = { draft = draft.copy(refreshRate = it) },
@@ -1215,7 +1262,7 @@ fun AppProfileEditor(
             }
 
             // ── Extra Tweaks ─────────────────────────────────────────
-            EditorSection(icon = Icons.Filled.Tune, title = s.appProfileExtraTweaks) {
+            EditorSection(icon = Icons.Outlined.Tune, title = s.appProfileExtraTweaks) {
                 ExtraTweaksPanel(
                     tweaks   = draft.extraTweaks,
                     enabled  = draft.enabled,
@@ -1229,7 +1276,7 @@ fun AppProfileEditor(
                 enabled  = !saving,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(50.dp),
                 shape    = RoundedCornerShape(16.dp)
             ) {
                 if (saving) {
@@ -1239,7 +1286,7 @@ fun AppProfileEditor(
                         color       = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Icon(Icons.Filled.Save, null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Save, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(s.appProfileSaveBtn, style = MaterialTheme.typography.labelLarge)
                 }
@@ -1405,7 +1452,7 @@ private fun RefreshRateSelector(selected: String, onSelect: (String) -> Unit, en
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Icon(Icons.Filled.Refresh, null, modifier = Modifier.size(18.dp), tint = fg)
+                    Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(18.dp), tint = fg)
                     Text(
                         RefreshRates.labels[rate] ?: rate,
                         style      = MaterialTheme.typography.labelSmall,
@@ -1542,13 +1589,13 @@ private fun drawableToBitmap(drawable: android.graphics.drawable.Drawable): Bitm
 }
 
 private fun govIcon(gov: String): ImageVector = when (gov) {
-    "performance"  -> Icons.Filled.FlashOn
-    "powersave"    -> Icons.Filled.BatterySaver
-    "ondemand"     -> Icons.Filled.AutoMode
+    "performance"  -> Icons.Outlined.Speed
+    "powersave"    -> Icons.Outlined.BatterySaver
+    "ondemand"     -> Icons.Outlined.AutoMode
     "conservative" -> Icons.AutoMirrored.Filled.TrendingDown
-    "schedutil"    -> Icons.Filled.Schedule
-    "interactive"  -> Icons.Filled.TouchApp
-    else           -> Icons.Filled.Tune
+    "schedutil"    -> Icons.Outlined.Schedule
+    "interactive"  -> Icons.Outlined.TouchApp
+    else           -> Icons.Outlined.Tune
 }
 
 private fun govDescription(gov: String, s: dev.aether.manager.i18n.AppStrings): String = when (gov) {

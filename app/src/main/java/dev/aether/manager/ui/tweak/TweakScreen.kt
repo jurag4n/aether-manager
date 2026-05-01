@@ -39,8 +39,6 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -85,7 +83,8 @@ fun TweakScreen(
     val scroll = rememberScrollState()
 
     var expandedCard by rememberSaveable { mutableStateOf<String?>(null) }
-    var activeProfile by rememberSaveable {
+    var activeProfile by rememberSaveable { mutableStateOf("balance") }
+    var thermalProfile by rememberSaveable {
         mutableStateOf(if (tweaks.thermalProfile.isBlank()) "default" else tweaks.thermalProfile)
     }
 
@@ -132,8 +131,53 @@ fun TweakScreen(
         vm.applyAll()
     }
 
-    fun setProfileNow(profile: String) {
+    fun setActiveProfileNow(profile: String) {
         activeProfile = profile
+
+        when (profile) {
+            "performance" -> {
+                cpuGovernor = "Performance"
+                gpuProfile = "Performance"
+                schedBoostMode = "Game"
+                vm.setTweak("cpuBoost", true)
+                vm.setTweak("gpuThrottleOff", true)
+                vm.setTweak("schedboost", true)
+            }
+            "extreme" -> {
+                cpuGovernor = "Performance"
+                gpuProfile = "Performance"
+                schedBoostMode = "Extreme"
+                networkStable = true
+                tcpEnabled = true
+                vm.setTweak("cpuBoost", true)
+                vm.setTweak("gpuThrottleOff", true)
+                vm.setTweak("schedboost", true)
+                vm.setTweak("networkStable", true)
+                vm.setTweak("tcpBbr", true)
+            }
+            "battery" -> {
+                cpuGovernor = "Battery"
+                gpuProfile = "Battery"
+                schedBoostMode = "Off"
+                vm.setTweak("cpuBoost", false)
+                vm.setTweak("gpuThrottleOff", false)
+                vm.setTweak("schedboost", false)
+            }
+            else -> {
+                cpuGovernor = "Schedutil"
+                gpuProfile = "Balanced"
+                schedBoostMode = "Off"
+                vm.setTweak("cpuBoost", false)
+                vm.setTweak("gpuThrottleOff", false)
+                vm.setTweak("schedboost", false)
+            }
+        }
+
+        vm.applyAll()
+    }
+
+    fun setThermalProfileNow(profile: String) {
+        thermalProfile = profile
         vm.setProfile(profile)
         vm.applyAll()
     }
@@ -164,7 +208,7 @@ fun TweakScreen(
             expanded = expandedCard == "active_profile",
             current = activeProfile,
             onClick = { toggleExpand("active_profile") },
-            onSelect = { setProfileNow(it) }
+            onSelect = { setActiveProfileNow(it) }
         )
 
         ExpandablePair(
@@ -305,9 +349,9 @@ fun TweakScreen(
 
         ThermalProfileCard(
             expanded = expandedCard == "thermal",
-            current = activeProfile,
+            current = thermalProfile,
             onClick = { toggleExpand("thermal") },
-            onSelect = { setProfileNow(it) }
+            onSelect = { setThermalProfileNow(it) }
         )
     }
 }
@@ -638,7 +682,7 @@ private fun ThermalProfileCard(
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Outlined.Thermostat,
         title = "Thermal Profile",
-        subtitle = "Fitur muncul saat expand",
+        subtitle = "Thermal tweak terpisah",
         badge = thermalLabel(current),
         active = current != "default",
         expanded = expanded,
@@ -666,58 +710,64 @@ private fun ExpandableTweakCard(
 ) {
     val container by animateColorAsState(
         targetValue = if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainerLow,
-        animationSpec = tween(220),
+        animationSpec = tween(300),
         label = "card_container_$title"
     )
     val iconBg by animateColorAsState(
         targetValue = if (active || expanded) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-        animationSpec = tween(220),
+        animationSpec = tween(260),
         label = "icon_bg_$title"
     )
     val iconTint by animateColorAsState(
         targetValue = if (active || expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(220),
+        animationSpec = tween(260),
         label = "icon_tint_$title"
     )
     val badgeBg by animateColorAsState(
         targetValue = if (active || expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-        animationSpec = tween(220),
+        animationSpec = tween(260),
         label = "badge_bg_$title"
     )
     val badgeFg by animateColorAsState(
         targetValue = if (active || expanded) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(220),
+        animationSpec = tween(260),
         label = "badge_fg_$title"
     )
-    val scale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.992f,
+    val cardScale by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0.99f,
         animationSpec = smoothSpring(),
         label = "card_scale_$title"
     )
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = tween(if (expanded) 260 else 140),
+        animationSpec = tween(if (expanded) 320 else 220),
         label = "detail_alpha_$title"
+    )
+    val detailScale by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0.965f,
+        animationSpec = smoothSpring(),
+        label = "detail_scale_$title"
     )
     val detailOffset by animateFloatAsState(
         targetValue = if (expanded) 0f else when (side) {
-            ExpandSide.Left -> -14f
-            ExpandSide.Right -> 14f
+            ExpandSide.Left -> -18f
+            ExpandSide.Right -> 18f
             ExpandSide.Center -> 0f
         },
         animationSpec = smoothSpring(),
         label = "detail_offset_$title"
     )
+    val showDetails = expanded || detailAlpha > 0.02f
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(if (expanded) 28.dp else 24.dp),
+        shape = RoundedCornerShape(if (expanded) 30.dp else 24.dp),
         color = container,
-        tonalElevation = if (expanded) 3.dp else 0.dp,
+        tonalElevation = if (expanded) 4.dp else 0.dp,
         modifier = modifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                scaleX = cardScale
+                scaleY = cardScale
             }
             .heightIn(min = baseHeight)
             .animateContentSize(smoothSpring())
@@ -764,32 +814,20 @@ private fun ExpandableTweakCard(
                 )
             }
 
-            if (expanded) {
+            if (showDetails) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .graphicsLayer {
+                            alpha = detailAlpha
+                            translationX = detailOffset
+                            scaleX = detailScale
+                            scaleY = detailScale
+                        }
                         .animateContentSize(smoothSpring()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(smoothSpring())
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .graphicsLayer {
-                                    alpha = detailAlpha
-                                    translationX = detailOffset
-                                    scaleX = scale
-                                    scaleY = scale
-                                },
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            content = content
-                        )
-                    }
-                }
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    content = content
+                )
             }
         }
     }
@@ -799,7 +837,7 @@ private fun ExpandableTweakCard(
 private fun DeviceInfoCard() {
     val deviceName = rememberDeviceName()
     val codeName = Build.DEVICE ?: "Unknown"
-    val androidVersion = "Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}"
+    val androidVersion = "Android ${Build.VERSION.RELEASE}"
     val kernel = System.getProperty("os.version") ?: "Unknown"
 
     Surface(
@@ -841,82 +879,63 @@ private fun DeviceInfoCard() {
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Informasi perangkat aktif",
+                        text = "Ringkas dan clean",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                StatusPill(text = "Live", active = true)
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                InfoItem(
-                    modifier = Modifier.weight(1f),
-                    title = "Nama Perangkat",
-                    value = deviceName
-                )
-                InfoItem(
-                    modifier = Modifier.weight(1f),
-                    title = "CodeName",
-                    value = codeName
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                InfoItem(
-                    modifier = Modifier.weight(1f),
-                    title = "Android",
-                    value = androidVersion
-                )
-                InfoItem(
-                    modifier = Modifier.weight(1f),
-                    title = "Kernel",
-                    value = kernel
-                )
+                Column(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    DeviceInfoLine(label = "Nama Perangkat", value = deviceName)
+                    DeviceInfoLine(label = "Android", value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
+                    DeviceInfoLine(label = "CodeName", value = codeName)
+                    DeviceInfoLine(label = "Kernel", value = kernel)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun InfoItem(
-    modifier: Modifier = Modifier,
-    title: String,
+private fun DeviceInfoLine(
+    label: String,
     value: String
 ) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        modifier = modifier.height(74.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(0.86f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1.14f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -927,13 +946,13 @@ private fun ActiveProfileCard(
     onClick: () -> Unit,
     onSelect: (String) -> Unit
 ) {
-    val label = profileLabel(current)
+    val label = activeProfileLabel(current)
 
     ExpandableTweakCard(
         modifier = Modifier.fillMaxWidth(),
-        icon = profileIcon(current),
+        icon = activeProfileIcon(current),
         title = label,
-        subtitle = "Active Profile",
+        subtitle = "Active Profile • CPU/GPU",
         badge = "Active",
         active = true,
         expanded = expanded,
@@ -957,10 +976,10 @@ private fun ProfileModeSelector(
         ) {
             ProfileChip(
                 modifier = Modifier.weight(1f),
-                key = "default",
+                key = "balance",
                 label = "Balance",
-                icon = Icons.Outlined.Thermostat,
-                selected = current == "default" || current == "balance",
+                icon = Icons.Outlined.Tune,
+                selected = current == "balance",
                 onSelect = onSelect
             )
             ProfileChip(
@@ -1112,40 +1131,123 @@ private fun DropdownAction(
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Surface(
-            onClick = { expanded = true },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                    Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                StatusPill(text = "Pilih", active = false)
-            }
-        }
-
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(item) },
-                    onClick = {
-                        expanded = false
-                        onSelect(item)
-                    },
-                    leadingIcon = {
-                        if (item == value) {
-                            Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp))
-                        }
-                    }
+    if (expanded) {
+        AlertDialog(
+            onDismissRequest = { expanded = false },
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
                 )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    options.forEach { item ->
+                        ModernDropdownItem(
+                            text = item,
+                            selected = item == value,
+                            onClick = {
+                                expanded = false
+                                onSelect(item)
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { expanded = false }) {
+                    Text("Tutup")
+                }
+            }
+        )
+    }
+
+    Surface(
+        onClick = { expanded = true },
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            StatusPill(text = "Select", active = true)
+        }
+    }
+}
+
+@Composable
+private fun ModernDropdownItem(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val bg by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = tween(200),
+        label = "modern_dropdown_bg_$text"
+    )
+    val fg by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        animationSpec = tween(200),
+        label = "modern_dropdown_fg_$text"
+    )
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
+        color = bg,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = fg,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
     }
@@ -1265,53 +1367,92 @@ private fun ProfileSelector(
     current: String,
     onSelect: (String) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf(
-            "default" to "Balance",
-            "performance" to "Performance",
-            "extreme" to "Extreme",
-            "battery" to "Battery"
-        ).forEach { (key, label) ->
-            val selected = current == key
-            val bg by animateColorAsState(
-                targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                animationSpec = tween(180),
-                label = "thermal_bg_$key"
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ThermalChip(
+                modifier = Modifier.weight(1f),
+                key = "default",
+                label = "Stock",
+                icon = Icons.Outlined.Thermostat,
+                selected = current == "default" || current == "stock",
+                onSelect = onSelect
             )
-            val fg by animateColorAsState(
-                targetValue = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                animationSpec = tween(180),
-                label = "thermal_fg_$key"
+            ThermalChip(
+                modifier = Modifier.weight(1f),
+                key = "cool",
+                label = "Cool",
+                icon = Icons.Outlined.Thermostat,
+                selected = current == "cool",
+                onSelect = onSelect
             )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ThermalChip(
+                modifier = Modifier.weight(1f),
+                key = "gaming",
+                label = "Gaming",
+                icon = Icons.Outlined.Speed,
+                selected = current == "gaming",
+                onSelect = onSelect
+            )
+            ThermalChip(
+                modifier = Modifier.weight(1f),
+                key = "throttle_off",
+                label = "Throttle Off",
+                icon = Icons.Outlined.FlashOn,
+                selected = current == "throttle_off",
+                onSelect = onSelect
+            )
+        }
+    }
+}
 
-            Surface(
-                onClick = { onSelect(key) },
-                shape = RoundedCornerShape(15.dp),
-                color = bg,
-                modifier = Modifier.weight(1f)
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    Icon(
-                        imageVector = when (key) {
-                            "performance" -> Icons.Outlined.FlashOn
-                            "extreme" -> Icons.Outlined.Speed
-                            "battery" -> Icons.Outlined.Memory
-                            else -> Icons.Outlined.Thermostat
-                        },
-                        contentDescription = null,
-                        tint = fg,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = fg, maxLines = 1)
-                }
-            }
+@Composable
+private fun ThermalChip(
+    modifier: Modifier = Modifier,
+    key: String,
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onSelect: (String) -> Unit
+) {
+    val bg by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = tween(180),
+        label = "thermal_chip_bg_$key"
+    )
+    val fg by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(180),
+        label = "thermal_chip_fg_$key"
+    )
+
+    Surface(
+        onClick = { onSelect(key) },
+        shape = RoundedCornerShape(18.dp),
+        color = bg,
+        modifier = modifier.height(62.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = fg,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -1458,9 +1599,16 @@ private fun StatusPill(
     }
 }
 
-private fun thermalLabel(value: String): String = profileLabel(value)
+private fun thermalLabel(value: String): String {
+    return when (value.lowercase()) {
+        "cool" -> "Cool"
+        "gaming" -> "Gaming"
+        "throttle_off" -> "Throttle Off"
+        else -> "Stock"
+    }
+}
 
-private fun profileLabel(value: String): String {
+private fun activeProfileLabel(value: String): String {
     return when (value.lowercase()) {
         "performance" -> "Performance"
         "extreme" -> "Extreme"
@@ -1469,12 +1617,12 @@ private fun profileLabel(value: String): String {
     }
 }
 
-private fun profileIcon(value: String): ImageVector {
+private fun activeProfileIcon(value: String): ImageVector {
     return when (value.lowercase()) {
         "performance" -> Icons.Outlined.FlashOn
         "extreme" -> Icons.Outlined.Speed
         "battery", "powersave" -> Icons.Outlined.Memory
-        else -> Icons.Outlined.Thermostat
+        else -> Icons.Outlined.Tune
     }
 }
 
@@ -1490,6 +1638,6 @@ private fun normalizeLabel(value: String): String {
 }
 
 private fun <T> smoothSpring() = spring<T>(
-    dampingRatio = 0.88f,
+    dampingRatio = Spring.DampingRatioNoBouncy,
     stiffness = Spring.StiffnessLow
 )

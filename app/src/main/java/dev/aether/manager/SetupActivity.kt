@@ -18,6 +18,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -41,7 +42,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -100,7 +100,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -309,9 +308,9 @@ private fun FeatureCard(item: FeatureItem, index: Int) {
     val y = remember { Animatable(16f) }
 
     LaunchedEffect(Unit) {
-        delay(index * 55L)
-        launch { alpha.animateTo(1f, tween(300, easing = FastOutSlowInEasing)) }
-        launch { y.animateTo(0f, tween(300, easing = FastOutSlowInEasing)) }
+        delay(index * 35L)
+        launch { alpha.animateTo(1f, tween(260, easing = FastOutSlowInEasing)) }
+        launch { y.animateTo(0f, tween(260, easing = FastOutSlowInEasing)) }
     }
 
     Surface(
@@ -396,9 +395,9 @@ private fun PermissionCard(
     val scale = remember { Animatable(1f) }
 
     LaunchedEffect(Unit) {
-        delay(index * 45L)
-        launch { alpha.animateTo(1f, tween(260, easing = FastOutSlowInEasing)) }
-        launch { y.animateTo(0f, tween(260, easing = FastOutSlowInEasing)) }
+        delay(index * 28L)
+        launch { alpha.animateTo(1f, tween(230, easing = FastOutSlowInEasing)) }
+        launch { y.animateTo(0f, tween(230, easing = FastOutSlowInEasing)) }
     }
 
     LaunchedEffect(state) {
@@ -589,34 +588,49 @@ private fun SmoothNextButton(
     onClick: () -> Unit,
 ) {
     val scale by animateFloatAsState(
-        targetValue = if (running) 0.982f else 1f,
-        animationSpec = tween(140, easing = FastOutSlowInEasing),
+        targetValue = if (running) 0.992f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
         label = "next_button_scale"
     )
     val alpha by animateFloatAsState(
-        targetValue = if (enabled) 1f else 0.70f,
-        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        targetValue = when {
+            !enabled -> 0.64f
+            running -> 0.94f
+            else -> 1f
+        },
+        animationSpec = tween(260, easing = FastOutSlowInEasing),
         label = "next_button_alpha"
     )
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (enabled && !running) 0.16f else 0.08f,
+        animationSpec = tween(360, easing = FastOutSlowInEasing),
+        label = "next_button_glow"
+    )
     val arrowX by animateFloatAsState(
-        targetValue = if (running) 7f else 0f,
-        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        targetValue = if (running) 3f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
         label = "next_arrow_x"
     )
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp),
+            .height(62.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp)
-                .padding(horizontal = 7.dp)
+                .height(56.dp)
+                .padding(horizontal = 8.dp)
                 .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 0.16f else 0.06f))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha))
         )
         FilledTonalButton(
             onClick = { if (!running) onClick() },
@@ -636,13 +650,19 @@ private fun SmoothNextButton(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
             ) {
                 AnimatedContent(
                     targetState = text,
                     transitionSpec = {
-                        (slideInHorizontally { it / 5 } + fadeIn(tween(170))) togetherWith
-                            (slideOutHorizontally { -it / 5 } + fadeOut(tween(120)))
+                        (fadeIn(tween(220, easing = FastOutSlowInEasing)) + scaleIn(tween(220, easing = FastOutSlowInEasing), initialScale = 0.96f)) togetherWith
+                            (fadeOut(tween(140, easing = FastOutSlowInEasing)) + scaleOut(tween(140, easing = FastOutSlowInEasing), targetScale = 0.98f))
                     },
                     label = "next_button_text"
                 ) { label ->
@@ -662,6 +682,50 @@ private fun SmoothNextButton(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SmoothBackButton(
+    text: String,
+    enabled: Boolean,
+    running: Boolean,
+    onClick: () -> Unit,
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (running) 0.985f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "back_button_scale"
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.55f,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "back_button_alpha"
+    )
+
+    TextButton(
+        onClick = { if (!running) onClick() },
+        enabled = enabled,
+        modifier = Modifier
+            .height(42.dp)
+            .scale(scale)
+            .graphicsLayer(alpha = alpha)
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.ChevronLeft,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = text,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -843,29 +907,43 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val pagerState = rememberPagerState { totalPages }
     val currentPage = pagerState.currentPage
     val canProceed = currentPage != 1 || allDecided
-
-    fun goNext() = scope.launch {
-        pagerState.animateScrollToPage(
-            page = currentPage + 1,
-            animationSpec = tween(640, easing = FastOutSlowInEasing)
+    val pageTransitionSpec = remember {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
         )
     }
 
-    fun goBack() = scope.launch {
+    fun moveToPage(targetPage: Int) = scope.launch {
+        if (buttonRunning) return@launch
+        buttonRunning = true
+        delay(40)
         pagerState.animateScrollToPage(
-            page = currentPage - 1,
-            animationSpec = tween(540, easing = FastOutSlowInEasing)
+            page = targetPage.coerceIn(0, totalPages - 1),
+            animationSpec = pageTransitionSpec
         )
+        delay(90)
+        buttonRunning = false
+    }
+
+    fun goNext() {
+        moveToPage(currentPage + 1)
+    }
+
+    fun goBack() {
+        moveToPage(currentPage - 1)
     }
 
     fun runNextAction() {
         if (!canProceed || buttonRunning) return
-        scope.launch {
-            buttonRunning = true
-            delay(135)
-            if (currentPage == totalPages - 1) onDone(rootState == PermState.GRANTED) else goNext()
-            delay(280)
-            buttonRunning = false
+        if (currentPage == totalPages - 1) {
+            scope.launch {
+                buttonRunning = true
+                delay(80)
+                onDone(rootState == PermState.GRANTED)
+            }
+        } else {
+            goNext()
         }
     }
 
@@ -892,6 +970,20 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
         launch { screenAlpha.animateTo(1f, tween(340, easing = FastOutSlowInEasing)) }
         launch { screenY.animateTo(0f, tween(340, easing = FastOutSlowInEasing)) }
     }
+
+    val bottomOffsetY by animateDpAsState(
+        targetValue = if (buttonRunning) 2.dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "setup_bottom_offset"
+    )
+    val bottomAlpha by animateFloatAsState(
+        targetValue = if (buttonRunning) 0.98f else 1f,
+        animationSpec = tween(260, easing = FastOutSlowInEasing),
+        label = "setup_bottom_alpha"
+    )
 
     Scaffold(containerColor = MaterialTheme.colorScheme.surface) { padding ->
         Box(
@@ -959,10 +1051,10 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             .padding(horizontal = 24.dp)
                             .padding(top = 6.dp, bottom = 18.dp)
                             .graphicsLayer {
-                                translationX = pageOffset * size.width * 0.06f
-                                alpha = lerp(1f, 0.58f, absOffset)
-                                scaleX = lerp(1f, 0.975f, absOffset)
-                                scaleY = lerp(1f, 0.975f, absOffset)
+                                translationX = pageOffset * size.width * 0.025f
+                                alpha = lerp(1f, 0.78f, absOffset)
+                                scaleX = lerp(1f, 0.99f, absOffset)
+                                scaleY = lerp(1f, 0.99f, absOffset)
                             }
                     ) {
                         when (page) {
@@ -1067,16 +1159,30 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                 }
 
                 Surface(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    tonalElevation = 2.dp,
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset(y = bottomOffsetY)
+                        .graphicsLayer(alpha = bottomAlpha)
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier
+                            .animateContentSize(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                )
+                            )
                             .padding(horizontal = 24.dp)
-                            .padding(top = 10.dp, bottom = 22.dp)
+                            .padding(top = 12.dp, bottom = 22.dp)
                     ) {
                         PagerDotIndicator(total = totalPages, current = currentPage)
 
@@ -1089,8 +1195,8 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 
                         AnimatedVisibility(
                             visible = !canProceed && currentPage == 1,
-                            enter = fadeIn(tween(180)) + slideInVertically { it / 4 },
-                            exit = fadeOut(tween(140)) + slideOutVertically { it / 4 }
+                            enter = fadeIn(tween(240, easing = FastOutSlowInEasing)) + slideInVertically { it / 8 },
+                            exit = fadeOut(tween(180, easing = FastOutSlowInEasing)) + slideOutVertically { it / 8 }
                         ) {
                             val pendingPerms = buildList {
                                 if (!rootOk) add("Akses Root")
@@ -1113,26 +1219,15 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 
                         AnimatedVisibility(
                             visible = currentPage > 0,
-                            enter = fadeIn(tween(180)) + slideInVertically { it / 4 },
-                            exit = fadeOut(tween(140)) + slideOutVertically { it / 4 }
+                            enter = fadeIn(tween(240, easing = FastOutSlowInEasing)) + slideInVertically { it / 8 },
+                            exit = fadeOut(tween(160, easing = FastOutSlowInEasing)) + slideOutVertically { it / 8 }
                         ) {
-                            TextButton(
-                                onClick = { if (!buttonRunning) goBack() },
-                                enabled = !buttonRunning
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.ChevronLeft,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = s.setupBtnBack,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                            SmoothBackButton(
+                                text = s.setupBtnBack,
+                                enabled = !buttonRunning,
+                                running = buttonRunning,
+                                onClick = { goBack() }
+                            )
                         }
                     }
                 }
@@ -1227,17 +1322,6 @@ private fun PermissionsPage(
         )
 
         PermissionSummaryCard(granted = granted, total = total, rootOk = rootState == PermState.GRANTED)
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            StatusChip("Root wajib", MaterialTheme.colorScheme.error)
-            StatusChip("Ketuk kartu izin", MaterialTheme.colorScheme.primary)
-            StatusChip("Swipe halaman", MaterialTheme.colorScheme.tertiary)
-        }
 
         permItems.forEachIndexed { index, item ->
             PermissionCard(
