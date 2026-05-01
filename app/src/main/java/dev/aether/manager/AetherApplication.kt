@@ -113,7 +113,7 @@ class AetherApplication : Application() {
     private fun initUnityAds() {
         val gameId = AdManager.GAME_ID
         if (gameId.isEmpty()) {
-            AdMobInterstitialManager.preload(this)
+            // MobileAds belum tentu initialized di sini — biarkan initAdMob() yang handle preload
             return
         }
 

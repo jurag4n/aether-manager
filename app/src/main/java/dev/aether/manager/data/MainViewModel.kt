@@ -10,6 +10,7 @@ import dev.aether.manager.util.RootManager
 import dev.aether.manager.util.RootEngine
 import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
+import dev.aether.manager.ads.AdScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -294,6 +295,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 summary = result.summary,
                 totalMs = result.totalMs,
             )
+
+            if (result.success) {
+                // Trigger iklan setelah aksi penting selesai (subject to minIntervalMs guard)
+                AdScheduler.tryShowAfterAction()
+            }
 
             if (!result.success) {
                 val failedSubs = result.subsystems.filter { !it.ok }
