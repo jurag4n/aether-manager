@@ -46,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,7 +112,7 @@ fun TweakScreen(
             if (tweaks.dnsProvider.isBlank()) "Off" else tweaks.dnsProvider
         )
     }
-    var networkStable by rememberSaveable { mutableStateOf(false) }
+    var networkStable by rememberSaveable { mutableStateOf(tweaks.networkStable) }
     var tcpEnabled by rememberSaveable { mutableStateOf(tweaks.tcpBbr) }
 
     var swapEnabled by rememberSaveable { mutableStateOf(tweaks.swap) }
@@ -124,6 +125,41 @@ fun TweakScreen(
         mutableStateOf(if (tweaks.schedboost) "Game" else "Off")
     }
 
+    LaunchedEffect(tweaks.thermalProfile, tweaks.dnsProvider, tweaks.networkStable, tweaks.tcpBbr, tweaks.swap, tweaks.killBackground) {
+        thermalProfile = tweaks.thermalProfile.ifBlank { "default" }
+        dnsProvider = tweaks.dnsProvider.ifBlank { "Off" }
+        networkStable = tweaks.networkStable
+        tcpEnabled = tweaks.tcpBbr
+        swapEnabled = tweaks.swap
+        killBackgroundActive = tweaks.killBackground
+    }
+
+    fun normalizeGovernor(value: String): String = when (value) {
+        "Performance" -> "performance"
+        "Battery" -> "powersave"
+        "Ondemand" -> "ondemand"
+        else -> "schedutil"
+    }
+
+    fun normalizeIoScheduler(value: String): String = when (value) {
+        "CFQ" -> "cfq"
+        "Deadline" -> "deadline"
+        "Noop" -> "noop"
+        "BFQ" -> "bfq"
+        "Maple" -> "maple"
+        else -> ""
+    }
+
+    fun normalizeGpuFreqHz(value: String): String {
+        val n = value.filter { it.isDigit() }.toLongOrNull() ?: return ""
+        return when {
+            n <= 0L -> ""
+            n < 10_000L -> (n * 1_000_000L).toString()
+            n < 10_000_000L -> (n * 1_000L).toString()
+            else -> n.toString()
+        }
+    }
+
     fun toggleExpand(key: String) {
         expandedCard = if (expandedCard == key) null else key
     }
@@ -134,7 +170,6 @@ fun TweakScreen(
 
     fun setTweakNow(key: String, value: Boolean) {
         vm.setTweak(key, value)
-        vm.applyAll()
     }
 
     fun setActiveProfileNow(profile: String) {
@@ -179,13 +214,12 @@ fun TweakScreen(
             }
         }
 
-        vm.applyAll()
+        vm.setProfile(profile)
     }
 
     fun setThermalProfileNow(profile: String) {
         thermalProfile = profile
-        vm.setProfile(profile)
-        vm.applyAll()
+        vm.setThermalProfile(profile)
     }
 
     if (rendererDialog) {
@@ -237,7 +271,8 @@ fun TweakScreen(
                     onClick = { toggleExpand("cpu") },
                     onGovernorChange = {
                         cpuGovernor = it
-                        setTweakNow("cpuBoost", it != "Battery")
+                        vm.setTweakStr("cpu_governor", normalizeGovernor(it))
+                        setTweakNow("cpuBoost", it == "Performance")
                     },
                     onMinFreqChange = { minCpuFreq = it },
                     onMaxFreqChange = { maxCpuFreq = it },
@@ -266,7 +301,9 @@ fun TweakScreen(
                     onMaxFreqChange = { maxGpuFreq = it },
                     onLockClick = {
                         gpuLocked = !gpuLocked
-                        setTweakNow("gpuThrottleOff", gpuLocked)
+                        vm.setTweakStr("gpu_freq_max", normalizeGpuFreqHz(maxGpuFreq))
+                        setTweakNow("gpuFreqLock", gpuLocked)
+                        setTweakNow("gpuThrottleOff", gpuLocked || gpuProfile == "Performance")
                     },
                     onRendererClick = { rendererDialog = true }
                 )
@@ -290,10 +327,7 @@ fun TweakScreen(
                     onClick = { toggleExpand("network") },
                     onDnsSelect = { provider ->
                         dnsProvider = provider
-                        // Update provider string in ViewModel
-                        vm.setTweakStr("dnsProvider", provider)
-                        // Toggle Private DNS on/off for backward compatibility
-                        setTweakNow("privateDns", provider != "Off")
+                        vm.setTweakStr("dns_provider", if (provider == "Off") "" else provider)
                     },
                     onNetworkStableToggle = {
                         networkStable = !networkStable
@@ -323,7 +357,7 @@ fun TweakScreen(
                     },
                     onKillBackgroundClick = {
                         killBackgroundActive = !killBackgroundActive
-                        setTweakNow("killBackground", true)
+                        setTweakNow("killBackground", killBackgroundActive)
                     }
                 )
             }
@@ -341,7 +375,8 @@ fun TweakScreen(
                     onClick = { toggleExpand("io") },
                     onSelect = {
                         ioScheduler = it
-                        setTweakNow("ioScheduler", it != "Auto")
+                        vm.setTweakStr("io_scheduler", normalizeIoScheduler(it))
+                        setTweakNow("ioLatencyOpt", it != "Auto")
                     }
                 )
             },

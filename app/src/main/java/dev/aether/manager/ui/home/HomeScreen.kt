@@ -179,6 +179,7 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 
         GpuInfoCard(state, info)
         MemoryInfoCard(state)
+        HomeDeviceInfoCard(info)
     }
 }
 
@@ -344,6 +345,37 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 InfoTile(Icons.Outlined.Thermostat, "${state.gpuUsage}%", "Beban GPU", accent, Modifier.weight(1f))
                 InfoTile(Icons.Outlined.GridView, gpuShortName, "GPU", accent, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeDeviceInfoCard(info: DeviceInfo?) {
+    TappableCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconBadge(Icons.Outlined.Info, MaterialTheme.colorScheme.primary)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Device Info", fontSize = 20.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Ringkas dan stabil", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                InfoTile(Icons.Outlined.Widgets, info?.model ?: "Unknown", "Nama Perangkat", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                InfoTile(Icons.Outlined.Memory, info?.socRaw?.takeIf { it.isNotBlank() } ?: info?.soc?.label ?: "Unknown", "CodeName", MaterialTheme.colorScheme.secondary, Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                InfoTile(Icons.Outlined.GridView, info?.android?.let { "Android $it" } ?: "Android ?", "Android", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                InfoTile(Icons.Outlined.Storage, info?.kernel ?: "?", "Kernel", MaterialTheme.colorScheme.secondary, Modifier.weight(1f))
             }
         }
     }

@@ -1,5 +1,6 @@
 package dev.aether.manager.util
 
+import android.os.Build
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -88,8 +89,10 @@ object RootEngine {
      * is written verbatim. Returns true when the write succeeds.
      */
     suspend fun writeFile(path: String, content: String): Boolean {
-        val escaped = content.replace("'", "'\\''")
-        return sh("printf '%s' '$escaped' > $path").exitCode == 0
+        val escaped = content.replace("'", "'\''")
+        val dir = path.substringBeforeLast('/', missingDelimiterValue = "")
+        val mkdir = if (dir.isNotBlank()) "mkdir -p '$dir' && " else ""
+        return sh("${mkdir}printf '%s' '$escaped' > '$path'").exitCode == 0
     }
 
     /**
@@ -122,6 +125,30 @@ object RootEngine {
         Shell.cmd("rm -f $TWEAKS_CONF").exec()
     }
 
+    fun getLocalDeviceInfo(): DeviceInfo {
+        val platform = listOf(
+            Build.BOARD.orEmpty(),
+            Build.HARDWARE.orEmpty(),
+            Build.DEVICE.orEmpty(),
+            Build.MANUFACTURER.orEmpty(),
+            Build.SUPPORTED_ABIS.joinToString(" ")
+        ).joinToString(" ").lowercase()
+        return DeviceInfo(
+            model     = Build.MODEL ?: "Unknown Device",
+            android   = Build.VERSION.RELEASE ?: "?",
+            kernel    = System.getProperty("os.version") ?: "?",
+            selinux   = "?",
+            rootType  = RootManager.detectRootType(),
+            soc       = detectSoc(platform),
+            socRaw    = Build.HARDWARE ?: "",
+            pid       = "",
+            profile   = "balance",
+            safeMode  = false,
+            bootCount = 0,
+        )
+    }
+
+
     /**
      * Read device information such as model, Android version and chipset.
      * Additional fields like root type and thermal state are also included.
@@ -144,9 +171,9 @@ object RootEngine {
             else
               root=Unknown
             fi
-            profile=$(cat ${'$'}{PROFILE_FILE} 2>/dev/null || echo balance)
-            safe=$([ -f ${'$'}{SAFE_MODE_FILE} ] && echo 1 || echo 0)
-            boot=$(cat ${'$'}{BOOT_COUNT_FILE} 2>/dev/null || echo 0)
+            profile=$(cat /data/local/tmp/aether/profile 2>/dev/null || echo balance)
+            safe=$([ -f /data/local/tmp/aether/safe_mode ] && echo 1 || echo 0)
+            boot=$(cat /data/local/tmp/aether/boot_count 2>/dev/null || echo 0)
             echo model=${'$'}model
             echo android=${'$'}android
             echo platform=${'$'}platform

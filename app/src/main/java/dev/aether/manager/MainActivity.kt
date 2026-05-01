@@ -299,7 +299,10 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             ) { screen ->
                 when (screen) {
                     Screen.HOME -> HomeScreen(vm)
-                    Screen.TWEAK -> TweakScreen(vm)
+                    Screen.TWEAK -> TweakScreen(
+                        vm = vm,
+                        onOpenAppProfile = { currentScreen = Screen.APPS }
+                    )
                     Screen.APPS -> AppProfileScreen(apVm)
                 }
             }

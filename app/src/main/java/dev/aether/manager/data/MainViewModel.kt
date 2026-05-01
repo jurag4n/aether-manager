@@ -173,6 +173,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         startApplyWorker()
+        _deviceInfo.value = UiState.Success(RootEngine.getLocalDeviceInfo())
         viewModelScope.launch { initFromCachedRoot() }
     }
 
@@ -183,7 +184,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             loadAll()
             startMonitorLoop()
         } else {
-            _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
+            _deviceInfo.value = UiState.Success(RootEngine.getLocalDeviceInfo())
+            snack("Root belum aktif — data Home memakai fallback lokal")
         }
     }
 
@@ -195,7 +197,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             loadAll()
             if (!monitorStarted) startMonitorLoop()
         } else {
-            _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
+            _deviceInfo.value = UiState.Success(RootEngine.getLocalDeviceInfo())
+            snack("Root belum aktif — data Home memakai fallback lokal")
         }
     }
 
@@ -351,6 +354,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = e.message ?: "error")
             snack("Gagal set profile: ${e.message}")
         }
+    }
+
+    fun setThermalProfile(profile: String) = viewModelScope.launch(Dispatchers.IO) {
+        _tweaks.value = _tweaks.value.copy(thermalProfile = profile)
+        val map = tweaksStateToMap(_tweaks.value).toMutableMap()
+        map["thermal_profile"] = profile
+        executeApply(map)
+        snack("Thermal → ${profile.replaceFirstChar { it.uppercaseChar() }}")
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -520,12 +531,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applyTweakStrToState(state: TweaksState, key: String, value: String): TweaksState =
         when (key) {
-            "cpu_governor"       -> state.copy(cpuGovernor = value)
-            "io_scheduler"       -> state.copy(ioScheduler = value)
+            "cpu_governor", "cpuGovernor" -> state.copy(cpuGovernor = value)
+            "io_scheduler", "ioScheduler" -> state.copy(ioScheduler = value)
             "zram_size"          -> state.copy(zramSize = value)
             "zram_algo"          -> state.copy(zramAlgo = value)
-            "thermal_profile"    -> state.copy(thermalProfile = value)
-            "gpu_freq_max"       -> state.copy(gpuFreqMax = value)
+            "thermal_profile", "thermalProfile" -> state.copy(thermalProfile = value)
+            "gpu_freq_max", "gpuFreqMax" -> state.copy(gpuFreqMax = value)
             "touch_sample_rate"  -> state.copy(touchSampleRate = value)
             "cpu_freq_prime_min" -> state.copy(cpuFreqPrimeMin = value)
             "cpu_freq_prime_max" -> state.copy(cpuFreqPrimeMax = value)

@@ -101,7 +101,8 @@ object AppProfileRepository {
     }
 
     suspend fun startMonitor() = withContext(Dispatchers.IO) {
-RootEngine.sh(
+        writeMonitorScript()
+        RootEngine.sh(
             "pkill -f app_monitor.sh 2>/dev/null || true",
             "nohup $MONITOR_SCRIPT >/dev/null 2>&1 &"
         )
