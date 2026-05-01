@@ -66,7 +66,7 @@ import dev.aether.manager.ui.settings.SettingsScreen
 import dev.aether.manager.ui.tweak.TweakScreen
 import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
-import dev.aether.manager.util.RootUtils
+import dev.aether.manager.util.RootEngine
 
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
@@ -318,8 +318,8 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     if (showReboot) {
         RebootBottomSheet(
             onDismiss        = { showReboot = false },
-            onReboot         = { vm.reboot(RootUtils.RebootMode.NORMAL) },
-            onRebootRecovery = { vm.reboot(RootUtils.RebootMode.RECOVERY) },
+            onReboot         = { vm.reboot(RootEngine.RebootMode.NORMAL) },
+            onRebootRecovery = { vm.reboot(RootEngine.RebootMode.RECOVERY) },
             onReloadUI       = { vm.refresh() }
         )
     }
