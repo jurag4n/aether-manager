@@ -1,5 +1,6 @@
 package dev.aether.manager.ui.tweak
 
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -84,6 +85,9 @@ fun TweakScreen(
     val scroll = rememberScrollState()
 
     var expandedCard by rememberSaveable { mutableStateOf<String?>(null) }
+    var activeProfile by rememberSaveable {
+        mutableStateOf(if (tweaks.thermalProfile.isBlank()) "default" else tweaks.thermalProfile)
+    }
 
     var cpuGovernor by rememberSaveable {
         mutableStateOf(if (tweaks.cpuBoost) "Performance" else "Schedutil")
@@ -129,6 +133,7 @@ fun TweakScreen(
     }
 
     fun setProfileNow(profile: String) {
+        activeProfile = profile
         vm.setProfile(profile)
         vm.applyAll()
     }
@@ -153,6 +158,15 @@ fun TweakScreen(
             .padding(top = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        DeviceInfoCard()
+
+        ActiveProfileCard(
+            expanded = expandedCard == "active_profile",
+            current = activeProfile,
+            onClick = { toggleExpand("active_profile") },
+            onSelect = { setProfileNow(it) }
+        )
+
         ExpandablePair(
             expandedKey = expandedCard,
             leftKey = "cpu",
@@ -291,7 +305,7 @@ fun TweakScreen(
 
         ThermalProfileCard(
             expanded = expandedCard == "thermal",
-            current = tweaks.thermalProfile,
+            current = activeProfile,
             onClick = { toggleExpand("thermal") },
             onSelect = { setProfileNow(it) }
         )
@@ -676,7 +690,7 @@ private fun ExpandableTweakCard(
         label = "badge_fg_$title"
     )
     val scale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.985f,
+        targetValue = if (expanded) 1f else 0.992f,
         animationSpec = smoothSpring(),
         label = "card_scale_$title"
     )
@@ -687,8 +701,8 @@ private fun ExpandableTweakCard(
     )
     val detailOffset by animateFloatAsState(
         targetValue = if (expanded) 0f else when (side) {
-            ExpandSide.Left -> -24f
-            ExpandSide.Right -> 24f
+            ExpandSide.Left -> -14f
+            ExpandSide.Right -> 14f
             ExpandSide.Center -> 0f
         },
         animationSpec = smoothSpring(),
@@ -701,6 +715,10 @@ private fun ExpandableTweakCard(
         color = container,
         tonalElevation = if (expanded) 3.dp else 0.dp,
         modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .heightIn(min = baseHeight)
             .animateContentSize(smoothSpring())
     ) {
@@ -774,6 +792,262 @@ private fun ExpandableTweakCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DeviceInfoCard() {
+    val deviceName = rememberDeviceName()
+    val codeName = Build.DEVICE ?: "Unknown"
+    val androidVersion = "Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}"
+    val kernel = System.getProperty("os.version") ?: "Unknown"
+
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 1.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(smoothSpring())
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(17.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Memory,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(23.dp)
+                    )
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Device Info",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Informasi perangkat aktif",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                InfoItem(
+                    modifier = Modifier.weight(1f),
+                    title = "Nama Perangkat",
+                    value = deviceName
+                )
+                InfoItem(
+                    modifier = Modifier.weight(1f),
+                    title = "CodeName",
+                    value = codeName
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                InfoItem(
+                    modifier = Modifier.weight(1f),
+                    title = "Android",
+                    value = androidVersion
+                )
+                InfoItem(
+                    modifier = Modifier.weight(1f),
+                    title = "Kernel",
+                    value = kernel
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoItem(
+    modifier: Modifier = Modifier,
+    title: String,
+    value: String
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        modifier = modifier.height(74.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActiveProfileCard(
+    expanded: Boolean,
+    current: String,
+    onClick: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    val label = profileLabel(current)
+
+    ExpandableTweakCard(
+        modifier = Modifier.fillMaxWidth(),
+        icon = profileIcon(current),
+        title = label,
+        subtitle = "Active Profile",
+        badge = "Active",
+        active = true,
+        expanded = expanded,
+        side = ExpandSide.Center,
+        baseHeight = 96.dp,
+        onClick = onClick
+    ) {
+        ProfileModeSelector(current = current, onSelect = onSelect)
+    }
+}
+
+@Composable
+private fun ProfileModeSelector(
+    current: String,
+    onSelect: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ProfileChip(
+                modifier = Modifier.weight(1f),
+                key = "default",
+                label = "Balance",
+                icon = Icons.Outlined.Thermostat,
+                selected = current == "default" || current == "balance",
+                onSelect = onSelect
+            )
+            ProfileChip(
+                modifier = Modifier.weight(1f),
+                key = "performance",
+                label = "Performance",
+                icon = Icons.Outlined.FlashOn,
+                selected = current == "performance",
+                onSelect = onSelect
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ProfileChip(
+                modifier = Modifier.weight(1f),
+                key = "extreme",
+                label = "Extreme",
+                icon = Icons.Outlined.Speed,
+                selected = current == "extreme",
+                onSelect = onSelect
+            )
+            ProfileChip(
+                modifier = Modifier.weight(1f),
+                key = "battery",
+                label = "Battery",
+                icon = Icons.Outlined.Memory,
+                selected = current == "battery" || current == "powersave",
+                onSelect = onSelect
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileChip(
+    modifier: Modifier = Modifier,
+    key: String,
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onSelect: (String) -> Unit
+) {
+    val bg by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = tween(220),
+        label = "profile_chip_bg_$key"
+    )
+    val fg by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(220),
+        label = "profile_chip_fg_$key"
+    )
+
+    Surface(
+        onClick = { onSelect(key) },
+        shape = RoundedCornerShape(18.dp),
+        color = bg,
+        modifier = modifier.height(64.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = fg,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+private fun rememberDeviceName(): String {
+    val manufacturer = Build.MANUFACTURER.orEmpty()
+    val model = Build.MODEL.orEmpty()
+    return when {
+        model.isBlank() -> manufacturer.ifBlank { "Unknown" }
+        manufacturer.isBlank() -> model
+        model.lowercase().startsWith(manufacturer.lowercase()) -> model
+        else -> "$manufacturer $model"
     }
 }
 
@@ -998,7 +1272,8 @@ private fun ProfileSelector(
         listOf(
             "default" to "Balance",
             "performance" to "Performance",
-            "extreme" to "Extreme"
+            "extreme" to "Extreme",
+            "battery" to "Battery"
         ).forEach { (key, label) ->
             val selected = current == key
             val bg by animateColorAsState(
@@ -1027,6 +1302,7 @@ private fun ProfileSelector(
                         imageVector = when (key) {
                             "performance" -> Icons.Outlined.FlashOn
                             "extreme" -> Icons.Outlined.Speed
+                            "battery" -> Icons.Outlined.Memory
                             else -> Icons.Outlined.Thermostat
                         },
                         contentDescription = null,
@@ -1182,11 +1458,23 @@ private fun StatusPill(
     }
 }
 
-private fun thermalLabel(value: String): String {
-    return when (value) {
+private fun thermalLabel(value: String): String = profileLabel(value)
+
+private fun profileLabel(value: String): String {
+    return when (value.lowercase()) {
         "performance" -> "Performance"
         "extreme" -> "Extreme"
+        "battery", "powersave" -> "Battery"
         else -> "Balance"
+    }
+}
+
+private fun profileIcon(value: String): ImageVector {
+    return when (value.lowercase()) {
+        "performance" -> Icons.Outlined.FlashOn
+        "extreme" -> Icons.Outlined.Speed
+        "battery", "powersave" -> Icons.Outlined.Memory
+        else -> Icons.Outlined.Thermostat
     }
 }
 
@@ -1202,6 +1490,6 @@ private fun normalizeLabel(value: String): String {
 }
 
 private fun <T> smoothSpring() = spring<T>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMediumLow
+    dampingRatio = 0.88f,
+    stiffness = Spring.StiffnessLow
 )

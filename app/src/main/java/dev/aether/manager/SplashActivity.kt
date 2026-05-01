@@ -453,9 +453,9 @@ private fun ZigZagProgress(
         val startX = 8.dp.toPx()
         val endX = size.width - 8.dp.toPx()
         val centerY = size.height / 2f
-        val amplitude = 8.dp.toPx()
-        val strokeWidth = 4.dp.toPx()
-        val segments = 18
+        val amplitude = 5.5.dp.toPx()
+        val strokeWidth = 4.5.dp.toPx()
+        val segments = 10
         val step = (endX - startX) / segments
         val points = ArrayList<Offset>(segments + 1)
 
@@ -465,12 +465,29 @@ private fun ZigZagProgress(
             points.add(Offset(x, y))
         }
 
-        val track = Path().apply {
-            moveTo(points.first().x, points.first().y)
-            for (i in 1 until points.size) {
-                lineTo(points[i].x, points[i].y)
+        fun softZigZagPath(pathPoints: List<Offset>): Path {
+            return Path().apply {
+                if (pathPoints.isEmpty()) return@apply
+                moveTo(pathPoints.first().x, pathPoints.first().y)
+                if (pathPoints.size == 1) return@apply
+
+                for (i in 1 until pathPoints.size) {
+                    val control = pathPoints[i - 1]
+                    val target = pathPoints[i]
+                    val mid = Offset(
+                        x = (control.x + target.x) / 2f,
+                        y = (control.y + target.y) / 2f
+                    )
+                    quadraticBezierTo(control.x, control.y, mid.x, mid.y)
+
+                    if (i == pathPoints.lastIndex) {
+                        quadraticBezierTo(target.x, target.y, target.x, target.y)
+                    }
+                }
             }
         }
+
+        val track = softZigZagPath(points)
 
         drawPath(
             path = track,
@@ -486,20 +503,24 @@ private fun ZigZagProgress(
         val fullSegments = totalSegments.toInt().coerceIn(0, segments)
         val remainder = totalSegments - fullSegments
 
-        val active = Path().apply {
-            moveTo(points.first().x, points.first().y)
+        val activePoints = ArrayList<Offset>().apply {
+            add(points.first())
             for (i in 1..fullSegments) {
-                lineTo(points[i].x, points[i].y)
+                add(points[i])
             }
             if (fullSegments < segments) {
                 val a = points[fullSegments]
                 val b = points[fullSegments + 1]
-                lineTo(
-                    x = a.x + (b.x - a.x) * remainder,
-                    y = a.y + (b.y - a.y) * remainder
+                add(
+                    Offset(
+                        x = a.x + (b.x - a.x) * remainder,
+                        y = a.y + (b.y - a.y) * remainder
+                    )
                 )
             }
         }
+
+        val active = softZigZagPath(activePoints)
 
         drawPath(
             path = active,

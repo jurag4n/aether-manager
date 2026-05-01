@@ -213,38 +213,39 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     )
 
     var bottomNavVisible by remember { mutableStateOf(true) }
+    var isNavSliding by remember { mutableStateOf(false) }
+
     val scrollAwareNavConnection = remember {
         object : NestedScrollConnection {
             private var scrollBuffer = 0f
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val dy = available.y
+                if (isNavSliding) return Offset.Zero
 
+                val dy = available.y
                 when {
-                    dy < -3f -> {
-                        scrollBuffer = (scrollBuffer + dy).coerceAtLeast(-64f)
-                        if (scrollBuffer <= -18f) {
+                    dy < -4f -> {
+                        scrollBuffer = (scrollBuffer + dy).coerceAtLeast(-80f)
+                        if (scrollBuffer <= -22f) {
                             bottomNavVisible = false
                             scrollBuffer = 0f
                         }
                     }
-                    dy > 3f -> {
-                        scrollBuffer = (scrollBuffer + dy).coerceAtMost(64f)
-                        if (scrollBuffer >= 12f) {
+                    dy > 4f -> {
+                        scrollBuffer = (scrollBuffer + dy).coerceAtMost(80f)
+                        if (scrollBuffer >= 14f) {
                             bottomNavVisible = true
                             scrollBuffer = 0f
                         }
                     }
-                    else -> Unit
                 }
-
                 return Offset.Zero
             }
         }
     }
 
     LaunchedEffect(currentScreen) {
-        bottomNavVisible = true
+        if (!isNavSliding) bottomNavVisible = true
     }
 
     if (showLicense) {
@@ -286,21 +287,36 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .nestedScroll(scrollAwareNavConnection)
         ) {
-            AnimatedContent(
-                targetState = currentScreen,
-                transitionSpec = {
-                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                    (slideInHorizontally { it * dir / 4 } + fadeIn(tween(220))) togetherWith
-                            (slideOutHorizontally { -it * dir / 4 } + fadeOut(tween(150)))
-                },
-                label = "screen_transition"
-            ) { screen ->
-                when (screen) {
-                    Screen.HOME -> HomeScreen(vm)
-                    Screen.TWEAK -> TweakScreen(vm)
-                    Screen.APPS -> AppProfileScreen(apVm)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollAwareNavConnection)
+            ) {
+                AnimatedContent(
+                    targetState = currentScreen,
+                    transitionSpec = {
+                        val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                        (slideInHorizontally(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        ) { it * dir / 5 } + fadeIn(tween(170, easing = FastOutSlowInEasing))) togetherWith
+                                (slideOutHorizontally(
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                ) { -it * dir / 5 } + fadeOut(tween(120, easing = FastOutSlowInEasing)))
+                    },
+                    label = "screen_transition"
+                ) { screen ->
+                    when (screen) {
+                        Screen.HOME -> HomeScreen(vm)
+                        Screen.TWEAK -> TweakScreen(vm)
+                        Screen.APPS -> AppProfileScreen(apVm)
+                    }
                 }
             }
 
@@ -308,6 +324,10 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                 navItems = navItems,
                 currentScreen = currentScreen,
                 visible = bottomNavVisible,
+                onSlidingChange = { sliding ->
+                    isNavSliding = sliding
+                    if (sliding) bottomNavVisible = true
+                },
                 onScreenChange = { currentScreen = it },
                 onSettingsClick = { showSettings = true },
                 onPowerClick = { showReboot = true },
@@ -327,13 +347,14 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     UpdateDialogHost(viewModel = updateVm)
 }
 // ─────────────────────────────────────────────────────────────────────────────
-// Bottom nav cluster — Settings/Reboot dipisah dari tab utama
+// Bottom nav cluster — tab capsule + utility capsule
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun FloatingBottomCluster(
     navItems: List<NavItem>,
     currentScreen: Screen,
     visible: Boolean,
+    onSlidingChange: (Boolean) -> Unit,
     onScreenChange: (Screen) -> Unit,
     onSettingsClick: () -> Unit,
     onPowerClick: () -> Unit,
@@ -358,34 +379,33 @@ private fun FloatingBottomCluster(
     ) {
         Row(
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            FloatingBottomBar(
+            FloatingTabCapsule(
                 navItems = navItems,
                 currentScreen = currentScreen,
                 onScreenChange = onScreenChange,
-                onSlidingChange = { isNavSliding = it }
+                onSlidingChange = { sliding ->
+                    isNavSliding = sliding
+                    onSlidingChange(sliding)
+                }
             )
 
             AnimatedVisibility(
                 visible = !isNavSliding,
-                enter = fadeIn(tween(120, easing = FastOutSlowInEasing)) + expandHorizontally(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    expandFrom = Alignment.Start
-                ),
+                enter = fadeIn(tween(130, easing = FastOutSlowInEasing)) +
+                        expandHorizontally(
+                            animationSpec = tween(170, easing = FastOutSlowInEasing),
+                            expandFrom = Alignment.Start
+                        ),
                 exit = shrinkHorizontally(
-                    animationSpec = tween(110, easing = FastOutSlowInEasing),
+                    animationSpec = tween(120, easing = FastOutSlowInEasing),
                     shrinkTowards = Alignment.Start
                 ) + fadeOut(tween(90, easing = FastOutSlowInEasing))
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(modifier = Modifier.width(10.dp))
-
-                    FloatingUtilityBar(
+                    FloatingUtilityCapsule(
                         onSettingsClick = onSettingsClick,
                         onPowerClick = onPowerClick
                     )
@@ -396,7 +416,7 @@ private fun FloatingBottomCluster(
 }
 
 @Composable
-private fun FloatingUtilityBar(
+private fun FloatingUtilityCapsule(
     onSettingsClick: () -> Unit,
     onPowerClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -419,76 +439,109 @@ private fun FloatingUtilityBar(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FloatingBottomBar — iOS 26-style hold-to-expand + drag-to-switch capsule
-// ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun FloatingBottomBar(
+private fun FloatingTabCapsule(
     navItems: List<NavItem>,
     currentScreen: Screen,
     onScreenChange: (Screen) -> Unit,
     modifier: Modifier = Modifier,
     onSlidingChange: (Boolean) -> Unit = {}
 ) {
-    // ── Expansion state ───────────────────────────────────────────────────────
     var expanded by remember { mutableStateOf(false) }
-    // Drag tracking (pixel offset accumulated during hold-drag)
-    var dragAccum by remember { mutableStateOf(0f) }
-    // Which item index is highlighted while dragging
-    var dragIndex by remember { mutableIntStateOf(navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)) }
-
-    // Keep dragIndex in sync when screen changes externally
-    LaunchedEffect(currentScreen) {
-        if (!expanded) dragIndex = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
+    var dragX by remember { mutableStateOf(0f) }
+    var navWidthPx by remember { mutableStateOf(0f) }
+    var dragIndex by remember {
+        mutableIntStateOf(navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0))
     }
 
-    // ── Animation values ──────────────────────────────────────────────────────
-    val expandSpec = spring<Float>(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium)
-    val collapseSpec = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+    fun selectedIndex(): Int = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
+
+    fun indexFromX(x: Float): Int {
+        val width = navWidthPx.takeIf { it > 0f } ?: return selectedIndex()
+        return ((x / width) * navItems.size)
+            .toInt()
+            .coerceIn(0, navItems.lastIndex)
+    }
+
+    LaunchedEffect(currentScreen) {
+        if (!expanded) dragIndex = selectedIndex()
+    }
 
     val expandProgress by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = if (expanded) expandSpec else collapseSpec,
+        animationSpec = spring(
+            dampingRatio = if (expanded) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
+            stiffness = if (expanded) Spring.StiffnessMedium else Spring.StiffnessMediumLow
+        ),
         label = "capsule_expand"
     )
 
-    // Outer capsule vertical scale — subtle squish on long-press start
     val capsuleScale by animateFloatAsState(
-        targetValue = if (expanded) 1.04f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        targetValue = if (expanded) 1.045f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "capsule_scale"
     )
-
-    // ── Drag threshold per item (px → will be set after layout) ──────────────
-    val itemWidthPx = remember { mutableStateOf(0f) }
 
     Surface(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
         shadowElevation = 20.dp,
         tonalElevation = 8.dp,
-        modifier = modifier
-            .scale(scaleX = 1f, scaleY = capsuleScale)
+        modifier = modifier.scale(scaleX = 1f, scaleY = capsuleScale)
     ) {
         Row(
             modifier = Modifier
+                .onGloballyPositioned { coords -> navWidthPx = coords.size.width.toFloat() }
+                .pointerInput(navItems, currentScreen) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { offset ->
+                            expanded = true
+                            onSlidingChange(true)
+                            dragX = offset.x.coerceIn(0f, navWidthPx.takeIf { it > 0f } ?: offset.x)
+                            dragIndex = indexFromX(dragX)
+                            onScreenChange(navItems[dragIndex].screen)
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            val maxX = navWidthPx.takeIf { it > 0f } ?: dragX
+                            dragX = (dragX + dragAmount.x).coerceIn(0f, maxX)
+                            val newIndex = indexFromX(dragX)
+                            if (newIndex != dragIndex) {
+                                dragIndex = newIndex
+                                onScreenChange(navItems[newIndex].screen)
+                            }
+                        },
+                        onDragEnd = {
+                            expanded = false
+                            onSlidingChange(false)
+                        },
+                        onDragCancel = {
+                            expanded = false
+                            onSlidingChange(false)
+                        }
+                    )
+                }
                 .padding(horizontal = 8.dp, vertical = 7.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ── Nav items ─────────────────────────────────────────────────────
             navItems.forEachIndexed { idx, item ->
                 val isSelected = currentScreen == item.screen
                 val isHighlighted = expanded && dragIndex == idx
 
-                // Item width: expanded shows label, collapsed is icon-only
                 val itemWidth by animateDpAsState(
                     targetValue = when {
-                        expanded        -> 76.dp   // icon + label
-                        isSelected      -> 62.dp   // selected pill
-                        else            -> 48.dp
+                        expanded -> 76.dp
+                        isSelected -> 62.dp
+                        else -> 48.dp
                     },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
                     label = "item_width_$idx"
                 )
 
@@ -498,74 +551,34 @@ private fun FloatingBottomBar(
                         !expanded && isSelected -> 1f
                         else -> 0f
                     },
-                    animationSpec = tween(200),
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
                     label = "item_bg_$idx"
                 )
+
                 val iconTint by animateColorAsState(
-                    targetValue = if (isHighlighted || (!expanded && isSelected))
+                    targetValue = if (isHighlighted || (!expanded && isSelected)) {
                         MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = tween(200),
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
                     label = "item_tint_$idx"
                 )
-                val bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha)
 
                 Box(
                     modifier = Modifier
                         .height(48.dp)
                         .width(itemWidth)
-                        .onGloballyPositioned { coords ->
-                            if (itemWidthPx.value == 0f) {
-                                itemWidthPx.value = coords.size.width.toFloat()
-                            }
-                        }
                         .clip(RoundedCornerShape(50))
-                        .background(bgColor)
-                        // Short tap → navigate
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
                             if (!expanded) {
-                                onScreenChange(item.screen)
                                 dragIndex = idx
+                                onScreenChange(item.screen)
                             }
-                        }
-                        // Long press → expand capsule; drag → switch tabs
-                        .pointerInput(navItems, expanded) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { _ ->
-                                    expanded = true
-                                    onSlidingChange(true)
-                                    dragIndex = navItems.indexOfFirst { it.screen == currentScreen }.coerceAtLeast(0)
-                                    dragAccum = 0f
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    dragAccum += dragAmount.x
-                                    val threshold = if (itemWidthPx.value > 0f) itemWidthPx.value else 80f
-                                    val steps = (dragAccum / threshold).toInt()
-                                    if (steps != 0) {
-                                        val newIdx = (dragIndex + steps).coerceIn(0, navItems.lastIndex)
-                                        if (newIdx != dragIndex) {
-                                            dragIndex = newIdx
-                                            dragAccum -= steps * threshold
-                                        }
-                                    }
-                                },
-                                onDragEnd = {
-                                    onScreenChange(navItems[dragIndex].screen)
-                                    expanded = false
-                                    onSlidingChange(false)
-                                    dragAccum = 0f
-                                },
-                                onDragCancel = {
-                                    expanded = false
-                                    onSlidingChange(false)
-                                    dragAccum = 0f
-                                }
-                            )
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -580,17 +593,18 @@ private fun FloatingBottomBar(
                             tint = iconTint,
                             modifier = Modifier.size(22.dp)
                         )
-                        // Label — slides in when expanded
+
                         AnimatedVisibility(
-                            visible = expandProgress > 0.4f,
-                            enter = fadeIn(tween(120)) + expandHorizontally(
-                                animationSpec = tween(180),
-                                expandFrom = Alignment.Start
-                            ),
+                            visible = expandProgress > 0.38f,
+                            enter = fadeIn(tween(110, easing = FastOutSlowInEasing)) +
+                                    expandHorizontally(
+                                        animationSpec = tween(170, easing = FastOutSlowInEasing),
+                                        expandFrom = Alignment.Start
+                                    ),
                             exit = shrinkHorizontally(
-                                animationSpec = tween(120),
+                                animationSpec = tween(110, easing = FastOutSlowInEasing),
                                 shrinkTowards = Alignment.Start
-                            ) + fadeOut(tween(80))
+                            ) + fadeOut(tween(80, easing = FastOutSlowInEasing))
                         ) {
                             Text(
                                 text = item.label,
@@ -638,9 +652,9 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
 
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(54.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable(
                 interactionSource = interactionSource,
@@ -648,6 +662,6 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
             ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+        Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp))
     }
 }
