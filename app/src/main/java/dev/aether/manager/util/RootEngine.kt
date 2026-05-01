@@ -162,7 +162,7 @@ object RootEngine {
 
         val result = sh(script)
         val map = parseKv(result.stdout)
-        val platform = "${'$'}{map["platform"]} ${'$'}{map["hardware"]} ${'$'}{map["soc_model"]}".lowercase()
+        val platform = "${map["platform"]} ${map["hardware"]} ${map["soc_model"]}".lowercase()
 
         val shellRootType = map["root"]
         val rootType = when {
