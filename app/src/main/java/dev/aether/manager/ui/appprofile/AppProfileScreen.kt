@@ -9,6 +9,8 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -202,21 +204,7 @@ private val profileOptions = listOf(
 private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(ProfileFilter.ALL) }
-
-    val editingProfile by vm.editingProfile.collectAsState()
-    val savingPkg by vm.savingPkg.collectAsState()
-
-    editingProfile?.let { profile ->
-        val app = state.apps.find { it.packageName == profile.packageName }
-        AppProfileEditor(
-            profile   = profile,
-            appLabel  = app?.label ?: profile.packageName,
-            appIcon   = app?.icon,
-            saving    = savingPkg == profile.packageName,
-            onDismiss = { vm.closeEditor() },
-            onSave    = { vm.saveProfile(it) }
-        )
-    }
+    var expandedPackage by remember(state.apps) { mutableStateOf<String?>(null) }
 
     val activeCount = remember(state.profiles) {
         state.profiles.values.count { it.enabled }
@@ -294,9 +282,14 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
                 items(filtered, key = { it.packageName }) { app ->
                     val profile = state.profiles[app.packageName]
                     AppListItem(
-                        app       = app,
-                        profile   = profile,
-                        onClick   = { vm.openEditor(app) }
+                        app             = app,
+                        profile         = profile,
+                        expanded        = expandedPackage == app.packageName,
+                        onClick         = {
+                            expandedPackage =
+                                if (expandedPackage == app.packageName) null else app.packageName
+                        },
+                        onProfileChange = { vm.saveProfile(it) }
                     )
                 }
             }
@@ -675,11 +668,14 @@ private fun EmptyListHint(isSearch: Boolean) {
 // App List Item
 // ─────────────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AppListItem(
     app: AppInfo,
     profile: AppProfile?,
-    onClick: () -> Unit
+    expanded: Boolean,
+    onClick: () -> Unit,
+    onProfileChange: (AppProfile) -> Unit
 ) {
     val currentProfile = profile ?: defaultProfile(app.packageName)
     val isEnabled = currentProfile.enabled
@@ -693,99 +689,242 @@ private fun AppListItem(
     val cardBg by animateColorAsState(
         if (isEnabled) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.13f)
         else MaterialTheme.colorScheme.surfaceContainerLow,
-        tween(220), label = "app_card_bg"
+        tween(220),
+        label = "app_card_bg"
     )
     val cardBorder by animateColorAsState(
-        if (isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.07f),
-        tween(220), label = "app_card_border"
+        when {
+            expanded  -> MaterialTheme.colorScheme.primary.copy(alpha = 0.36f)
+            isEnabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+            else      -> MaterialTheme.colorScheme.outline.copy(alpha = 0.07f)
+        },
+        tween(220),
+        label = "app_card_border"
+    )
+    val arrowRotation by animateFloatAsState(
+        if (expanded) 180f else 0f,
+        tween(180),
+        label = "app_card_arrow"
     )
 
-    val summary = remember(isEnabled, profile) {
-        if (profile != null && isEnabled) {
-            val parts = mutableListOf<String>()
-            parts += profileModeLabel(profile)
-            val rateLabel = refreshRateLabel(currentProfile.refreshRate)
-            if (rateLabel.lowercase() != "default") parts += rateLabel
-            parts.joinToString(" • ")
-        } else ""
+    // Summarize profile state for compact display.  Only show the active
+    // profile mode and custom refresh rate when a profile exists and is
+    // enabled.  Avoid adding "Not Set" or "Disabled" chips for a cleaner
+    // look.  If the profile is null or disabled the summary will be blank.
+    val summary by remember(isEnabled, profile) {
+        mutableStateOf(
+            run {
+                val parts = mutableListOf<String>()
+                if (profile != null && isEnabled) {
+                    // Include the human readable profile mode (e.g. Performance, Balanced)
+                    parts += profileModeLabel(profile)
+                    // Append the refresh rate if it isn't the default
+                    val rateLabel = refreshRateLabel(currentProfile.refreshRate)
+                    if (rateLabel.lowercase() != "default") {
+                        parts += rateLabel
+                    }
+                }
+                parts.joinToString(" • ")
+            }
+        )
+    }
+
+    // Determine supported refresh rate options based on the device's capabilities.
+    val context = LocalContext.current
+    val maxRefresh = remember { getMaxRefreshRate(context) }
+    val refreshOptions by remember(maxRefresh) {
+        mutableStateOf(
+            run {
+                val opts = mutableListOf<Pair<String, String>>()
+                opts.add("default" to "Default")
+                opts.add("60" to "60Hz")
+                if (maxRefresh >= 90) opts.add("90" to "90Hz")
+                if (maxRefresh > 90) {
+                    val rateStr = maxRefresh.toString()
+                    if (rateStr != "60" && rateStr != "90") {
+                        opts.add(rateStr to "${rateStr}Hz")
+                    }
+                }
+                opts
+            }
+        )
     }
 
     Surface(
-        shape  = RoundedCornerShape(22.dp),
-        color  = cardBg,
+        shape = RoundedCornerShape(22.dp),
+        color = cardBg,
         border = BorderStroke(1.dp, cardBorder),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Use a spring-based animation for smoother expansion and collapse
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
                 .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            AppIconView(
-                bitmap     = iconBitmap,
-                label      = app.label,
-                isEnabled  = isEnabled,
-                size       = 46.dp,
-                cornerSize = 14.dp
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onClick
+                    )
+                    .padding(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    app.label,
-                    style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.onSurface,
-                    maxLines   = 1,
-                    overflow   = TextOverflow.Ellipsis
+                AppIconView(
+                    bitmap = iconBitmap,
+                    label = app.label,
+                    isEnabled = isEnabled,
+                    size = 46.dp,
+                    cornerSize = 14.dp
                 )
-                Text(
-                    app.packageName,
-                    style    = MaterialTheme.typography.labelSmall,
-                    color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (summary.isNotEmpty()) {
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
                     Text(
-                        text     = summary,
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.primary.copy(alpha = 0.82f),
+                        app.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        app.packageName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    // Replace the chip group with a concise summary.  Showing
+                    // three chips for Enabled/Disabled, profile mode and refresh rate
+                    // cluttered the list.  A single line summarizing these values
+                    // keeps the UI clean while still conveying necessary info.
+                    Text(
+                        text = summary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(
+                            if (expanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
+                            else MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = if (expanded) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(arrowRotation)
+                    )
+                }
             }
 
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Filled.ChevronRight,
-                    contentDescription = null,
-                    tint     = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(tween(120)) + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    expandFrom = Alignment.Top
+                ),
+                exit = fadeOut(tween(90)) + shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    shrinkTowards = Alignment.Top
                 )
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+                    )
+
+                    ProfileSwitchRow(
+                        checked = currentProfile.enabled,
+                        onCheckedChange = {
+                            onProfileChange(currentProfile.copy(enabled = it))
+                        }
+                    )
+
+                    CompactProfileDropdown(
+                        icon = Icons.Outlined.Speed,
+                        title = "Performance Profile",
+                        selectedLabel = profileModeLabel(currentProfile),
+                        options = profileOptions.map { option ->
+                            DropOption(
+                                key = governorForFilter(option),
+                                label = option.label(),
+                                icon = option.icon()
+                            )
+                        },
+                        onSelect = { key ->
+                            onProfileChange(currentProfile.copy(cpuGovernor = key))
+                        }
+                    )
+
+                    CompactProfileDropdown(
+                        // Use the Refresh icon for the refresh-rate dropdown.  DisplaySettings
+                        // may not be available on all icon sets.
+                        icon = Icons.Outlined.Refresh,
+                        title = "Refresh Rate",
+                        selectedLabel = refreshRateLabel(currentProfile.refreshRate),
+                        options = refreshOptions.map { (key, label) ->
+                            DropOption(
+                                key = key,
+                                label = label,
+                                icon = Icons.Outlined.Refresh
+                            )
+                        },
+                        onSelect = { key ->
+                            onProfileChange(currentProfile.copy(refreshRate = key))
+                        }
+                    )
+                }
             }
         }
     }
 }
 
+private data class DropOption(
+    val key: String,
+    val label: String,
+    val icon: ImageVector
+)
+
+// -----------------------------------------------------------------------------
+// Utility: determine the maximum supported refresh rate for the current device.
+// This helper inspects the available display modes when running on Android R
+// (API 30) or newer.  On older versions, it falls back to the default
+// refreshRate property on the Display.  If any error occurs the method
 // returns a conservative default of 60Hz.  The returned value is in Hertz.
 private fun getMaxRefreshRate(context: Context): Int {
     return try {
@@ -805,6 +944,206 @@ private fun getMaxRefreshRate(context: Context): Int {
     }
 }
 
+@Composable
+private fun ProfileSwitchRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val accent by animateColorAsState(
+        if (checked) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        tween(180),
+        label = "profile_switch_accent"
+    )
+
+    Surface(
+        shape = RoundedCornerShape(17.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.70f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.07f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onCheckedChange(!checked) }
+                .padding(horizontal = 13.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Outlined.CheckCircle,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                Text(
+                    text = "Enable Profile",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (checked) "Aktif untuk aplikasi ini" else "Nonaktif untuk aplikasi ini",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                modifier = Modifier.scale(0.82f),
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactProfileDropdown(
+    icon: ImageVector,
+    title: String,
+    selectedLabel: String,
+    options: List<DropOption>,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        if (expanded) 180f else 0f,
+        tween(180),
+        label = "compact_dropdown_arrow"
+    )
+
+    Surface(
+        shape = RoundedCornerShape(17.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.70f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.07f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 13.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+
+            Box {
+                Surface(
+                    onClick = { expanded = true },
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            text = selectedLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Icon(
+                            Icons.Filled.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .rotate(arrowRotation)
+                        )
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    options.forEach { option ->
+                        val selected = option.label == selectedLabel
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    option.label,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    option.icon,
+                                    contentDescription = null,
+                                    tint = if (selected) MaterialTheme.colorScheme.primary
+                                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            trailingIcon = {
+                                if (selected) {
+                                    Icon(
+                                        Icons.Outlined.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
+                            },
+                            onClick = {
+                                expanded = false
+                                onSelect(option.key)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // App Chip

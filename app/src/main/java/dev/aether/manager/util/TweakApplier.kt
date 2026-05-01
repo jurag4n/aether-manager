@@ -76,16 +76,15 @@ object TweakApplier {
         val t0 = System.currentTimeMillis()
 
         // Tulis conf + apply dalam SATU Shell batch
+        val confContent = tweaks.entries.joinToString("\\n") { (k, v) ->
+            "$k=${v.replace("'", "'\"'\"'")}"
+        }
         val dir = confPath.substringBeforeLast('/')
-        val confLines = tweaks.entries.joinToString("\n") { (k, v) ->
-            "$k=$v"
-        }
-        val writeConf = buildString {
-            appendLine("mkdir -p $dir")
-            appendLine("cat > $confPath << 'AETHER_EOF'")
-            appendLine(confLines)
-            appendLine("AETHER_EOF")
-        }
+        val writeConf = """
+mkdir -p $dir
+printf '$confContent\n' > $confPath
+""".trimIndent()
+
         val output = runScript(writeConf + "\n" + buildFullScript(tweaks))
         ApplyResult(
             subsystems = parseResults(output),
