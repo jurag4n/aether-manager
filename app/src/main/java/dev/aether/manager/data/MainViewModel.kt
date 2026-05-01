@@ -173,7 +173,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         startApplyWorker()
-        _deviceInfo.value = UiState.Success(RootEngine.getLocalDeviceInfo())
         viewModelScope.launch { initFromCachedRoot() }
     }
 
@@ -184,8 +183,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             loadAll()
             startMonitorLoop()
         } else {
-            _deviceInfo.value = UiState.Success(RootEngine.getLocalDeviceInfo())
-            snack("Root belum aktif — data Home memakai fallback lokal")
+            _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
         }
     }
 
@@ -197,8 +195,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             loadAll()
             if (!monitorStarted) startMonitorLoop()
         } else {
-            _deviceInfo.value = UiState.Success(RootEngine.getLocalDeviceInfo())
-            snack("Root belum aktif — data Home memakai fallback lokal")
+            _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
         }
     }
 
@@ -343,25 +340,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 totalMs = result.totalMs,
             )
 
-            // Refresh device info supaya profile badge update
+            // Refresh device info so the profile badge updates
             val info = RootEngine.getDeviceInfo()
             _deviceInfo.value = UiState.Success(info)
             _monitorState.value = RootEngine.getMonitorState()
-            snack("Profile → ${profile.replaceFirstChar { it.uppercaseChar() }} (${result.totalMs}ms)")
+            // Do not show a success toast here; the UI will reflect the new profile
 
         } catch (e: Exception) {
             _applyingTweak.value = false
             _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = e.message ?: "error")
             snack("Gagal set profile: ${e.message}")
         }
-    }
-
-    fun setThermalProfile(profile: String) = viewModelScope.launch(Dispatchers.IO) {
-        _tweaks.value = _tweaks.value.copy(thermalProfile = profile)
-        val map = tweaksStateToMap(_tweaks.value).toMutableMap()
-        map["thermal_profile"] = profile
-        executeApply(map)
-        snack("Thermal → ${profile.replaceFirstChar { it.uppercaseChar() }}")
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -371,7 +360,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun applyAll() = viewModelScope.launch(Dispatchers.IO) {
         val map = tweaksStateToMap(_tweaks.value)
         executeApply(map)
-        snack("Tweaks applied ✓  ${_applyStatus.value.summary}")
+        // Skip success snack for apply; only errors will trigger a toast
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -531,12 +520,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applyTweakStrToState(state: TweaksState, key: String, value: String): TweaksState =
         when (key) {
-            "cpu_governor", "cpuGovernor" -> state.copy(cpuGovernor = value)
-            "io_scheduler", "ioScheduler" -> state.copy(ioScheduler = value)
+            "cpu_governor"       -> state.copy(cpuGovernor = value)
+            "io_scheduler"       -> state.copy(ioScheduler = value)
             "zram_size"          -> state.copy(zramSize = value)
             "zram_algo"          -> state.copy(zramAlgo = value)
-            "thermal_profile", "thermalProfile" -> state.copy(thermalProfile = value)
-            "gpu_freq_max", "gpuFreqMax" -> state.copy(gpuFreqMax = value)
+            "thermal_profile"    -> state.copy(thermalProfile = value)
+            "gpu_freq_max"       -> state.copy(gpuFreqMax = value)
             "touch_sample_rate"  -> state.copy(touchSampleRate = value)
             "cpu_freq_prime_min" -> state.copy(cpuFreqPrimeMin = value)
             "cpu_freq_prime_max" -> state.copy(cpuFreqPrimeMax = value)
@@ -614,7 +603,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resetTweaks() = viewModelScope.launch(Dispatchers.IO) {
         RootEngine.resetTweaks()
         loadTweaks()
-        snack("Tweaks direset ke default")
+        // Suppress success toast; UI will reflect default state
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -700,14 +689,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resetToDefaults() = viewModelScope.launch(Dispatchers.IO) {
         RootEngine.resetTweaks()
         loadTweaks()
-        snack("Tweaks direset ke default")
+        // Suppress success toast; UI will reflect default state
     }
 
     fun clearAppCache() = viewModelScope.launch(Dispatchers.IO) {
         try {
             getApplication<Application>().cacheDir?.deleteRecursively()
             getApplication<Application>().externalCacheDir?.deleteRecursively()
-            snack("Cache berhasil dihapus ✓")
+            // Do not show a success toast when clearing cache
         } catch (e: Exception) {
             snack("Gagal hapus cache: ${e.message}")
         }

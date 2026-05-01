@@ -47,8 +47,10 @@ object TweakApplier {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun runScript(script: String): String {
-        if (Shell.isAppGrantedRoot() != true) {
-            Shell.getShell()
+        // Pastikan shell interactive sudah siap
+        if (!Shell.isAppGrantedRoot()!!) {
+             // Jika belum granted di session ini, coba init
+             Shell.getShell()
         }
         val result = Shell.cmd(script).exec()
         return result.out.joinToString("\n")
@@ -74,15 +76,13 @@ object TweakApplier {
         val t0 = System.currentTimeMillis()
 
         // Tulis conf + apply dalam SATU Shell batch
-        val confContent = tweaks.entries.joinToString("\n") { (k, v) ->
-            "$k=${v.replace("\n", " ").replace("'", "'\"'\"'")}"
+        val confContent = tweaks.entries.joinToString("\\n") { (k, v) ->
+            "$k=${v.replace("'", "'\"'\"'")}"
         }
         val dir = confPath.substringBeforeLast('/')
         val writeConf = """
-mkdir -p '$dir'
-cat > '$confPath' <<'AETHER_TWEAKS_CONF'
-$confContent
-AETHER_TWEAKS_CONF
+mkdir -p $dir
+printf '$confContent\n' > $confPath
 """.trimIndent()
 
         val output = runScript(writeConf + "\n" + buildFullScript(tweaks))
@@ -257,7 +257,7 @@ for pol in /sys/devices/system/cpu/cpufreq/policy*/; do
 done
 _end "cpu_freq"
 """
-            profile == "gaming" || profile == "performance" || profile == "extreme" -> """
+            profile == "gaming" || profile == "performance" -> """
 _begin
 # cpu_freq — max perf (safe: write only, no chmod 444 lock)
 for pol in /sys/devices/system/cpu/cpufreq/policy*/; do
@@ -360,7 +360,7 @@ _end "cpu_freq"
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun buildCpuBoost(t: Map<String, String>, profile: String): String {
-        val on = t["cpu_boost"] == "1" || profile == "gaming" || profile == "performance" || profile == "extreme"
+        val on = t["cpu_boost"] == "1" || profile == "gaming" || profile == "performance"
         return if (on) """
 _begin
 # cpu_boost — enable
@@ -453,12 +453,11 @@ _end "cpuset"
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun buildSched(t: Map<String, String>, profile: String): String {
-        val boost = if (t["schedboost"] == "1" || profile == "gaming" || profile == "performance" || profile == "extreme") "1" else "0"
+        val boost = if (t["schedboost"] == "1" || profile == "gaming" || profile == "performance") "1" else "0"
         val (upmig, downmig) = when (profile) {
-            "extreme"               -> "80" to "65"
             "gaming", "performance" -> "85" to "75"
             "battery"               -> "99" to "95"
-            else                     -> "95" to "85"
+            else                    -> "95" to "85"
         }
         return """
 _begin
@@ -530,7 +529,7 @@ _end "thermal"
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun buildGpu(t: Map<String, String>, profile: String): String {
-        val perf = t["gpu_throttle_off"] == "1" || profile == "gaming" || profile == "performance" || profile == "extreme"
+        val perf = t["gpu_throttle_off"] == "1" || profile == "gaming" || profile == "performance"
         return if (perf) """
 _begin
 # gpu — performance (safe: tanpa force_clk_on/idle_timer paksa)

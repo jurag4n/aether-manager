@@ -28,7 +28,9 @@ class AetherApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        NativeAether.tryLoad()
+        // Attempt to load the native library with application context so that
+        // fallback resolution using nativeLibraryDir can occur if needed.
+        NativeAether.tryLoad(this)
 
         if (!BuildConfig.DEBUG) {
             checkSignature()
@@ -37,7 +39,8 @@ class AetherApplication : Application() {
         }
 
         initLibsu()
-        CimolAgent.tryLoad()
+        // Load CimolAgent with context for robust fallback loading.
+        CimolAgent.tryLoad(this)
         initUnityAds()
         initAdMob()
 

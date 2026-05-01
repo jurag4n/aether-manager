@@ -4,13 +4,43 @@ object CimolAgent {
 
     private var loaded = false
 
-    fun tryLoad(): Boolean {
+    /**
+     * Attempt to load the native `libcimolagent.so` library with a
+     * resilient fallback.  Normally [System.loadLibrary] suffices, but
+     * certain install scenarios (for example split APKs) may place the
+     * library in a non-standard location.  If the standard load fails
+     * and a [Context] is supplied the loader will attempt to load the
+     * library from the app's `nativeLibraryDir`.  The [context]
+     * parameter is optional; when omitted only the standard lookup is
+     * attempted.
+     *
+     * @param context optional application context to resolve the
+     * native library directory for fallback loading
+     * @return `true` if the library was loaded or is already loaded,
+     *         `false` otherwise
+     */
+    fun tryLoad(context: android.content.Context? = null): Boolean {
         if (loaded) return true
         return runCatching {
-            System.loadLibrary("cimolagent")
+            try {
+                // Attempt the standard library load first.
+                System.loadLibrary("cimolagent")
+            } catch (err: UnsatisfiedLinkError) {
+                // Fallback: if a context is available, build the absolute
+                // path to libcimolagent.so in the nativeLibraryDir and load
+                // it directly.  If no context is provided rethrow the
+                // error to propagate failure.
+                val dir = context?.applicationInfo?.nativeLibraryDir
+                val fallback = dir?.let { "$it/libcimolagent.so" }
+                if (fallback != null) {
+                    System.load(fallback)
+                } else {
+                    throw err
+                }
+            }
             loaded = true
             true
-        }.getOrDefault(false)
+        }.getOrElse { false }
     }
 
     val isAvailable: Boolean get() = loaded

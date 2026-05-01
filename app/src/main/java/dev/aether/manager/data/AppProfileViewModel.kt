@@ -40,19 +40,21 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     fun load() = viewModelScope.launch(Dispatchers.IO) {
         _state.value = AppsUiState.Loading
         try {
-            val apps = AppProfileRepository.loadUserApps(getApplication())
-            _state.value = AppsUiState.Ready(apps, emptyMap(), false)
-
+            // Timeout 20 detik — jika root shell lambat atau tidak ada root,
+            // jangan biarkan UI stuck di Loading selamanya
+            withTimeout(20_000L) {
+                val apps     = AppProfileRepository.loadUserApps(getApplication())
+                val profiles = try { AppProfileRepository.loadAllProfiles() } catch (_: Exception) { emptyMap() }
+                val running  = try { AppProfileRepository.isMonitorRunning() } catch (_: Exception) { false }
+                _state.value = AppsUiState.Ready(apps, profiles, running)
+            }
+        } catch (e: TimeoutCancellationException) {
+            // Root shell timeout — tampilkan daftar app tanpa profile
             try {
-                withTimeout(6_000L) {
-                    val profiles = try { AppProfileRepository.loadAllProfiles() } catch (_: Exception) { emptyMap() }
-                    val running  = try { AppProfileRepository.isMonitorRunning() } catch (_: Exception) { false }
-                    _state.value = AppsUiState.Ready(apps, profiles, running)
-                }
-            } catch (_: TimeoutCancellationException) {
-                snack("App list tampil, profile root timeout")
-            } catch (_: Exception) {
-                snack("App list tampil, profile belum terbaca")
+                val apps = AppProfileRepository.loadUserApps(getApplication())
+                _state.value = AppsUiState.Ready(apps, emptyMap(), false)
+            } catch (e2: Exception) {
+                _state.value = AppsUiState.Error(e2.message ?: "Timeout memuat aplikasi")
             }
         } catch (e: Exception) {
             _state.value = AppsUiState.Error(e.message ?: "Gagal memuat aplikasi")

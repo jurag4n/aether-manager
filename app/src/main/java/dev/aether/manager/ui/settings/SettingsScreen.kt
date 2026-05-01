@@ -28,6 +28,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.LocalLanguage
@@ -576,12 +579,14 @@ private fun SettingsSectionCard(
         targetValue = if (expanded) 180f else 0f,
         label       = "chevron"
     )
+    // Use a softer surface with a subtle elevation and remove the heavy border
+    // for a cleaner appearance.  Increasing the corner radius and slightly
+    // raising the opacity of the container helps separate sections from the
+    // background without overwhelming the design.
     Surface(
-        shape    = RoundedCornerShape(16.dp),
-        color    = MaterialTheme.colorScheme.surfaceContainerLow,
-        border   = androidx.compose.foundation.BorderStroke(
-            1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        ),
+        shape    = RoundedCornerShape(20.dp),
+        color    = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.95f),
+        tonalElevation = 1.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
@@ -622,8 +627,12 @@ private fun SettingsSectionCard(
             }
             AnimatedVisibility(
                 visible = expanded,
-                enter   = expandVertically(),
-                exit    = shrinkVertically()
+                enter   = expandVertically(
+                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                ),
+                exit    = shrinkVertically(
+                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                )
             ) {
                 Column {
                     HorizontalDivider(

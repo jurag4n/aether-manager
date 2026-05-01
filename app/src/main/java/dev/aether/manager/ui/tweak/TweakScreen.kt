@@ -46,7 +46,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -112,7 +111,7 @@ fun TweakScreen(
             if (tweaks.dnsProvider.isBlank()) "Off" else tweaks.dnsProvider
         )
     }
-    var networkStable by rememberSaveable { mutableStateOf(tweaks.networkStable) }
+    var networkStable by rememberSaveable { mutableStateOf(false) }
     var tcpEnabled by rememberSaveable { mutableStateOf(tweaks.tcpBbr) }
 
     var swapEnabled by rememberSaveable { mutableStateOf(tweaks.swap) }
@@ -125,41 +124,6 @@ fun TweakScreen(
         mutableStateOf(if (tweaks.schedboost) "Game" else "Off")
     }
 
-    LaunchedEffect(tweaks.thermalProfile, tweaks.dnsProvider, tweaks.networkStable, tweaks.tcpBbr, tweaks.swap, tweaks.killBackground) {
-        thermalProfile = tweaks.thermalProfile.ifBlank { "default" }
-        dnsProvider = tweaks.dnsProvider.ifBlank { "Off" }
-        networkStable = tweaks.networkStable
-        tcpEnabled = tweaks.tcpBbr
-        swapEnabled = tweaks.swap
-        killBackgroundActive = tweaks.killBackground
-    }
-
-    fun normalizeGovernor(value: String): String = when (value) {
-        "Performance" -> "performance"
-        "Battery" -> "powersave"
-        "Ondemand" -> "ondemand"
-        else -> "schedutil"
-    }
-
-    fun normalizeIoScheduler(value: String): String = when (value) {
-        "CFQ" -> "cfq"
-        "Deadline" -> "deadline"
-        "Noop" -> "noop"
-        "BFQ" -> "bfq"
-        "Maple" -> "maple"
-        else -> ""
-    }
-
-    fun normalizeGpuFreqHz(value: String): String {
-        val n = value.filter { it.isDigit() }.toLongOrNull() ?: return ""
-        return when {
-            n <= 0L -> ""
-            n < 10_000L -> (n * 1_000_000L).toString()
-            n < 10_000_000L -> (n * 1_000L).toString()
-            else -> n.toString()
-        }
-    }
-
     fun toggleExpand(key: String) {
         expandedCard = if (expandedCard == key) null else key
     }
@@ -170,6 +134,7 @@ fun TweakScreen(
 
     fun setTweakNow(key: String, value: Boolean) {
         vm.setTweak(key, value)
+        vm.applyAll()
     }
 
     fun setActiveProfileNow(profile: String) {
@@ -214,12 +179,13 @@ fun TweakScreen(
             }
         }
 
-        vm.setProfile(profile)
+        vm.applyAll()
     }
 
     fun setThermalProfileNow(profile: String) {
         thermalProfile = profile
-        vm.setThermalProfile(profile)
+        vm.setProfile(profile)
+        vm.applyAll()
     }
 
     if (rendererDialog) {
@@ -271,8 +237,7 @@ fun TweakScreen(
                     onClick = { toggleExpand("cpu") },
                     onGovernorChange = {
                         cpuGovernor = it
-                        vm.setTweakStr("cpu_governor", normalizeGovernor(it))
-                        setTweakNow("cpuBoost", it == "Performance")
+                        setTweakNow("cpuBoost", it != "Battery")
                     },
                     onMinFreqChange = { minCpuFreq = it },
                     onMaxFreqChange = { maxCpuFreq = it },
@@ -301,9 +266,7 @@ fun TweakScreen(
                     onMaxFreqChange = { maxGpuFreq = it },
                     onLockClick = {
                         gpuLocked = !gpuLocked
-                        vm.setTweakStr("gpu_freq_max", normalizeGpuFreqHz(maxGpuFreq))
-                        setTweakNow("gpuFreqLock", gpuLocked)
-                        setTweakNow("gpuThrottleOff", gpuLocked || gpuProfile == "Performance")
+                        setTweakNow("gpuThrottleOff", gpuLocked)
                     },
                     onRendererClick = { rendererDialog = true }
                 )
@@ -327,7 +290,10 @@ fun TweakScreen(
                     onClick = { toggleExpand("network") },
                     onDnsSelect = { provider ->
                         dnsProvider = provider
-                        vm.setTweakStr("dns_provider", if (provider == "Off") "" else provider)
+                        // Update provider string in ViewModel
+                        vm.setTweakStr("dnsProvider", provider)
+                        // Toggle Private DNS on/off for backward compatibility
+                        setTweakNow("privateDns", provider != "Off")
                     },
                     onNetworkStableToggle = {
                         networkStable = !networkStable
@@ -357,7 +323,7 @@ fun TweakScreen(
                     },
                     onKillBackgroundClick = {
                         killBackgroundActive = !killBackgroundActive
-                        setTweakNow("killBackground", killBackgroundActive)
+                        setTweakNow("killBackground", true)
                     }
                 )
             }
@@ -375,8 +341,7 @@ fun TweakScreen(
                     onClick = { toggleExpand("io") },
                     onSelect = {
                         ioScheduler = it
-                        vm.setTweakStr("io_scheduler", normalizeIoScheduler(it))
-                        setTweakNow("ioLatencyOpt", it != "Auto")
+                        setTweakNow("ioScheduler", it != "Auto")
                     }
                 )
             },
@@ -1142,7 +1107,13 @@ private fun rememberDeviceName(): String {
 }
 
 @Composable
+@Composable
 private fun AppProfileCard(onClick: () -> Unit) {
+    // This card acts as the entry point to the App Profile screen.  To make it
+    // feel more compact and horizontally oriented (roughly a 4:1 width:height
+    // ratio), the height is reduced relative to the previous design.  The icon
+    // has been changed from the generic Apps glyph to GridView to better
+    // communicate that the user will manage multiple application profiles.
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
@@ -1150,23 +1121,35 @@ private fun AppProfileCard(onClick: () -> Unit) {
         tonalElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(96.dp)
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Leading icon container.  Slightly smaller than before to better
+            // balance the reduced card height and rounded corners.
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Outlined.Apps, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(26.dp))
+                // Use a different glyph to differentiate the App Profile card from
+                // other tweak cards.  GridView hints at a collection of items.
+                Icon(
+                    Icons.Outlined.GridView,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(
                     text = "App Profile",
                     style = MaterialTheme.typography.titleLarge,
@@ -1176,7 +1159,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Klik untuk masuk ke AppProfileScreen",
+                    text = "Kelola profil aplikasi",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                     maxLines = 2,

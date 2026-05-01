@@ -299,10 +299,7 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             ) { screen ->
                 when (screen) {
                     Screen.HOME -> HomeScreen(vm)
-                    Screen.TWEAK -> TweakScreen(
-                        vm = vm,
-                        onOpenAppProfile = { currentScreen = Screen.APPS }
-                    )
+                    Screen.TWEAK -> TweakScreen(vm)
                     Screen.APPS -> AppProfileScreen(apVm)
                 }
             }
@@ -404,11 +401,13 @@ private fun FloatingUtilityBar(
     onPowerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Match the utility bar elevation with the main bottom navigation bar to avoid
+    // inconsistent shadows when sliding between tabs.
     Surface(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        shadowElevation = 16.dp,
-        tonalElevation = 7.dp,
+        shadowElevation = 20.dp,
+        tonalElevation = 8.dp,
         modifier = modifier
     ) {
         Row(
@@ -489,7 +488,7 @@ private fun FloatingBottomBar(
                 val itemWidth by animateDpAsState(
                     targetValue = when {
                         expanded        -> 76.dp   // icon + label
-                        isSelected      -> 62.dp   // selected pill
+                        isSelected      -> 76.dp   // selected pill (wider to avoid truncated labels)
                         else            -> 48.dp
                     },
                     animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),

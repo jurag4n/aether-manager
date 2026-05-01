@@ -36,6 +36,10 @@ import androidx.compose.ui.unit.*
 import dev.aether.manager.data.*
 import dev.aether.manager.i18n.LocalStrings
 import kotlinx.coroutines.Dispatchers
+// Additional imports for refresh rate detection
+import android.content.Context
+import android.os.Build
+import android.view.WindowManager
 import kotlinx.coroutines.withContext
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -701,6 +705,54 @@ private fun AppListItem(
         label = "app_card_arrow"
     )
 
+    // Summarize profile state for compact display.  The summary shows
+    // "Not Set" when no profile exists, "Disabled" when the profile is
+    // disabled, and otherwise displays the active profile mode and any
+    // custom refresh rate.  By using remember we avoid recomputing this
+    // on every recomposition.
+    val summary by remember(isEnabled, profile) {
+        mutableStateOf(
+            run {
+                val parts = mutableListOf<String>()
+                if (profile == null) {
+                    parts += "Not Set"
+                } else {
+                    if (!isEnabled) {
+                        parts += "Disabled"
+                    } else {
+                        parts += profileModeLabel(profile)
+                    }
+                    val rateLabel = refreshRateLabel(currentProfile.refreshRate)
+                    if (rateLabel.lowercase() != "default") {
+                        parts += rateLabel
+                    }
+                }
+                parts.joinToString(" • ")
+            }
+        )
+    }
+
+    // Determine supported refresh rate options based on the device's capabilities.
+    val context = LocalContext.current
+    val maxRefresh = remember { getMaxRefreshRate(context) }
+    val refreshOptions by remember(maxRefresh) {
+        mutableStateOf(
+            run {
+                val opts = mutableListOf<Pair<String, String>>()
+                opts.add("default" to "Default")
+                opts.add("60" to "60Hz")
+                if (maxRefresh >= 90) opts.add("90" to "90Hz")
+                if (maxRefresh > 90) {
+                    val rateStr = maxRefresh.toString()
+                    if (rateStr != "60" && rateStr != "90") {
+                        opts.add(rateStr to "${rateStr}Hz")
+                    }
+                }
+                opts
+            }
+        )
+    }
+
     Surface(
         shape = RoundedCornerShape(22.dp),
         color = cardBg,
@@ -710,8 +762,12 @@ private fun AppListItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Use a spring-based animation for smoother expansion and collapse
                 .animateContentSize(
-                    animationSpec = tween(220, easing = FastOutSlowInEasing)
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
                 )
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -757,26 +813,17 @@ private fun AppListItem(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        AppChip(
-                            label = if (isEnabled) "Enabled" else "Disabled",
-                            icon = Icons.Outlined.CheckCircle,
-                            active = isEnabled
-                        )
-                        AppChip(
-                            label = profileModeLabel(profile),
-                            icon = filterForProfile(profile).icon(),
-                            active = isEnabled
-                        )
-                        AppChip(
-                            label = refreshRateLabel(currentProfile.refreshRate),
-                            icon = Icons.Outlined.DisplaySettings,
-                            active = isEnabled
-                        )
-                    }
+                    // Replace the chip group with a concise summary.  Showing
+                    // three chips for Enabled/Disabled, profile mode and refresh rate
+                    // cluttered the list.  A single line summarizing these values
+                    // keeps the UI clean while still conveying necessary info.
+                    Text(
+                        text = summary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 Box(
@@ -804,11 +851,17 @@ private fun AppListItem(
             AnimatedVisibility(
                 visible = expanded,
                 enter = fadeIn(tween(120)) + expandVertically(
-                    animationSpec = tween(220, easing = FastOutSlowInEasing),
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
                     expandFrom = Alignment.Top
                 ),
                 exit = fadeOut(tween(90)) + shrinkVertically(
-                    animationSpec = tween(160, easing = FastOutSlowInEasing),
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
                     shrinkTowards = Alignment.Top
                 )
             ) {
@@ -842,10 +895,12 @@ private fun AppListItem(
                     )
 
                     CompactProfileDropdown(
-                        icon = Icons.Outlined.DisplaySettings,
+                        // Use the Refresh icon for the refresh-rate dropdown.  DisplaySettings
+                        // may not be available on all icon sets.
+                        icon = Icons.Outlined.Refresh,
                         title = "Refresh Rate",
                         selectedLabel = refreshRateLabel(currentProfile.refreshRate),
-                        options = refreshRateOptions.map { (key, label) ->
+                        options = refreshOptions.map { (key, label) ->
                             DropOption(
                                 key = key,
                                 label = label,
@@ -867,6 +922,30 @@ private data class DropOption(
     val label: String,
     val icon: ImageVector
 )
+
+// -----------------------------------------------------------------------------
+// Utility: determine the maximum supported refresh rate for the current device.
+// This helper inspects the available display modes when running on Android R
+// (API 30) or newer.  On older versions, it falls back to the default
+// refreshRate property on the Display.  If any error occurs the method
+// returns a conservative default of 60Hz.  The returned value is in Hertz.
+private fun getMaxRefreshRate(context: Context): Int {
+    return try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val display = context.display
+            val modes = display?.supportedModes
+            val maxRate = modes?.maxByOrNull { it.refreshRate }?.refreshRate
+                ?: display?.refreshRate ?: 60f
+            maxRate.toInt()
+        } else {
+            val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            val display = wm.defaultDisplay
+            display?.refreshRate?.toInt() ?: 60
+        }
+    } catch (_: Exception) {
+        60
+    }
+}
 
 @Composable
 private fun ProfileSwitchRow(
