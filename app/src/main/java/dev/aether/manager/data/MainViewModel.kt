@@ -174,33 +174,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         startApplyWorker()
+        _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
         viewModelScope.launch { initFromCachedRoot() }
     }
 
     private suspend fun initFromCachedRoot() {
+        val fallback = RootEngine.getDeviceInfoFallback()
+        _deviceInfo.value = UiState.Success(fallback)
+
         val hasRoot = RootEngine.hasRoot()
         _rootGranted.value = hasRoot
         if (hasRoot) {
             loadAll()
             startMonitorLoop()
-        } else if (RootManager.isRootUnknown) {
-            // Shell belum pernah di-init (fresh install / session baru).
-            // SetupActivity yang akan handle request root — jangan tampilkan error di sini.
-            _deviceInfo.value = UiState.Loading
         } else {
-            _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
+            _deviceInfo.value = UiState.Success(fallback)
         }
     }
 
     fun refresh() = viewModelScope.launch {
-        _deviceInfo.value = UiState.Loading
+        val fallback = RootEngine.getDeviceInfoFallback()
+        _deviceInfo.value = UiState.Success(fallback)
+
         val hasRoot = RootEngine.hasRoot()
         _rootGranted.value = hasRoot
         if (hasRoot) {
             loadAll()
             if (!monitorStarted) startMonitorLoop()
         } else {
-            _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
+            _deviceInfo.value = UiState.Success(fallback)
         }
     }
 
@@ -209,7 +211,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * Dipanggil dari ON_RESUME agar Home tidak stuck skeleton setelah balik dari SetupActivity.
      */
     fun refreshIfNeeded() {
-        if (_deviceInfo.value is UiState.Loading || RootManager.isRootUnknown) {
+        val current = (_deviceInfo.value as? UiState.Success)?.data
+        if (_deviceInfo.value is UiState.Loading || (RootManager.isRootGranted && current?.rootType == "Unknown")) {
             refresh()
         }
     }
@@ -249,8 +252,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val info = RootEngine.getDeviceInfo()
             _deviceInfo.value = UiState.Success(info)
             loadTweaks()
-        } catch (e: Exception) {
-            _deviceInfo.value = UiState.Error(e.message ?: "Failed to load device info")
+        } catch (_: Exception) {
+            _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
         }
     }
 

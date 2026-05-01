@@ -3,6 +3,7 @@ package dev.aether.manager.data
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.aether.manager.util.RootManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,40 +36,70 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     private val _savingPkg = MutableStateFlow<String?>(null)
     val savingPkg: StateFlow<String?> = _savingPkg.asStateFlow()
 
+    @Volatile private var loading = false
+    @Volatile private var profileSyncing = false
+
     init { load() }
 
     fun load() = viewModelScope.launch(Dispatchers.IO) {
+        if (loading) return@launch
+        loading = true
         _state.value = AppsUiState.Loading
+
         try {
-            // Timeout 20 detik — jika root shell lambat atau tidak ada root,
-            // jangan biarkan UI stuck di Loading selamanya
-            withTimeout(20_000L) {
-                val apps     = AppProfileRepository.loadUserApps(getApplication())
-                val profiles = try { AppProfileRepository.loadAllProfiles() } catch (_: Exception) { emptyMap() }
-                val running  = try { AppProfileRepository.isMonitorRunning() } catch (_: Exception) { false }
-                _state.value = AppsUiState.Ready(apps, profiles, running)
+            val apps = withTimeout(8_000L) {
+                AppProfileRepository.loadUserApps(getApplication())
             }
+
+            // Tampilkan daftar aplikasi secepat mungkin. Jangan tunggu root/shell,
+            // karena bagian itu yang sering bikin tab App Profile stuck Loading.
+            _state.value = AppsUiState.Ready(apps, emptyMap(), false)
+            syncProfilesIfRootReady()
         } catch (e: TimeoutCancellationException) {
-            // Root shell timeout — tampilkan daftar app tanpa profile
-            try {
-                val apps = AppProfileRepository.loadUserApps(getApplication())
-                _state.value = AppsUiState.Ready(apps, emptyMap(), false)
-            } catch (e2: Exception) {
-                _state.value = AppsUiState.Error(e2.message ?: "Timeout memuat aplikasi")
-            }
+            _state.value = AppsUiState.Error("Timeout memuat daftar aplikasi")
         } catch (e: Exception) {
             _state.value = AppsUiState.Error(e.message ?: "Gagal memuat aplikasi")
+        } finally {
+            loading = false
+        }
+    }
+
+    private fun syncProfilesIfRootReady() = viewModelScope.launch(Dispatchers.IO) {
+        if (profileSyncing || !RootManager.isRootGranted) return@launch
+        val ready = _state.value as? AppsUiState.Ready ?: return@launch
+        profileSyncing = true
+        try {
+            val profiles = withTimeout(5_000L) { AppProfileRepository.loadAllProfiles() }
+            val running = runCatching {
+                withTimeout(2_000L) { AppProfileRepository.isMonitorRunning() }
+            }.getOrDefault(false)
+            _state.value = ready.copy(profiles = profiles, monitorRunning = running)
+        } catch (_: Exception) {
+            // UI sudah Ready dengan daftar app; kegagalan sync root tidak boleh
+            // mengembalikan layar ke Loading/Error.
+        } finally {
+            profileSyncing = false
         }
     }
 
     fun openEditor(app: AppInfo) = viewModelScope.launch(Dispatchers.IO) {
-        val current = AppProfileRepository.loadProfile(app.packageName)
+        val current = if (RootManager.isRootGranted) {
+            runCatching { AppProfileRepository.loadProfile(app.packageName) }
+                .getOrDefault(AppProfile(app.packageName))
+        } else {
+            AppProfile(app.packageName)
+        }
         _editingProfile.value = current
     }
 
     fun closeEditor() { _editingProfile.value = null }
 
     fun saveProfile(profile: AppProfile) = viewModelScope.launch(Dispatchers.IO) {
+        if (!RootManager.isRootGranted) {
+            snack("Root belum aktif — buka Setup dan grant root dulu")
+            return@launch
+        }
+
         _savingPkg.value = profile.packageName
         try {
             AppProfileRepository.saveProfile(profile)
@@ -78,36 +109,36 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
                 updated[profile.packageName] = profile
                 val hasEnabled = updated.values.any { it.enabled }
                 val monitorWasOff = !s.monitorRunning
-                // Auto-start monitor if there's any enabled profile and monitor is off
+
                 if (hasEnabled && monitorWasOff) {
-                    // Automatically start the monitor when enabling the first profile.
                     AppProfileRepository.startMonitor()
                     _state.value = s.copy(profiles = updated, monitorRunning = true)
-                    // Suppress success toast; UI reflects the running state.
                 } else {
-                    // Regenerate script with updated profiles even if monitor is already running
-                    if (s.monitorRunning) {
-                        AppProfileRepository.startMonitor() // restart to reload script
-                    }
+                    if (s.monitorRunning) AppProfileRepository.startMonitor()
                     _state.value = s.copy(profiles = updated)
-                    // Suppress success toast; UI reflects the updated state.
                 }
             }
             _editingProfile.value = null
         } catch (e: Exception) {
             snack("Gagal simpan: ${e.message}")
+        } finally {
+            _savingPkg.value = null
         }
-        _savingPkg.value = null
     }
 
     fun toggleMonitor(enable: Boolean) = viewModelScope.launch(Dispatchers.IO) {
-        if (enable) {
-            AppProfileRepository.startMonitor()
-            // Suppress success toast; UI and monitor state will update accordingly.
-        } else {
-            AppProfileRepository.stopMonitor()
-            // Suppress success toast; UI and monitor state will update accordingly.
+        if (!RootManager.isRootGranted) {
+            snack("Root belum aktif — buka Setup dan grant root dulu")
+            return@launch
         }
+
+        runCatching {
+            if (enable) AppProfileRepository.startMonitor() else AppProfileRepository.stopMonitor()
+        }.onFailure { e ->
+            snack("Gagal mengubah monitor: ${e.message}")
+            return@launch
+        }
+
         val s = _state.value
         if (s is AppsUiState.Ready) {
             _state.value = s.copy(monitorRunning = enable)
@@ -115,6 +146,10 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun deleteProfile(packageName: String) = viewModelScope.launch(Dispatchers.IO) {
+        if (!RootManager.isRootGranted) {
+            snack("Root belum aktif — buka Setup dan grant root dulu")
+            return@launch
+        }
         AppProfileRepository.deleteProfile(packageName)
         val s = _state.value
         if (s is AppsUiState.Ready) {
@@ -122,38 +157,36 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
             updated.remove(packageName)
             _state.value = s.copy(profiles = updated)
         }
-        // Do not show a toast on success; UI reflects the removal.
     }
 
     fun resetMonitor() = viewModelScope.launch(Dispatchers.IO) {
+        if (!RootManager.isRootGranted) return@launch
         AppProfileRepository.resetMonitor()
         val s = _state.value
         if (s is AppsUiState.Ready) {
             _state.value = s.copy(monitorRunning = false)
         }
-        // Suppress success toast when resetting the monitor.
     }
 
     fun resetAllProfiles() = viewModelScope.launch(Dispatchers.IO) {
+        if (!RootManager.isRootGranted) return@launch
         AppProfileRepository.resetAllProfiles()
         val s = _state.value
         if (s is AppsUiState.Ready) {
             _state.value = s.copy(profiles = emptyMap(), monitorRunning = false)
         }
-        // Suppress success toast when all profiles are removed.
     }
 
     fun snack(msg: String) { _snack.value = msg }
     fun clearSnack() { _snack.value = null }
 
-    /**
-     * Load hanya jika state masih Loading atau Error (root mungkin belum ready saat init).
-     * Dipanggil dari ON_RESUME agar tab App Profile tidak stuck setelah root granted.
-     */
     fun loadIfNeeded() {
         val s = _state.value
-        if (s is AppsUiState.Loading || s is AppsUiState.Error) {
-            load()
+        when {
+            s is AppsUiState.Loading && !loading -> load()
+            s is AppsUiState.Error -> load()
+            s is AppsUiState.Ready && s.apps.isEmpty() -> load()
+            s is AppsUiState.Ready && RootManager.isRootGranted && s.profiles.isEmpty() -> syncProfilesIfRootReady()
         }
     }
 }

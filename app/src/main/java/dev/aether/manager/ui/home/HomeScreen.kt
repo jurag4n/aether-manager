@@ -173,6 +173,7 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 
         GpuInfoCard(state, info)
         MemoryInfoCard(state)
+        DeviceInfoCard(info)
     }
 }
 
@@ -374,6 +375,50 @@ private fun MemoryInfoCard(state: MonitorState) {
         }
     }
 }
+
+@Composable
+private fun DeviceInfoCard(info: DeviceInfo?) {
+    TappableCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconBadge(Icons.Outlined.Info, MaterialTheme.colorScheme.primary)
+                    Text(
+                        "Device Info",
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            val deviceName = info?.model?.takeIf { it.isNotBlank() } ?: "Unknown Device"
+            val codename = info?.socRaw?.takeIf { it.isNotBlank() } ?: info?.soc?.label.orEmpty().ifBlank { "Unknown" }
+            val android = info?.android?.takeIf { it.isNotBlank() } ?: "?"
+            val kernel = info?.kernel?.takeIf { it.isNotBlank() } ?: "?"
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                InfoTile(Icons.Outlined.Widgets, deviceName, "Nama Perangkat", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                InfoTile(Icons.Outlined.Memory, codename, "CodeName", Color(0xFFFF9CAF), Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                InfoTile(Icons.Outlined.Info, android, "Android", MaterialTheme.colorScheme.secondary, Modifier.weight(1f))
+                InfoTile(Icons.Outlined.Storage, kernel, "Kernel", MaterialTheme.colorScheme.tertiary, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun TappableCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {

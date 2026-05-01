@@ -212,7 +212,7 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
             }
             .filter { app ->
                 selectedFilter == ProfileFilter.ALL ||
-                filterForProfile(state.profiles[app.packageName]) == selectedFilter
+                state.profiles[app.packageName]?.let { filterForProfile(it) == selectedFilter } == true
             }
     }
 

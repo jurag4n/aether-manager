@@ -1,5 +1,6 @@
 package dev.aether.manager.util
 
+import android.os.Build
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -126,6 +127,36 @@ object RootEngine {
      * Read device information such as model, Android version and chipset.
      * Additional fields like root type and thermal state are also included.
      */
+    fun getDeviceInfoFallback(): DeviceInfo {
+        val raw = listOf(
+            Build.BOARD.orEmpty(),
+            Build.HARDWARE.orEmpty(),
+            Build.DEVICE.orEmpty(),
+            Build.PRODUCT.orEmpty(),
+            Build.MANUFACTURER.orEmpty(),
+        ).joinToString(" ").trim()
+
+        return DeviceInfo(
+            model     = Build.MODEL ?: "Unknown Device",
+            android   = Build.VERSION.RELEASE ?: "?",
+            kernel    = System.getProperty("os.version") ?: "?",
+            selinux   = "?",
+            rootType  = RootManager.detectRootType(),
+            soc       = detectSoc(raw.lowercase()),
+            socRaw    = raw,
+            pid       = "",
+            profile   = readProfileSafe(),
+            safeMode  = false,
+            bootCount = 0,
+        )
+    }
+
+    private fun readProfileSafe(): String = try {
+        if (RootManager.isRootGranted) readProfileSync() else "balance"
+    } catch (_: Exception) {
+        "balance"
+    }
+
     suspend fun getDeviceInfo(): DeviceInfo {
         val script = """
             model=$(getprop ro.product.model 2>/dev/null | head -c 40)
@@ -144,9 +175,9 @@ object RootEngine {
             else
               root=Unknown
             fi
-            profile=$(cat ${'$'}{PROFILE_FILE} 2>/dev/null || echo balance)
-            safe=$([ -f ${'$'}{SAFE_MODE_FILE} ] && echo 1 || echo 0)
-            boot=$(cat ${'$'}{BOOT_COUNT_FILE} 2>/dev/null || echo 0)
+            profile=$(cat '/data/local/tmp/aether/profile' 2>/dev/null || echo balance)
+            safe=$([ -f '/data/local/tmp/aether/safe_mode' ] && echo 1 || echo 0)
+            boot=$(cat '/data/local/tmp/aether/boot_count' 2>/dev/null || echo 0)
             echo model=${'$'}model
             echo android=${'$'}android
             echo platform=${'$'}platform
