@@ -1158,8 +1158,6 @@ private fun WelcomePage(s: AppStrings) {
             lineHeight = 22.sp
         )
 
-        SmartOptimizeCard()
-
         Text(
             text = "Fitur Unggulan",
             style = MaterialTheme.typography.titleLarge,
