@@ -187,6 +187,11 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                     adBlockCheckTrigger++
                     premiumCheckTick++
                     LicenseNotificationChecker.check(activity)
+                    // Refresh device info jika masih Loading (misal baru balik dari SetupActivity)
+                    // atau jika root belum pernah dicek. Ini fix untuk Home stuck di skeleton.
+                    vm.refreshIfNeeded()
+                    // Reload app profiles jika belum siap (root mungkin baru granted)
+                    apVm.loadIfNeeded()
                 }
                 Lifecycle.Event.ON_PAUSE   -> { /* biarkan scheduler tetap jalan */ }
                 Lifecycle.Event.ON_STOP    -> AdScheduler.stop()

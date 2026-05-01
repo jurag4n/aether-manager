@@ -10,6 +10,7 @@ import dev.aether.manager.util.RootManager
 import dev.aether.manager.util.RootEngine
 import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
+import dev.aether.manager.ads.AdScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -182,6 +183,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (hasRoot) {
             loadAll()
             startMonitorLoop()
+        } else if (RootManager.isRootUnknown) {
+            // Shell belum pernah di-init (fresh install / session baru).
+            // SetupActivity yang akan handle request root — jangan tampilkan error di sini.
+            _deviceInfo.value = UiState.Loading
         } else {
             _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
         }
@@ -196,6 +201,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (!monitorStarted) startMonitorLoop()
         } else {
             _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
+        }
+    }
+
+    /**
+     * Refresh hanya jika state masih Loading atau root belum diketahui.
+     * Dipanggil dari ON_RESUME agar Home tidak stuck skeleton setelah balik dari SetupActivity.
+     */
+    fun refreshIfNeeded() {
+        if (_deviceInfo.value is UiState.Loading || RootManager.isRootUnknown) {
+            refresh()
         }
     }
 
@@ -294,6 +309,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 summary = result.summary,
                 totalMs = result.totalMs,
             )
+
+            if (result.success) {
+                // Trigger iklan setelah aksi penting selesai (subject to minIntervalMs guard)
+                AdScheduler.tryShowAfterAction()
+            }
 
             if (!result.success) {
                 val failedSubs = result.subsystems.filter { !it.ok }

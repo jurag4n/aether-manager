@@ -52,28 +52,17 @@ object RootManager {
 
     suspend fun isRooted(): Boolean = withContext(Dispatchers.IO) {
         _cachedRoot ?: run {
-            val result = silentCheck()
-            _cachedRoot = result
-            result
-        }
-    }
-
-    private fun silentCheck(): Boolean {
-        return try {
-            // Cek dulu lewat isAppGrantedRoot() (non-blocking, tidak trigger dialog)
-            val quickCheck = Shell.isAppGrantedRoot()
-            if (quickCheck == true) {
-                return true
+            // isAppGrantedRoot() return null = shell belum pernah di-init → belum tahu.
+            // Jangan cache sebagai false (denied) — biarkan tetap null (unknown)
+            // supaya SetupActivity bisa request root nanti.
+            val quick = Shell.isAppGrantedRoot()
+            if (quick == true) {
+                _cachedRoot = true
+                true
+            } else {
+                // null atau false — jangan cache, return false tanpa trigger popup
+                false
             }
-
-            // quickCheck null = shell belum pernah di-init di session ini
-            // tapi TANPA memunculkan dialog baru (su -c true saja, bukan getShell()).
-            // Kalau Magisk sudah grant sebelumnya, ini akan langsung return sukses.
-            val result = Shell.cmd("true").exec()
-            val granted = result.isSuccess
-            granted
-        } catch (e: Exception) {
-            false
         }
     }
 

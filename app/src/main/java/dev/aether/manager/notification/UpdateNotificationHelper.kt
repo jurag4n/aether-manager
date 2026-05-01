@@ -2,6 +2,7 @@ package dev.aether.manager.notification
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import dev.aether.manager.update.UpdateChecker
 import dev.aether.manager.update.UpdateResult
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +40,14 @@ object UpdateNotificationHelper {
     }
 
     private fun getCurrentVersionCode(context: Context): Int = try {
-        @Suppress("DEPRECATION")
-        context.packageManager.getPackageInfo(context.packageName, 0).versionCode
+        val pm  = context.packageManager
+        val pkg = if (Build.VERSION.SDK_INT >= 33) {
+            pm.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getPackageInfo(context.packageName, 0)
+        }
+        if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode.toInt()
+        else @Suppress("DEPRECATION") pkg.versionCode
     } catch (_: PackageManager.NameNotFoundException) { 0 }
 }
