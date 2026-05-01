@@ -1,5 +1,6 @@
 package dev.aether.manager.ui.home
 
+import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -55,11 +56,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,6 +88,7 @@ import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -125,7 +131,7 @@ fun HomeScreen(vm: MainViewModel) {
 @Composable
 private fun InfoDeviceSkeleton() {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        repeat(4) {
+        repeat(5) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -179,26 +185,17 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 
         GpuInfoCard(state, info)
         MemoryInfoCard(state)
+        DeviceInfoCard()
     }
 }
 
 @Composable
 private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
-    val cpuFreq = normalizeCpuFreq(state.cpuFreq)
-    val freqSize = when {
-        cpuFreq.length >= 10 -> 23.sp
-        cpuFreq.length >= 8 -> 25.sp
-        else -> 30.sp
-    }
+    var expanded by remember { mutableStateOf(false) }
 
-    TappableCard(modifier = modifier.height(178.dp)) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
+    TappableCard(modifier = modifier, onClick = { expanded = !expanded }) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -208,30 +205,54 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
                 PillText("${state.cpuUsage}%")
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "CPU",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "FREKUENSI",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = cpuFreq,
-                    fontSize = freqSize,
-                    lineHeight = 30.sp,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip
-                )
+            AnimatedContent(
+                targetState = expanded,
+                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
+                label = "cpu_card_content"
+            ) { isExpanded ->
+                if (!isExpanded) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("CPU", fontSize = 17.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                        Text("FREKUENSI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(state.cpuFreq.ifBlank { "— MHz" }, fontSize = 30.sp, lineHeight = 30.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("CPU", fontSize = 13.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CpuDetailChip("Tipe", info?.soc?.label ?: "—", color, Modifier.weight(1f))
+                            CpuDetailChip("SoC", info?.socRaw?.uppercase()?.take(10)?.ifBlank { "—" } ?: "—", color, Modifier.weight(1f))
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CpuDetailChip("Governor", state.cpuGovernor.ifBlank { "—" }, color, Modifier.weight(1f))
+                            CpuDetailChip("Frekuensi", state.cpuFreq.ifBlank { "—" }, color, Modifier.weight(1f))
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun CpuDetailChip(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = 0.08f),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = color.copy(alpha = 0.7f))
+            Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -301,18 +322,22 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
 @Composable
 private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
     val accent = Color(0xFFFF9CAF)
-    val gpuFullName = cleanGpuName(
-        state.gpuName.ifBlank {
-            when (info?.soc) {
-                SocType.SNAPDRAGON -> "Adreno GPU"
-                SocType.MEDIATEK -> "Mali GPU"
-                SocType.EXYNOS -> "Mali GPU"
-                SocType.KIRIN -> "Mali GPU"
-                else -> "GPU"
-            }
+
+    // Resolve GPU name: prioritize sysfs reading (state.gpuName),
+    // fallback to SocType-based guess, then generic "GPU"
+    val gpuFullName = state.gpuName.ifBlank {
+        when (info?.soc) {
+            SocType.SNAPDRAGON -> "Adreno GPU"
+            SocType.MEDIATEK   -> "Mali GPU"
+            SocType.EXYNOS     -> "Mali GPU"
+            SocType.KIRIN      -> "Mali GPU"
+            else               -> "GPU"
         }
-    )
-    val gpuShortName = shortGpuName(gpuFullName)
+    }
+    // Short label for the info tile (strip trailing " GPU" / " Gpu")
+    val gpuShortName = gpuFullName
+        .replace(Regex("\\s+[Gg][Pp][Uu]$"), "")
+        .ifBlank { "GPU" }
 
     TappableCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -377,6 +402,104 @@ private fun MemoryInfoCard(state: MonitorState) {
                 ratio(state.storageUsedGb, advertisedStorageGb(state.storageTotalGb)),
                 Color(0xFFFF9CAF)
             )
+        }
+    }
+}
+
+
+@Composable
+private fun DeviceInfoCard() {
+    val deviceName = remember {
+        listOf(Build.MANUFACTURER, Build.MODEL)
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString(" ")
+            .ifBlank { "Unknown" }
+    }
+    val codeName = remember { Build.DEVICE.ifBlank { Build.PRODUCT.ifBlank { "Unknown" } } }
+    val androidVersion = remember { "Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}" }
+    val kernelVersion = remember { System.getProperty("os.version").orEmpty().ifBlank { "Unknown" } }
+
+    TappableCard(modifier = Modifier.fillMaxWidth().height(178.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconBadge(Icons.Outlined.Info, MaterialTheme.colorScheme.primary)
+                Text(
+                    text = "Device Info",
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DeviceInfoTile(Icons.Outlined.Memory, "Nama Perangkat", deviceName, Modifier.weight(1f))
+                    DeviceInfoTile(Icons.Outlined.Widgets, "CodeName", codeName, Modifier.weight(1f))
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DeviceInfoTile(Icons.Outlined.Info, "Android", androidVersion, Modifier.weight(1f))
+                    DeviceInfoTile(Icons.Outlined.Storage, "Kernel", kernelVersion, Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceInfoTile(icon: ImageVector, label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier.height(48.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 9.sp,
+                    lineHeight = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = value,
+                    fontSize = 11.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -462,14 +585,7 @@ private fun InfoTile(icon: ImageVector, value: String, label: String, color: Col
         ) {
             Icon(icon, null, tint = color, modifier = Modifier.size(26.dp))
             Column {
-                Text(
-                    value,
-                    fontSize = if (value.length > 8) 15.sp else 18.sp,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Text(value, fontSize = 18.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
                 Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
@@ -480,7 +596,7 @@ private fun InfoTile(icon: ImageVector, value: String, label: String, color: Col
 private fun MemoryMetricRow(icon: ImageVector, label: String, used: String, total: String, pct: Float, color: Color) {
     val anim by animateFloatAsState(pct, tween(700, easing = FastOutSlowInEasing), label = "memory_$label")
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -490,7 +606,7 @@ private fun MemoryMetricRow(icon: ImageVector, label: String, used: String, tota
         ) {
             Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     label,
@@ -517,25 +633,21 @@ private fun MemoryMetricRow(icon: ImageVector, label: String, used: String, tota
 @Composable
 private fun WavyProgress(progress: Float, color: Color) {
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
-    Canvas(modifier = Modifier.fillMaxWidth().height(18.dp)) {
+    Canvas(modifier = Modifier.fillMaxWidth().height(10.dp)) {
         val centerY = size.height / 2f
-        drawLine(track, Offset(0f, centerY), Offset(size.width, centerY), strokeWidth = 4.5f, cap = StrokeCap.Round)
+        drawLine(track, Offset(0f, centerY), Offset(size.width, centerY), strokeWidth = 5f, cap = StrokeCap.Round)
         val width = size.width * progress.coerceIn(0f, 1f)
         if (width > 0f) {
             val path = Path()
             path.moveTo(0f, centerY)
-            val waveLength = 24f
+            val step = 6f
             var x = 0f
             while (x <= width) {
-                val y = centerY + (sin((x / waveLength) * 2f * PI).toFloat() * 4.2f)
+                val y = centerY + (sin((x / step) * PI).toFloat() * 3.2f)
                 path.lineTo(x, y)
                 x += 3f
             }
-            drawPath(
-                path = path,
-                brush = Brush.horizontalGradient(listOf(color.copy(alpha = 0.55f), color)),
-                style = Stroke(width = 4.5f, cap = StrokeCap.Round)
-            )
+            drawPath(path, brush = Brush.horizontalGradient(listOf(color.copy(alpha = 0.55f), color)), style = Stroke(width = 5f, cap = StrokeCap.Round))
         }
     }
 }
@@ -568,32 +680,7 @@ private fun advertisedStorageLabel(rawGb: Float): String {
     return if (gb <= 0f) "— GB" else "${gb.toInt()} GB"
 }
 
-
-private fun cleanGpuName(value: String): String {
-    return value
-        .replace(Regex("""(?i)\bgpu\b"""), "GPU")
-        .replace(Regex("""(?i)adreno\s*([0-9])"""), "Adreno $1")
-        .replace(Regex("""(?i)mali\s*-?\s*"""), "Mali-")
-        .replace(Regex("""\s+"""), " ")
-        .trim()
-        .ifBlank { "GPU" }
-}
-
-private fun shortGpuName(value: String): String {
-    val cleaned = cleanGpuName(value)
-    return when {
-        cleaned.contains("Adreno", ignoreCase = true)     -> "Adreno"
-        cleaned.contains("Mali", ignoreCase = true)       -> "Mali"
-        cleaned.contains("Immortalis", ignoreCase = true) -> "Immortalis"
-        cleaned.contains("PowerVR", ignoreCase = true)    -> "PowerVR"
-        cleaned.contains("Xclipse", ignoreCase = true)    -> "Xclipse"
-        cleaned.equals("GPU", ignoreCase = true)          -> "GPU"
-        else -> cleaned.substringBefore(" ").take(10).ifBlank { "GPU" }
-    }
-}
-
 private fun fmtMb(mb: Long): String = if (mb >= 1024) "%.1f GB".format(mb / 1024f) else "$mb MB"
-private fun normalizeCpuFreq(value: String): String = value.replace("\n", " ").replace(Regex("""\s+"""), " ").trim().ifBlank { "— MHz" }
 
 @Composable
 fun TabSectionTitle(
