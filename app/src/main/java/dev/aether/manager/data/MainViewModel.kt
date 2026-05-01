@@ -183,6 +183,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (hasRoot) {
             loadAll()
             startMonitorLoop()
+        } else if (RootManager.isRootUnknown) {
+            // Shell belum pernah di-init (fresh install / session baru).
+            // SetupActivity yang akan handle request root — jangan tampilkan error di sini.
+            _deviceInfo.value = UiState.Loading
         } else {
             _deviceInfo.value = UiState.Error("Root access denied.\nAether Manager requires root.")
         }

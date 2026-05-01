@@ -80,21 +80,21 @@ class AetherApplication : Application() {
         try {
             // Granular checks — LP bisa bypass nativeCheckAll tapi susah bypass semua sekaligus
             if (NativeAether.nativeIsHooked()) {
-                NativeAether.nativeKillProcess()
+                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
                 return
             }
             if (NativeAether.nativeIsDebugged()) {
-                NativeAether.nativeKillProcess()
+                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
                 return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
-                NativeAether.nativeKillProcess()
+                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
                 return
             }
             // Master check sebagai safety net terakhir
             NativeAether.nativeCheckAll(this)
         } catch (_: Throwable) {
-            NativeAether.nativeKillProcess()
+            if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
         }
     }
 
@@ -105,9 +105,8 @@ class AetherApplication : Application() {
                 .setFlags(Shell.FLAG_REDIRECT_STDERR)
                 .setTimeout(10)
         )
-        // Pre-init root shell di background agar ViewModel tidak perlu tunggu
-        // saat pertama kali request root (menghindari home kosong / loading lama)
-        Shell.getShell { /* pre-init root shell di background */ }
+        // Jangan pre-init shell di sini — Shell.getShell() trigger popup Magisk/KSU/APatch.
+        // Root hanya di-request dari SetupActivity via RootManager.requestRoot().
     }
 
     private fun initUnityAds() {
@@ -152,7 +151,7 @@ class AetherApplication : Application() {
         try {
             NativeAether.nativeCheckUnityIntact()
         } catch (_: Exception) {
-            NativeAether.nativeKillProcess()
+            if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
         }
     }
 
