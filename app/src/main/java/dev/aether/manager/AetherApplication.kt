@@ -94,7 +94,7 @@ class AetherApplication : Application() {
             // Master check sebagai safety net terakhir
             NativeAether.nativeCheckAll(this)
         } catch (_: Throwable) {
-            NativeAether.nativeKillProcess()
+            if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
         }
     }
 
@@ -152,7 +152,7 @@ class AetherApplication : Application() {
         try {
             NativeAether.nativeCheckUnityIntact()
         } catch (_: Exception) {
-            NativeAether.nativeKillProcess()
+            if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
         }
     }
 

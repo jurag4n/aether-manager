@@ -66,11 +66,11 @@ object RootManager {
                 return true
             }
 
-            // quickCheck null = shell belum pernah di-init di session ini
-            // tapi TANPA memunculkan dialog baru (su -c true saja, bukan getShell()).
-            // Kalau Magisk sudah grant sebelumnya, ini akan langsung return sukses.
-            val result = Shell.cmd("true").exec()
-            val granted = result.isSuccess
+            // quickCheck null atau false — shell belum di-init atau belum granted.
+            // Gunakan getShell() agar shell ter-init dan root dialog muncul jika perlu.
+            // Ini blocking tapi dipanggil dari Dispatchers.IO di isRooted().
+            val shell = Shell.getShell()
+            val granted = shell.isRoot
             granted
         } catch (e: Exception) {
             false
