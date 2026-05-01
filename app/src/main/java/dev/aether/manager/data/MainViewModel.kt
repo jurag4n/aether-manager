@@ -175,6 +175,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         startApplyWorker()
         _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
+        startMonitorLoop()
         viewModelScope.launch { initFromCachedRoot() }
     }
 
@@ -186,10 +187,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _rootGranted.value = hasRoot
         if (hasRoot) {
             loadAll()
-            startMonitorLoop()
         } else {
             _deviceInfo.value = UiState.Success(fallback)
         }
+        if (!monitorStarted) startMonitorLoop()
     }
 
     fun refresh() = viewModelScope.launch {
@@ -200,10 +201,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _rootGranted.value = hasRoot
         if (hasRoot) {
             loadAll()
-            if (!monitorStarted) startMonitorLoop()
         } else {
             _deviceInfo.value = UiState.Success(fallback)
         }
+        if (!monitorStarted) startMonitorLoop()
     }
 
     /**
@@ -295,6 +296,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Root guard — request ulang jika cache libsu hilang setelah proses restart
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private suspend fun ensureRootReady(requestIfNeeded: Boolean = true): Boolean {
+        val alreadyReady = RootManager.isRootGranted || RootEngine.hasRoot()
+        if (alreadyReady) {
+            _rootGranted.value = true
+            if (!monitorStarted) startMonitorLoop()
+            return true
+        }
+
+        if (!requestIfNeeded) {
+            _rootGranted.value = false
+            return false
+        }
+
+        val granted = RootManager.requestRoot()
+        _rootGranted.value = granted
+        if (granted && !monitorStarted) startMonitorLoop()
+        return granted
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // executeApply — inti apply, dipanggil dari worker
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -303,7 +327,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _applyingTweak.value = true
 
         try {
-                val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
+            if (!ensureRootReady()) {
+                _applyingTweak.value = false
+                _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Root belum aktif")
+                snack("Root belum aktif — grant root dulu")
+                return
+            }
+
+            val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
 
             _applyingTweak.value = false
             _applyStatus.value = ApplyStatus(
@@ -352,6 +383,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _applyStatus.value = ApplyStatus(running = true)
 
         try {
+            if (!ensureRootReady()) {
+                _applyingTweak.value = false
+                _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Root belum aktif")
+                snack("Root belum aktif — grant root dulu")
+                return@launch
+            }
+
             // Tulis profile file
             RootEngine.writeFile(RootEngine.PROFILE_FILE, profile)
 

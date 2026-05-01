@@ -104,7 +104,7 @@ object AppProfileRepository {
         writeMonitorScript()
         RootEngine.sh(
             "pkill -f app_monitor.sh 2>/dev/null || true",
-            "nohup $MONITOR_SCRIPT >/dev/null 2>&1 &"
+            "sh $MONITOR_SCRIPT >/dev/null 2>&1 &"
         )
     }
 
@@ -557,7 +557,7 @@ done
         val svc = """#!/system/bin/sh
 # Aether App Profile Service starter
 pkill -f app_monitor.sh 2>/dev/null
-nohup $MONITOR_SCRIPT >/dev/null 2>&1 &
+sh $MONITOR_SCRIPT >/dev/null 2>&1 &
 """
         val escaped = svc.replace("'", "'\\''")
         RootEngine.sh(

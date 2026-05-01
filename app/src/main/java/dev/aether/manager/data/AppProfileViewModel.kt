@@ -65,7 +65,9 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun syncProfilesIfRootReady() = viewModelScope.launch(Dispatchers.IO) {
-        if (profileSyncing || !RootManager.isRootGranted) return@launch
+        if (profileSyncing) return@launch
+        val hasRoot = RootManager.isRootGranted || RootManager.isRooted()
+        if (!hasRoot) return@launch
         val ready = _state.value as? AppsUiState.Ready ?: return@launch
         profileSyncing = true
         try {
@@ -82,8 +84,15 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    private suspend fun ensureRootReady(showSnack: Boolean = true): Boolean {
+        val ready = RootManager.isRootGranted || RootManager.isRooted() || RootManager.requestRoot()
+        if (!ready && showSnack) snack("Root belum aktif — grant root dulu")
+        return ready
+    }
+
     fun openEditor(app: AppInfo) = viewModelScope.launch(Dispatchers.IO) {
-        val current = if (RootManager.isRootGranted) {
+        val hasRoot = RootManager.isRootGranted || RootManager.isRooted()
+        val current = if (hasRoot) {
             runCatching { AppProfileRepository.loadProfile(app.packageName) }
                 .getOrDefault(AppProfile(app.packageName))
         } else {
@@ -95,10 +104,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     fun closeEditor() { _editingProfile.value = null }
 
     fun saveProfile(profile: AppProfile) = viewModelScope.launch(Dispatchers.IO) {
-        if (!RootManager.isRootGranted) {
-            snack("Root belum aktif — buka Setup dan grant root dulu")
-            return@launch
-        }
+        if (!ensureRootReady()) return@launch
 
         _savingPkg.value = profile.packageName
         try {
@@ -127,10 +133,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun toggleMonitor(enable: Boolean) = viewModelScope.launch(Dispatchers.IO) {
-        if (!RootManager.isRootGranted) {
-            snack("Root belum aktif — buka Setup dan grant root dulu")
-            return@launch
-        }
+        if (!ensureRootReady()) return@launch
 
         runCatching {
             if (enable) AppProfileRepository.startMonitor() else AppProfileRepository.stopMonitor()
@@ -146,10 +149,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun deleteProfile(packageName: String) = viewModelScope.launch(Dispatchers.IO) {
-        if (!RootManager.isRootGranted) {
-            snack("Root belum aktif — buka Setup dan grant root dulu")
-            return@launch
-        }
+        if (!ensureRootReady()) return@launch
         AppProfileRepository.deleteProfile(packageName)
         val s = _state.value
         if (s is AppsUiState.Ready) {
@@ -160,7 +160,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun resetMonitor() = viewModelScope.launch(Dispatchers.IO) {
-        if (!RootManager.isRootGranted) return@launch
+        if (!ensureRootReady(showSnack = false)) return@launch
         AppProfileRepository.resetMonitor()
         val s = _state.value
         if (s is AppsUiState.Ready) {
@@ -169,7 +169,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun resetAllProfiles() = viewModelScope.launch(Dispatchers.IO) {
-        if (!RootManager.isRootGranted) return@launch
+        if (!ensureRootReady(showSnack = false)) return@launch
         AppProfileRepository.resetAllProfiles()
         val s = _state.value
         if (s is AppsUiState.Ready) {
@@ -186,7 +186,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
             s is AppsUiState.Loading && !loading -> load()
             s is AppsUiState.Error -> load()
             s is AppsUiState.Ready && s.apps.isEmpty() -> load()
-            s is AppsUiState.Ready && RootManager.isRootGranted && s.profiles.isEmpty() -> syncProfilesIfRootReady()
+            s is AppsUiState.Ready && s.profiles.isEmpty() -> syncProfilesIfRootReady()
         }
     }
 }

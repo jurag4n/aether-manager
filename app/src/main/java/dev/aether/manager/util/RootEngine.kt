@@ -4,6 +4,7 @@ import android.os.Build
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
 /**
  * RootEngine — modern root helper and device info provider.
@@ -46,22 +47,49 @@ object RootEngine {
      * ensure the root shell is initialised before execution.
      */
     suspend fun sh(script: String): ShellResult = withContext(Dispatchers.IO) {
-        // Initialise the shell if not already. libsu handles prompting the
-        // user for root only once.
-        try {
-            if (Shell.isAppGrantedRoot() != true) {
-                Shell.getShell()
-            }
-        } catch (_: Exception) {
-            // fallback: let exec handle root prompt
+        val granted = runCatching { Shell.isAppGrantedRoot() }.getOrNull()
+        if (granted != true && !RootManager.isRootGranted) {
+            return@withContext ShellResult(1, "", "Root not granted")
         }
-        val result = Shell.cmd(script).exec()
-        return@withContext ShellResult(
-            exitCode = if (result.isSuccess) 0 else 1,
-            stdout   = result.out.joinToString("\n"),
-            stderr   = result.err.joinToString("\n"),
-        )
+
+        try {
+            if (granted != true) {
+                val shell = Shell.getShell()
+                if (!shell.isRoot) {
+                    RootManager.markDenied()
+                    return@withContext ShellResult(1, "", "Root shell not available")
+                }
+            }
+            val result = Shell.cmd(script).exec()
+            return@withContext ShellResult(
+                exitCode = if (result.isSuccess) 0 else 1,
+                stdout   = result.out.joinToString("\n"),
+                stderr   = result.err.joinToString("\n"),
+            )
+        } catch (e: Exception) {
+            return@withContext ShellResult(1, "", e.message ?: "Shell error")
+        }
     }
+
+    private suspend fun shLocal(script: String, timeoutSec: Long = 4L): ShellResult =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val proc = ProcessBuilder("/system/bin/sh", "-c", script).start()
+                val finished = proc.waitFor(timeoutSec, TimeUnit.SECONDS)
+                if (!finished) {
+                    proc.destroyForcibly()
+                    ShellResult(124, "", "Local shell timeout")
+                } else {
+                    ShellResult(
+                        exitCode = proc.exitValue(),
+                        stdout = proc.inputStream.bufferedReader().use { it.readText() },
+                        stderr = proc.errorStream.bufferedReader().use { it.readText() },
+                    )
+                }
+            }.getOrElse { e ->
+                ShellResult(1, "", e.message ?: "Local shell error")
+            }
+        }
 
     /**
      * Execute multiple commands as a single script. Each element in
@@ -73,8 +101,8 @@ object RootEngine {
     /**
      * Create the configuration directory if it does not already exist.
      */
-    suspend fun ensureConfDir() = withContext(Dispatchers.IO) {
-        Shell.cmd("mkdir -p $CONF_DIR").exec()
+    suspend fun ensureConfDir() {
+        sh("mkdir -p $CONF_DIR")
     }
 
     /**
@@ -104,23 +132,28 @@ object RootEngine {
      * when the property does not exist.
      */
     suspend fun getProp(key: String): String = withContext(Dispatchers.IO) {
-        Shell.cmd("getprop $key 2>/dev/null").exec().out.joinToString("").trim()
+        shLocal("getprop $key 2>/dev/null").stdout.trim()
     }
 
     /**
      * Read the current active profile synchronously. If the profile file
      * does not exist or is empty the default "balance" profile is returned.
      */
-    fun readProfileSync(): String =
+    fun readProfileSync(): String = try {
+        val granted = Shell.isAppGrantedRoot() == true || RootManager.isRootGranted
+        if (!granted) return "balance"
         Shell.cmd("cat $PROFILE_FILE 2>/dev/null || echo balance")
             .exec().out.joinToString("").trim()
             .ifBlank { "balance" }
+    } catch (_: Exception) {
+        "balance"
+    }
 
     /**
      * Remove the tweaks configuration file. Useful to reset all tweaks.
      */
-    suspend fun resetTweaks() = withContext(Dispatchers.IO) {
-        Shell.cmd("rm -f $TWEAKS_CONF").exec()
+    suspend fun resetTweaks() {
+        sh("rm -f $TWEAKS_CONF")
     }
 
     /**
@@ -547,9 +580,13 @@ object RootEngine {
                 echo uptime=${'$'}(printf "%dd_%dh_%dm" ${'$'}days ${'$'}hours ${'$'}mins)
             """.trimIndent()
 
-            // Run two scripts concurrently and combine the output lines
-            val r1 = sh(cpuScript + "\n" + statScript)
-            val r2 = sh(storageScript)
+            val canUseRoot = RootManager.isRootGranted || runCatching { Shell.isAppGrantedRoot() == true }.getOrDefault(false)
+            var r1 = if (canUseRoot) sh(cpuScript + "\n" + statScript) else shLocal(cpuScript + "\n" + statScript)
+            var r2 = if (canUseRoot) sh(storageScript) else shLocal(storageScript)
+
+            if (r1.stdout.isBlank()) r1 = shLocal(cpuScript + "\n" + statScript)
+            if (r2.stdout.isBlank()) r2 = shLocal(storageScript)
+
             val map = parseKv(r1.stdout + "\n" + r2.stdout)
 
             val cpuTempC = run {

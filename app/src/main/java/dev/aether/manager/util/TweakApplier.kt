@@ -47,13 +47,27 @@ object TweakApplier {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun runScript(script: String): String {
-        // Pastikan shell interactive sudah siap
-        if (Shell.isAppGrantedRoot() != true) {
-             // Jika belum granted di session ini, coba init
-             Shell.getShell()
+        val granted = runCatching { Shell.isAppGrantedRoot() }.getOrNull()
+        if (granted != true && !RootManager.isRootGranted) {
+            return "RESULT:shell:fail:a=0:s=0:f=1"
         }
-        val result = Shell.cmd(script).exec()
-        return result.out.joinToString("\n")
+
+        return try {
+            if (granted != true) {
+                val shell = Shell.getShell()
+                if (!shell.isRoot) {
+                    RootManager.markDenied()
+                    return "RESULT:shell:fail:a=0:s=0:f=1"
+                }
+            }
+            val result = Shell.cmd(script).exec()
+            result.out.joinToString("\n").ifBlank {
+                if (result.isSuccess) "RESULT:shell:ok:a=0:s=0:f=0"
+                else "RESULT:shell:fail:a=0:s=0:f=1"
+            }
+        } catch (_: Exception) {
+            "RESULT:shell:fail:a=0:s=0:f=1"
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -80,7 +94,7 @@ object TweakApplier {
         val confLines = tweaks.entries.joinToString("\n") { (k, v) -> "$k=$v" }
         val writeConf = buildString {
             appendLine("mkdir -p $dir")
-            appendLine("cat > \$confPath << 'AEOF'")
+            appendLine("cat > $confPath << 'AEOF'")
             appendLine(confLines)
             appendLine("AEOF")
         }

@@ -57,8 +57,11 @@ object RootManager {
             // supaya SetupActivity bisa request root nanti.
             val quick = Shell.isAppGrantedRoot()
             if (quick == true) {
-                _cachedRoot = true
-                true
+                val ok = runCatching {
+                    Shell.cmd("id -u").exec().out.joinToString("").trim() == "0"
+                }.getOrDefault(false)
+                _cachedRoot = ok
+                ok
             } else {
                 // null atau false — jangan cache, return false tanpa trigger popup
                 false
@@ -80,7 +83,7 @@ object RootManager {
         return@withContext try {
             // getShell() blocking — trigger dialog dan tunggu user grant
             val shell = Shell.getShell()
-            val granted = shell.isRoot
+            val granted = shell.isRoot && Shell.cmd("id -u").exec().out.joinToString("").trim() == "0"
             _cachedRoot = granted
             granted
         } catch (e: Exception) {
