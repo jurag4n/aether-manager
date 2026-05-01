@@ -130,6 +130,7 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     }
 
     val updateState by updateVm.state.collectAsState()
+    LaunchedEffect(Unit) { updateVm.checkUpdate() }
     LaunchedEffect(updateState) {
         val state = updateState
         if (state is dev.aether.manager.update.UpdateState.Available) {

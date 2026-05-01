@@ -48,7 +48,7 @@ object TweakApplier {
 
     private fun runScript(script: String): String {
         // Pastikan shell interactive sudah siap
-        if (!Shell.isAppGrantedRoot()!!) {
+        if (Shell.isAppGrantedRoot() != true) {
              // Jika belum granted di session ini, coba init
              Shell.getShell()
         }

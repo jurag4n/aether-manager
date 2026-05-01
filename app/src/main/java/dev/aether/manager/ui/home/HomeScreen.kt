@@ -79,8 +79,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.data.MonitorState
 import dev.aether.manager.data.UiState
-import dev.aether.manager.update.UpdateDialogHost
-import dev.aether.manager.update.UpdateViewModel
+
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
 import kotlin.math.PI
@@ -90,11 +89,6 @@ import kotlin.math.sin
 fun HomeScreen(vm: MainViewModel) {
     val deviceState by vm.deviceInfo.collectAsState()
     val monitorState by vm.monitorState.collectAsState()
-    val updateVm: UpdateViewModel = viewModel()
-
-    LaunchedEffect(Unit) { updateVm.checkUpdate() }
-    UpdateDialogHost(viewModel = updateVm)
-
     val info = (deviceState as? UiState.Success)?.data
 
     Column(
