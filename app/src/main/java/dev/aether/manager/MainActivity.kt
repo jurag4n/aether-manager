@@ -485,13 +485,20 @@ private fun FloatingBottomBar(
                 val isHighlighted = expanded && dragIndex == idx
 
                 // Item width: expanded shows label, collapsed is icon-only
+                // Increase the width for the selected and expanded states so that longer labels
+                // like "Beranda" are not truncated.  Previously 76.dp was too narrow and would
+                // cut off Indonesian titles (e.g. "Berand").  Bumping this to 88.dp gives
+                // sufficient room for most locales while keeping the collapsed items compact.
                 val itemWidth by animateDpAsState(
                     targetValue = when {
-                        expanded        -> 76.dp   // icon + label
-                        isSelected      -> 76.dp   // selected pill (wider to avoid truncated labels)
-                        else            -> 48.dp
+                        expanded   -> 88.dp   // show icon + label, extra width for long words
+                        isSelected -> 88.dp   // selected pill (wider to avoid truncated labels)
+                        else       -> 48.dp
                     },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness    = Spring.StiffnessMediumLow
+                    ),
                     label = "item_width_$idx"
                 )
 

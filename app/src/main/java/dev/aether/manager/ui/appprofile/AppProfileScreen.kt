@@ -192,11 +192,13 @@ private val profileOptions = listOf(
     ProfileFilter.POWER_SAVE
 )
 
-private val refreshRateOptions = listOf(
-    "default" to "Default",
-    "60" to "60Hz",
-    "90" to "90Hz"
-)
+/*
+ * Global refresh‑rate options are no longer used.  The App list items now
+ * determine the available refresh rates based on the device capabilities via
+ * getMaxRefreshRate().  Leaving this constant around unused would be
+ * confusing to future maintainers.  If you need a default, see the
+ * dynamic construction inside AppListItem.
+ */
 
 @Composable
 private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
@@ -705,23 +707,18 @@ private fun AppListItem(
         label = "app_card_arrow"
     )
 
-    // Summarize profile state for compact display.  The summary shows
-    // "Not Set" when no profile exists, "Disabled" when the profile is
-    // disabled, and otherwise displays the active profile mode and any
-    // custom refresh rate.  By using remember we avoid recomputing this
-    // on every recomposition.
+    // Summarize profile state for compact display.  Only show the active
+    // profile mode and custom refresh rate when a profile exists and is
+    // enabled.  Avoid adding "Not Set" or "Disabled" chips for a cleaner
+    // look.  If the profile is null or disabled the summary will be blank.
     val summary by remember(isEnabled, profile) {
         mutableStateOf(
             run {
                 val parts = mutableListOf<String>()
-                if (profile == null) {
-                    parts += "Not Set"
-                } else {
-                    if (!isEnabled) {
-                        parts += "Disabled"
-                    } else {
-                        parts += profileModeLabel(profile)
-                    }
+                if (profile != null && isEnabled) {
+                    // Include the human readable profile mode (e.g. Performance, Balanced)
+                    parts += profileModeLabel(profile)
+                    // Append the refresh rate if it isn't the default
                     val rateLabel = refreshRateLabel(currentProfile.refreshRate)
                     if (rateLabel.lowercase() != "default") {
                         parts += rateLabel
