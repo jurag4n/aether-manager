@@ -253,13 +253,19 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                 targetState = currentScreen,
                 transitionSpec = {
                     val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                    val slideSpec = spring<Int>(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
-                    (slideInHorizontally(animationSpec = slideSpec) { it * dir / 5 } +
+                    (slideInHorizontally(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) { it * dir / 5 } +
                             fadeIn(tween(170, easing = FastOutSlowInEasing))) togetherWith
-                            (slideOutHorizontally(animationSpec = slideSpec) { -it * dir / 5 } +
+                            (slideOutHorizontally(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            ) { -it * dir / 5 } +
                                     fadeOut(tween(120, easing = FastOutSlowInEasing)))
                 },
                 label = "screen_transition"
