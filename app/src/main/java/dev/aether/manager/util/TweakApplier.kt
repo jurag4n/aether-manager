@@ -103,8 +103,7 @@ printf '$confContent\n' > $confPath
             append(buildCpuGovernor(t, profile))
             append(buildCpuFreq(t, profile))
             append(buildCpuBoost(t, profile))
-            append(buildMtkBoost(t))
-            append(buildCpuset(t))
+            // We intentionally omit MTK boost, cpuset, ksm, touch, UI animation, misc
             append(buildSched(t, profile))
             append(buildThermal(t))
             append(buildGpu(t, profile))
@@ -112,10 +111,6 @@ printf '$confContent\n' > $confPath
             append(buildMemory(t))
             append(buildIo(t))
             append(buildNetwork(t))
-            append(buildKsm(t))
-            append(buildTouch(t))
-            append(buildUiAnim(t))
-            append(buildMisc(t))
         }
     }
 
@@ -248,6 +243,20 @@ _end "cpu_governor"
 
     private fun buildCpuFreq(t: Map<String, String>, profile: String): String {
         return when {
+            // Lock CPU frequencies to their maximum when cpu_freq_lock is enabled
+            t["cpu_freq_lock"] == "1" -> """
+_begin
+# cpu_freq lock — force max freq on all policies
+for pol in /sys/devices/system/cpu/cpufreq/policy*/; do
+  [ -d "${'$'}pol" ] || continue
+  maxf=${'$'}(cat "${'$'}{pol}cpuinfo_max_freq" 2>/dev/null || echo 0)
+  echo "${'$'}maxf" | grep -qE '^[0-9]+' || continue
+  # apply both min and max to lock the freq
+  apply "${'$'}maxf" "${'$'}{pol}scaling_max_freq"
+  apply "${'$'}maxf" "${'$'}{pol}scaling_min_freq"
+done
+_end "cpu_freq"
+"""
             profile == "gaming" || profile == "performance" -> """
 _begin
 # cpu_freq — max perf (safe: write only, no chmod 444 lock)
@@ -584,11 +593,8 @@ _end "gpu_freq"
     private fun buildMemory(t: Map<String, String>): String = buildString {
         append("_begin\n# memory\n")
 
-        if (t["vm_dirty_opt"] == "1") {
-            append("write 10  /proc/sys/vm/dirty_ratio\n")
-            append("write 5   /proc/sys/vm/dirty_background_ratio\n")
-            append("write 50  /proc/sys/vm/dirty_expire_centisecs\n")
-            append("write 25  /proc/sys/vm/dirty_writeback_centisecs\n")
+        // swap tuning — adjust swappiness and cache pressure when swap enabled
+        if (t["swap"] == "1") {
             append("write 100 /proc/sys/vm/swappiness\n")
             append("write 200 /proc/sys/vm/vfs_cache_pressure\n")
         }
@@ -669,7 +675,8 @@ done
 """)
         }
 
-        if (t["clear_cache"] == "1") {
+        // kill background — drop caches and trim app caches
+        if (t["kill_background"] == "1") {
             append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
             append("pm trim-caches 0 2>/dev/null && _A=\$((_A+1)) || _S=\$((_S+1))\n")
         }
@@ -722,11 +729,29 @@ done
     // Network
     // ─────────────────────────────────────────────────────────────────────────
 
-    private fun buildNetwork(t: Map<String, String>): String = buildString {
-        append("_begin\n# network\n")
-
-        if (t["tcp_bbr"] == "1") {
-            append("""
+    private fun buildNetwork(t: Map<String, String>): String {
+        // Determine provider from dns_provider or legacy keys
+        val provider = when {
+            t["dns_provider"]?.isNotBlank() == true -> t["dns_provider"]!!
+            t["doh"] == "1" -> "Cloudflare"
+            else -> ""
+        }
+        val dnsHost = if (provider.isNotEmpty() && provider != "Off") {
+            when (provider.lowercase()) {
+                "cloudflare"      -> "one.one.one.one"
+                "google"          -> "dns.google"
+                "quad9"           -> "dns.quad9.net"
+                "cleanbrowsing"   -> "family-filter-dns.cleanbrowsing.org"
+                "control d", "controld" -> "p2.freedns.controld.com"
+                "nextdns"         -> "dns.nextdns.io"
+                else               -> provider
+            }
+        } else null
+        return buildString {
+            append("_begin\n# network\n")
+            // TCP congestion control (BBR/bbr2) and fair queueing
+            if (t["tcp_bbr"] == "1") {
+                append("""
 for algo in bbr bbr2 westwood cubic; do
   if grep -q "${'$'}algo" /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
     write "${'$'}algo" /proc/sys/net/ipv4/tcp_congestion_control
@@ -735,27 +760,27 @@ for algo in bbr bbr2 westwood cubic; do
 done
 write fq /proc/sys/net/core/default_qdisc
 """)
+            }
+            // Network stabiliser: tune socket buffers, enable low latency & scaling
+            if (t["network_stable"] == "1") {
+                append("printf '4096 87380 16777216' > /proc/sys/net/ipv4/tcp_rmem 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
+                append("printf '4096 65536 16777216' > /proc/sys/net/ipv4/tcp_wmem 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
+                append("write 16777216 /proc/sys/net/core/rmem_max\n")
+                append("write 16777216 /proc/sys/net/core/wmem_max\n")
+                append("write 3 /proc/sys/net/ipv4/tcp_fastopen\n")
+                append("write 1 /proc/sys/net/ipv4/tcp_window_scaling\n")
+                append("write 1 /proc/sys/net/ipv4/tcp_low_latency\n")
+                append("write 1 /proc/sys/net/ipv4/tcp_sack\n")
+            }
+            // Private DNS provider
+            if (dnsHost != null) {
+                append("settings put global private_dns_mode hostname 2>/dev/null && _A=\$((_A+1))\n")
+                append("settings put global private_dns_specifier $dnsHost 2>/dev/null && _A=\$((_A+1))\n")
+            } else {
+                append("settings put global private_dns_mode off 2>/dev/null; _A=\$((_A+1))\n")
+            }
+            append("_end \"network\"\n")
         }
-
-        if (t["net_buffer"] == "1") {
-            append("printf '4096 87380 16777216' > /proc/sys/net/ipv4/tcp_rmem 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
-            append("printf '4096 65536 16777216' > /proc/sys/net/ipv4/tcp_wmem 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
-            append("write 16777216 /proc/sys/net/core/rmem_max\n")
-            append("write 16777216 /proc/sys/net/core/wmem_max\n")
-            append("write 3 /proc/sys/net/ipv4/tcp_fastopen\n")
-            append("write 1 /proc/sys/net/ipv4/tcp_window_scaling\n")
-            append("write 1 /proc/sys/net/ipv4/tcp_low_latency\n")
-            append("write 1 /proc/sys/net/ipv4/tcp_sack\n")
-        }
-
-        if (t["doh"] == "1") {
-            append("settings put global private_dns_mode hostname 2>/dev/null && _A=\$((_A+1))\n")
-            append("settings put global private_dns_specifier one.one.one.one 2>/dev/null && _A=\$((_A+1))\n")
-        } else {
-            append("settings put global private_dns_mode off 2>/dev/null; _A=\$((_A+1))\n")
-        }
-
-        append("_end \"network\"\n")
     }
 
     // ─────────────────────────────────────────────────────────────────────────

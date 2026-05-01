@@ -106,12 +106,16 @@ fun TweakScreen(
     var renderer by rememberSaveable { mutableStateOf("OpenGL") }
     var rendererDialog by rememberSaveable { mutableStateOf(false) }
 
-    var dnsProvider by rememberSaveable { mutableStateOf("Off") }
+    var dnsProvider by rememberSaveable {
+        mutableStateOf(
+            if (tweaks.dnsProvider.isBlank()) "Off" else tweaks.dnsProvider
+        )
+    }
     var networkStable by rememberSaveable { mutableStateOf(false) }
     var tcpEnabled by rememberSaveable { mutableStateOf(tweaks.tcpBbr) }
 
-    var swapEnabled by rememberSaveable { mutableStateOf(false) }
-    var killBackgroundActive by rememberSaveable { mutableStateOf(false) }
+    var swapEnabled by rememberSaveable { mutableStateOf(tweaks.swap) }
+    var killBackgroundActive by rememberSaveable { mutableStateOf(tweaks.killBackground) }
 
     var ioScheduler by rememberSaveable {
         mutableStateOf(if (tweaks.ioScheduler.isBlank()) "Auto" else normalizeLabel(tweaks.ioScheduler))
@@ -284,9 +288,12 @@ fun TweakScreen(
                     networkStable = networkStable,
                     tcpEnabled = tcpEnabled || tweaks.tcpBbr,
                     onClick = { toggleExpand("network") },
-                    onDnsSelect = {
-                        dnsProvider = it
-                        setTweakNow("privateDns", it != "Off")
+                    onDnsSelect = { provider ->
+                        dnsProvider = provider
+                        // Update provider string in ViewModel
+                        vm.setTweakStr("dnsProvider", provider)
+                        // Toggle Private DNS on/off for backward compatibility
+                        setTweakNow("privateDns", provider != "Off")
                     },
                     onNetworkStableToggle = {
                         networkStable = !networkStable

@@ -56,6 +56,21 @@ data class TweaksState(
     val touchSampleRate: String = "default",
     val ksm: Boolean = false,
     val ksmAggressive: Boolean = false,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // New toggles for modern tweak engine
+    //
+    // networkStable     — enable network buffer tuning for more stable latency
+    // swap              — enable swap tuning (swappiness/vm pressure)
+    // killBackground    — aggressively drop caches & trim app caches
+    // dnsProvider       — selected private DNS provider ("", "Cloudflare", "Google", "Quad9", "CleanBrowsing")
+    // cpuFreqLock       — lock CPU frequencies to their current maximum
+    // These fields default to off/blank.
+    val networkStable: Boolean = false,
+    val swap: Boolean = false,
+    val killBackground: Boolean = false,
+    val dnsProvider: String = "",
+    val cpuFreqLock: Boolean = false,
 )
 
 data class MonitorState(
@@ -387,6 +402,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         put("touch_sample_rate", s.touchSampleRate)
         put("ksm",               if (s.ksm)             "1" else "0")
         put("ksm_aggressive",    if (s.ksmAggressive)   "1" else "0")
+
+        // New tweak keys for network, memory and CPU lock
+        put("network_stable",    if (s.networkStable)    "1" else "0")
+        put("swap",              if (s.swap)              "1" else "0")
+        put("kill_background",   if (s.killBackground)   "1" else "0")
+        put("dns_provider",      s.dnsProvider)
+        put("cpu_freq_lock",     if (s.cpuFreqLock)      "1" else "0")
         // Profile dibaca dari RootEngine.PROFILE_FILE, tidak disimpan di TweaksState
         // tapi dibutuhkan script — baca dari disk saat ini
         put("profile", RootEngine.readProfileSync())
@@ -431,6 +453,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         touchSampleRate  = map["touch_sample_rate"]  ?: "default",
         ksm              = map["ksm"]                == "1",
         ksmAggressive    = map["ksm_aggressive"]     == "1",
+        // New toggles
+        networkStable    = map["network_stable"]    == "1",
+        swap             = map["swap"]              == "1",
+        killBackground   = map["kill_background"]   == "1",
+        dnsProvider      = map["dns_provider"]      ?: "",
+        cpuFreqLock      = map["cpu_freq_lock"]      == "1",
     )
 
     private fun applyTweakToState(state: TweaksState, key: String, value: Boolean): TweaksState =
@@ -456,6 +484,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "touch_boost"      -> state.copy(touchBoost = value)
             "ksm"              -> state.copy(ksm = value)
             "ksm_aggressive"   -> state.copy(ksmAggressive = value)
+            // New toggles for modern tweak engine
+            "networkStable"    -> state.copy(networkStable = value)
+            "swap"             -> state.copy(swap = value)
+            "killBackground"   -> state.copy(killBackground = value)
+            "cpuFreqLock"      -> state.copy(cpuFreqLock = value)
+            // For backward compatibility: privateDns simply toggles dnsProvider on/off (Cloudflare default)
+            "privateDns"       -> state.copy(dnsProvider = if (value) "Cloudflare" else "")
             else               -> state
         }
 
@@ -474,6 +509,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "cpu_freq_gold_max"  -> state.copy(cpuFreqGoldMax = value)
             "cpu_freq_silver_min"-> state.copy(cpuFreqSilverMin = value)
             "cpu_freq_silver_max"-> state.copy(cpuFreqSilverMax = value)
+            // New string-based toggles
+            "dnsProvider", "dns_provider" -> state.copy(dnsProvider = value)
             else                 -> state
         }
 
