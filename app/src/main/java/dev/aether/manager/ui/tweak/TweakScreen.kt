@@ -1107,7 +1107,6 @@ private fun rememberDeviceName(): String {
 }
 
 @Composable
-@Composable
 private fun AppProfileCard(onClick: () -> Unit) {
     // This card acts as the entry point to the App Profile screen.  To make it
     // feel more compact and horizontally oriented (roughly a 4:1 width:height
