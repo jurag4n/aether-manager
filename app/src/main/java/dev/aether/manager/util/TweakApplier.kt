@@ -4,21 +4,7 @@ import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * TweakApplier — engine apply tweak bergaya encore_profiler.
- *
- * Filosofi (persis encore):
- *   apply(val, node) = chmod 644 → echo val → chmod 444   (sysfs 444-protected)
- *   write(val, node)  = chmod 644 → echo val              (procfs / dynamic nodes)
- *
- * Satu Shell.cmd() batch per subsistem, tidak ada file tmp, tidak ada round-trip.
- * Semua subshell $(...) dalam heredoc sudah di-escape dengan benar.
- */
 object TweakApplier {
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Result model
-    // ─────────────────────────────────────────────────────────────────────────
 
     data class SubsystemResult(
         val name:    String,
@@ -41,25 +27,13 @@ object TweakApplier {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Shell helper — jalankan script langsung via Shell.cmd() tanpa file tmp
-    // Tidak perlu /data/local/tmp lagi karena kita pakai Shell interactive root
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun runScript(script: String): String {
-        val granted = runCatching { Shell.isAppGrantedRoot() }.getOrNull()
-        if (granted != true && !RootManager.isRootGranted) {
-            return "RESULT:shell:fail:a=0:s=0:f=1"
-        }
+        val appGranted = runCatching { Shell.isAppGrantedRoot() }.getOrNull()
+        val canRun = appGranted == true || RootManager.isRootGranted
+
+        if (!canRun) return "RESULT:shell:fail:a=0:s=0:f=1"
 
         return try {
-            if (granted != true) {
-                val shell = Shell.getShell()
-                if (!shell.isRoot) {
-                    RootManager.markDenied()
-                    return "RESULT:shell:fail:a=0:s=0:f=1"
-                }
-            }
             val result = Shell.cmd(script).exec()
             result.out.joinToString("\n").ifBlank {
                 if (result.isSuccess) "RESULT:shell:ok:a=0:s=0:f=0"
@@ -69,10 +43,6 @@ object TweakApplier {
             "RESULT:shell:fail:a=0:s=0:f=1"
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Public API
-    // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun apply(tweaks: Map<String, String>): ApplyResult = withContext(Dispatchers.IO) {
         val t0 = System.currentTimeMillis()
@@ -89,7 +59,6 @@ object TweakApplier {
     ): ApplyResult = withContext(Dispatchers.IO) {
         val t0 = System.currentTimeMillis()
 
-        // Tulis conf + apply dalam SATU Shell batch
         val dir = confPath.substringBeforeLast('/')
         val confLines = tweaks.entries.joinToString("\n") { (k, v) -> "$k=$v" }
         val writeConf = buildString {
@@ -106,10 +75,6 @@ object TweakApplier {
         )
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Script builder — susun semua subsistem
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildFullScript(t: Map<String, String>): String {
         val profile = t["profile"] ?: "balance"
         return buildString {
@@ -117,7 +82,6 @@ object TweakApplier {
             append(buildCpuGovernor(t, profile))
             append(buildCpuFreq(t, profile))
             append(buildCpuBoost(t, profile))
-            // We intentionally omit MTK boost, cpuset, ksm, touch, UI animation, misc
             append(buildSched(t, profile))
             append(buildThermal(t))
             append(buildGpu(t, profile))
@@ -127,17 +91,6 @@ object TweakApplier {
             append(buildNetwork(t))
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // SHELL HELPERS — persis encore_profiler
-    //
-    // apply val node  = chmod 644 → echo → chmod 444   (sysfs protected)
-    // write val node  = chmod 644 → echo               (procfs/dynamic)
-    // forall val glob = write ke semua node yang match
-    // gov name        = change_cpu_gov — tee ke semua policy*/cpu*
-    //
-    // Semua menggunakan single-quote heredoc agar $ tidak diekspansi Kotlin.
-    // ─────────────────────────────────────────────────────────────────────────
 
     private val SHELL_HELPERS = """
 _A=0; _S=0; _F=0
@@ -216,10 +169,6 @@ _end()   {
 
 """.trimIndent() + "\n"
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CPU Governor
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildCpuGovernor(t: Map<String, String>, profile: String): String {
         val target = when (profile) {
             "performance" -> "performance"
@@ -227,7 +176,6 @@ _end()   {
             "gaming"      -> t["cpu_governor"]?.takeIf { it.isNotBlank() } ?: "performance"
             else          -> t["cpu_governor"]?.takeIf { it.isNotBlank() } ?: "schedutil"
         }
-        // Gunakan single-quote agar $ shell tidak diekspansi Kotlin
         return """
 _begin
 # cpu_governor — target: $target
@@ -251,13 +199,8 @@ _end "cpu_governor"
 """
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CPU Frequency
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildCpuFreq(t: Map<String, String>, profile: String): String {
         return when {
-            // Lock CPU frequencies to their maximum when cpu_freq_lock is enabled
             t["cpu_freq_lock"] == "1" -> """
 _begin
 # cpu_freq lock — force max freq on all policies
@@ -369,10 +312,6 @@ _end "cpu_freq"
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CPU Boost
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildCpuBoost(t: Map<String, String>, profile: String): String {
         val on = t["cpu_boost"] == "1" || profile == "gaming" || profile == "performance"
         return if (on) """
@@ -406,10 +345,6 @@ _end "cpu_boost"
 """
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // MTK EAS / HPS Boost
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildMtkBoost(t: Map<String, String>): String {
         if (t["obb_noop"] != "1") return """
 _begin
@@ -436,10 +371,6 @@ _end "mtk_boost"
 """
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // cpuset
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildCpuset(t: Map<String, String>): String {
         if (t["cpuset_opt"] != "1") return """
 _begin
@@ -462,10 +393,6 @@ _end "cpuset"
 """
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Scheduler
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildSched(t: Map<String, String>, profile: String): String {
         val boost = if (t["schedboost"] == "1" || profile == "gaming" || profile == "performance") "1" else "0"
         val (upmig, downmig) = when (profile) {
@@ -486,10 +413,6 @@ write $downmig /proc/sys/kernel/sched_group_downmigrate
 _end "sched"
 """
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Thermal
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun buildThermal(t: Map<String, String>): String {
         return when (t["thermal_profile"] ?: "default") {
@@ -538,10 +461,6 @@ _end "thermal"
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // GPU
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildGpu(t: Map<String, String>, profile: String): String {
         val perf = t["gpu_throttle_off"] == "1" || profile == "gaming" || profile == "performance"
         return if (perf) """
@@ -575,10 +494,6 @@ _end "gpu"
 """
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // GPU Freq Lock
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildGpuFreq(t: Map<String, String>): String {
         val freq = t["gpu_freq_max"]?.takeIf { it.isNotBlank() && t["gpu_freq_lock"] == "1" }
         return if (freq != null) """
@@ -600,14 +515,9 @@ _end "gpu_freq"
 """
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Memory
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildMemory(t: Map<String, String>): String = buildString {
         append("_begin\n# memory\n")
 
-        // swap tuning — adjust swappiness and cache pressure when swap enabled
         if (t["swap"] == "1") {
             append("write 100 /proc/sys/vm/swappiness\n")
             append("write 200 /proc/sys/vm/vfs_cache_pressure\n")
@@ -689,7 +599,6 @@ done
 """)
         }
 
-        // kill background — drop caches and trim app caches
         if (t["kill_background"] == "1") {
             append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
             append("pm trim-caches 0 2>/dev/null && _A=\$((_A+1)) || _S=\$((_S+1))\n")
@@ -697,10 +606,6 @@ done
 
         append("_end \"memory\"\n")
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // I/O
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun buildIo(t: Map<String, String>): String = buildString {
         append("_begin\n# io\n")
@@ -739,12 +644,7 @@ done
         append("_end \"io\"\n")
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Network
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildNetwork(t: Map<String, String>): String {
-        // Determine provider from dns_provider or legacy keys
         val provider = when {
             t["dns_provider"]?.isNotBlank() == true -> t["dns_provider"]!!
             t["doh"] == "1" -> "Cloudflare"
@@ -763,7 +663,6 @@ done
         } else null
         return buildString {
             append("_begin\n# network\n")
-            // TCP congestion control (BBR/bbr2) and fair queueing
             if (t["tcp_bbr"] == "1") {
                 append("""
 for algo in bbr bbr2 westwood cubic; do
@@ -775,7 +674,6 @@ done
 write fq /proc/sys/net/core/default_qdisc
 """)
             }
-            // Network stabiliser: tune socket buffers, enable low latency & scaling
             if (t["network_stable"] == "1") {
                 append("printf '4096 87380 16777216' > /proc/sys/net/ipv4/tcp_rmem 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
                 append("printf '4096 65536 16777216' > /proc/sys/net/ipv4/tcp_wmem 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
@@ -786,7 +684,6 @@ write fq /proc/sys/net/core/default_qdisc
                 append("write 1 /proc/sys/net/ipv4/tcp_low_latency\n")
                 append("write 1 /proc/sys/net/ipv4/tcp_sack\n")
             }
-            // Private DNS provider
             if (dnsHost != null) {
                 append("settings put global private_dns_mode hostname 2>/dev/null && _A=\$((_A+1))\n")
                 append("settings put global private_dns_specifier $dnsHost 2>/dev/null && _A=\$((_A+1))\n")
@@ -796,10 +693,6 @@ write fq /proc/sys/net/core/default_qdisc
             append("_end \"network\"\n")
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // KSM
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun buildKsm(t: Map<String, String>): String {
         if (t["ksm"] != "1") return """
@@ -819,10 +712,6 @@ write ${'$'}{if (agr) "1" else "0"}       /sys/kernel/mm/ksm/merge_across_nodes
 _end "ksm"
 """
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Touch
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun buildTouch(t: Map<String, String>): String {
         if (t["touch_boost"] != "1") return """
@@ -845,10 +734,6 @@ _end "touch"
 """
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // UI Animation
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildUiAnim(t: Map<String, String>): String {
         val scale = if (t["fast_anim"] == "1") "0.5" else "1.0"
         return """
@@ -861,16 +746,9 @@ _end "ui_anim"
 """
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Misc — encore perfcommon() style
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun buildMisc(t: Map<String, String>): String = buildString {
         append("_begin\n# misc (encore perfcommon style)\n")
 
-        // sched_rt_runtime_us = -1 menonaktifkan RT throttling.
-        // BERBAHAYA: beberapa kernel tidak support nilai -1 dan dapat menyebabkan deadlock.
-        // Fix: cek dulu sebelum menulis, fallback ke 950000 jika tidak support.
         append("""
 if [ -f /proc/sys/kernel/sched_rt_runtime_us ]; then
   if echo -1 > /proc/sys/kernel/sched_rt_runtime_us 2>/dev/null; then
@@ -887,7 +765,6 @@ fi
         append("write 32 /proc/sys/kernel/sched_nr_migrate\n")
         append("write 0  /proc/sys/vm/page-cluster\n")
         append("write 0  /proc/sys/vm/compaction_proactiveness\n")
-        // Disable Oplus/Realme bloats (aman, skip jika tidak ada)
         append("write 0 /sys/module/opchain/parameters/chain_on\n")
         append("write 0 /sys/module/cpufreq_bouncing/parameters/enable\n")
 
@@ -902,11 +779,6 @@ fi
 
         append("_end \"misc\"\n")
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Parse RESULT: markers
-    // Format: RESULT:<name>:<ok|fail>:a=<n>:s=<n>:f=<n>
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun parseResults(output: String): List<SubsystemResult> {
         val results = output.lines()

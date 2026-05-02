@@ -6,19 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
-/**
- * RootEngine — modern root helper and device info provider.
- *
- * This replaces the old RootUtils. It uses libsu via Shell APIs to execute
- * commands as root and exposes helper methods to manage tweak configuration
- * files, read device state and apply tweaks. All functionality previously
- * provided by RootUtils is preserved so existing code can switch to this
- * class. The engine works across Snapdragon, MediaTek, Exynos and other
- * chipsets and applies tweaks immediately without requiring a reboot.
- */
 object RootEngine {
-    // Configuration directory and files. The same paths are kept to preserve
-    // compatibility with existing backups and tweak configurations.
     const val CONF_DIR        = "/data/local/tmp/aether"
     const val TWEAKS_CONF     = "$CONF_DIR/tweaks.conf"
     const val PROFILE_FILE    = "$CONF_DIR/profile"
@@ -27,47 +15,31 @@ object RootEngine {
 
     data class ShellResult(val exitCode: Int, val stdout: String, val stderr: String)
 
-    /**
-     * Determine whether the application has root access. Uses RootManager
-     * for caching and detection. When root is granted the cached flag in
-     * RootManager will be updated automatically.
-     */
     suspend fun hasRoot(): Boolean {
         val rooted = RootManager.isRooted()
-        // Synchronise cache if root is detected but not yet marked granted.
         if (rooted && !RootManager.isRootGranted) {
             RootManager.markGranted()
         }
         return rooted
     }
 
-    /**
-     * Execute a shell script as root. Returns a ShellResult containing
-     * exit code, standard output and standard error. This helper will
-     * ensure the root shell is initialised before execution.
-     */
     suspend fun sh(script: String): ShellResult = withContext(Dispatchers.IO) {
-        val granted = runCatching { Shell.isAppGrantedRoot() }.getOrNull()
-        if (granted != true && !RootManager.isRootGranted) {
+        val appGranted = runCatching { Shell.isAppGrantedRoot() }.getOrNull()
+        val canRun = appGranted == true || RootManager.isRootGranted
+
+        if (!canRun) {
             return@withContext ShellResult(1, "", "Root not granted")
         }
 
-        try {
-            if (granted != true) {
-                val shell = Shell.getShell()
-                if (!shell.isRoot) {
-                    RootManager.markDenied()
-                    return@withContext ShellResult(1, "", "Root shell not available")
-                }
-            }
+        return@withContext try {
             val result = Shell.cmd(script).exec()
-            return@withContext ShellResult(
+            ShellResult(
                 exitCode = if (result.isSuccess) 0 else 1,
                 stdout   = result.out.joinToString("\n"),
                 stderr   = result.err.joinToString("\n"),
             )
         } catch (e: Exception) {
-            return@withContext ShellResult(1, "", e.message ?: "Shell error")
+            ShellResult(1, "", e.message ?: "Shell error")
         }
     }
 
@@ -91,54 +63,28 @@ object RootEngine {
             }
         }
 
-    /**
-     * Execute multiple commands as a single script. Each element in
-     * the argument list becomes its own line in the script.
-     */
     suspend fun sh(vararg cmds: String): ShellResult =
         sh(cmds.joinToString("\n"))
 
-    /**
-     * Create the configuration directory if it does not already exist.
-     */
     suspend fun ensureConfDir() {
         sh("mkdir -p $CONF_DIR")
     }
 
-    /**
-     * Read the contents of a file as root. If the file does not exist
-     * an empty string is returned.
-     */
     suspend fun readFile(path: String): String =
         sh("cat $path 2>/dev/null").stdout
 
-    /**
-     * Write content to a file atomically. Content is escaped to ensure it
-     * is written verbatim. Returns true when the write succeeds.
-     */
     suspend fun writeFile(path: String, content: String): Boolean {
         val escaped = content.replace("'", "'\\''")
         return sh("printf '%s' '$escaped' > $path").exitCode == 0
     }
 
-    /**
-     * Test if a file exists. Returns true if the file is present.
-     */
     suspend fun fileExists(path: String): Boolean =
         sh("[ -f $path ] && echo yes").stdout.contains("yes")
 
-    /**
-     * Query a system property via getprop. An empty string is returned
-     * when the property does not exist.
-     */
     suspend fun getProp(key: String): String = withContext(Dispatchers.IO) {
         shLocal("getprop $key 2>/dev/null").stdout.trim()
     }
 
-    /**
-     * Read the current active profile synchronously. If the profile file
-     * does not exist or is empty the default "balance" profile is returned.
-     */
     fun readProfileSync(): String {
         val granted = Shell.isAppGrantedRoot() == true || RootManager.isRootGranted
         if (!granted) return "balance"
@@ -151,17 +97,10 @@ object RootEngine {
         }
     }
 
-    /**
-     * Remove the tweaks configuration file. Useful to reset all tweaks.
-     */
     suspend fun resetTweaks() {
         sh("rm -f $TWEAKS_CONF")
     }
 
-    /**
-     * Read device information such as model, Android version and chipset.
-     * Additional fields like root type and thermal state are also included.
-     */
     fun getDeviceInfoFallback(): DeviceInfo {
         val raw = listOf(
             Build.BOARD.orEmpty(),
@@ -263,17 +202,9 @@ object RootEngine {
         else -> SocType.OTHER
     }
 
-    /**
-     * Parse the tweaks configuration file into a map of key → value.
-     */
     suspend fun readTweaksConf(): Map<String, String> =
         parseKv(readFile(TWEAKS_CONF))
 
-    /**
-     * Update a single tweak entry in the configuration file. If the key
-     * already exists its value is replaced, otherwise the key/value pair
-     * is appended. Returns true on success.
-     */
     suspend fun writeTweakConf(key: String, value: String): Boolean {
         val script = """
             if grep -q '^$key=' $TWEAKS_CONF 2>/dev/null; then
@@ -285,23 +216,11 @@ object RootEngine {
         return sh(script).exitCode == 0
     }
 
-    /**
-     * Write the profile file. Returns true on success.
-     */
     suspend fun setProfile(profile: String): Boolean = writeFile(PROFILE_FILE, profile)
 
-    /**
-     * Apply a set of tweaks immediately using TweakApplier.writeAndApply.
-     * Returns true when all subsystems apply successfully.
-     */
     suspend fun applyTweaksDirect(tweaks: Map<String, String>): Boolean =
         TweakApplier.writeAndApply(TWEAKS_CONF, tweaks).success
 
-    /**
-     * Change profile and apply. The profile file is written and the
-     * provided tweaks map is updated with the new profile. Returns true
-     * when all subsystems apply successfully.
-     */
     suspend fun setProfileDirect(profile: String): Boolean {
         writeFile(PROFILE_FILE, profile)
         val tweaks = readTweaksConf().toMutableMap()
@@ -309,17 +228,10 @@ object RootEngine {
         return TweakApplier.writeAndApply(TWEAKS_CONF, tweaks).success
     }
 
-    /**
-     * Toggle safe mode by creating or removing the safe mode file.
-     */
     suspend fun toggleSafeMode(enable: Boolean): Boolean =
         if (enable) sh("touch $SAFE_MODE_FILE").exitCode == 0
         else        sh("rm -f $SAFE_MODE_FILE").exitCode == 0
 
-    /**
-     * Request a reboot. Depending on the mode the device will reboot to
-     * normal system, recovery or bootloader. Returns true on success.
-     */
     suspend fun reboot(mode: RebootMode = RebootMode.NORMAL): Boolean =
         sh(when (mode) {
             RebootMode.NORMAL     -> "reboot"
@@ -329,15 +241,8 @@ object RootEngine {
 
     enum class RebootMode { NORMAL, RECOVERY, BOOTLOADER }
 
-    /**
-     * Gather monitor data such as CPU/GPU usage, memory state and
-     * temperatures. The collected values are parsed into a MonitorState.
-     * The implementation consolidates multiple vendor-specific paths so
-     * it works across Snapdragon, MediaTek, Exynos and other chipsets.
-     */
     suspend fun getMonitorState(): dev.aether.manager.data.MonitorState =
         withContext(Dispatchers.IO) {
-            // Build two scripts: one for CPU/GPU/memory and one for storage/uptime.
             val cpuScript = """
                 line1=$(grep -m1 "^cpu " /proc/stat)
                 sleep 0.5
@@ -582,12 +487,9 @@ object RootEngine {
                 echo uptime=${'$'}(printf "%dd_%dh_%dm" ${'$'}days ${'$'}hours ${'$'}mins)
             """.trimIndent()
 
-            val canUseRoot = RootManager.isRootGranted || runCatching { Shell.isAppGrantedRoot() == true }.getOrDefault(false)
-            var r1 = if (canUseRoot) sh(cpuScript + "\n" + statScript) else shLocal(cpuScript + "\n" + statScript)
-            var r2 = if (canUseRoot) sh(storageScript) else shLocal(storageScript)
-
-            if (r1.stdout.isBlank()) r1 = shLocal(cpuScript + "\n" + statScript)
-            if (r2.stdout.isBlank()) r2 = shLocal(storageScript)
+            val canUseRoot = RootManager.isRootGranted || Shell.isAppGrantedRoot() == true
+            val r1 = if (canUseRoot) sh(cpuScript + "\n" + statScript) else shLocal(cpuScript + "\n" + statScript)
+            val r2 = if (canUseRoot) sh(storageScript) else shLocal(storageScript)
 
             val map = parseKv(r1.stdout + "\n" + r2.stdout)
 
@@ -670,9 +572,6 @@ object RootEngine {
             )
         }
 
-    /**
-     * Convert a key=value string into a map. Lines without '=' are ignored.
-     */
     private fun parseKv(raw: String): Map<String, String> =
         raw.lines().mapNotNull { line ->
             val i = line.indexOf('=')
@@ -681,11 +580,6 @@ object RootEngine {
         }.toMap()
 }
 
-/**
- * Immutable data describing the device. This mirrors the original
- * DeviceInfo defined in RootUtils so the UI and ViewModel code do
- * not need any changes. The soc enum indicates the chipset type.
- */
 data class DeviceInfo(
     val model     : String,
     val android   : String,
@@ -700,10 +594,6 @@ data class DeviceInfo(
     val bootCount : Int
 )
 
-/**
- * Enumeration of supported System-on-Chip (SoC) families. Additional
- * families can be added as needed.
- */
 enum class SocType(val label: String) {
     SNAPDRAGON("Snapdragon"),
     MEDIATEK  ("MediaTek"),
