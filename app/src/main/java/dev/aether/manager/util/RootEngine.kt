@@ -468,13 +468,3 @@ object RootEngine {
             else null
         }.toMap()
 }
-
-)
-
-enum class SocType(val label: String) {
-    SNAPDRAGON("Snapdragon"),
-    MEDIATEK  ("MediaTek"),
-    EXYNOS    ("Exynos"),
-    KIRIN     ("Kirin"),
-    OTHER     ("Universal")
-}

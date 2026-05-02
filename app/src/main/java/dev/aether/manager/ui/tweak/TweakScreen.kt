@@ -33,8 +33,8 @@ import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.VideogameAsset
 import androidx.compose.material.icons.outlined.PowerOff
-import androidx.compose.material.icons.outlined.Snowing
-import androidx.compose.material.icons.outlined.Sunny
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.FlashOn
@@ -1446,7 +1446,7 @@ private fun ProfileSelector(
                 key = "default",
                 label = "Stock",
                 // Use Sunny icon for the default/stock thermal profile to indicate a neutral state
-                icon = Icons.Outlined.Sunny,
+                icon = Icons.Outlined.WbSunny,
                 selected = current == "default" || current == "stock",
                 onSelect = onSelect
             )
@@ -1455,7 +1455,7 @@ private fun ProfileSelector(
                 key = "cool",
                 label = "Cool",
                 // Use Snowing icon to represent a cooler thermal profile
-                icon = Icons.Outlined.Snowing,
+                icon = Icons.Outlined.AcUnit,
                 selected = current == "cool",
                 onSelect = onSelect
             )
