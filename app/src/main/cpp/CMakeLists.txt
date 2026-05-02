@@ -41,12 +41,10 @@ set(COMMON_LINK_OPTIONS
 
 set(AETHER_COMPILE_OPTIONS
     ${COMMON_COMPILE_OPTIONS}
-    -fsanitize=cfi-icall
 )
 
 set(AETHER_LINK_OPTIONS
     ${COMMON_LINK_OPTIONS}
-    -fsanitize=cfi-icall
 )
 
 add_library(aether SHARED libaether.cpp)

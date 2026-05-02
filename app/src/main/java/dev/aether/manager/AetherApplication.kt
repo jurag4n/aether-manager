@@ -72,18 +72,14 @@ class AetherApplication : Application() {
         if (!NativeAether.isLoaded) return
         try {
             if (NativeAether.nativeIsHooked()) {
-                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
-                return
+                NativeAether.nativeKillProcess(); return
             }
             if (NativeAether.nativeIsDebugged()) {
-                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
-                return
+                NativeAether.nativeKillProcess(); return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
-                if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
-                return
+                NativeAether.nativeKillProcess(); return
             }
-            NativeAether.nativeCheckAll(this)
         } catch (_: Throwable) {
             if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
         }
@@ -121,11 +117,7 @@ class AetherApplication : Application() {
                     error: UnityAds.UnityAdsInitializationError,
                     message: String,
                 ) {
-                    if (!BuildConfig.DEBUG &&
-                        error != UnityAds.UnityAdsInitializationError.INTERNAL_ERROR
-                    ) {
-                        checkUnityIntact()
-                    }
+                    if (!BuildConfig.DEBUG) checkUnityIntact()
                 }
             }
         )

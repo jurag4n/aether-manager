@@ -1,6 +1,8 @@
 package dev.aether.manager.util
 
 import android.os.Build
+import android.os.Environment
+import android.os.StatFs
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -426,41 +428,34 @@ object RootEngine {
             val thermalRaw = parseKv(thermalR.stdout)["thermal_temp"]?.toLongOrNull() ?: 0L
             val thermalTempC = normRaw(thermalRaw).takeIf(::validTemp) ?: cpuTempC.takeIf(::validTemp) ?: 0f
 
-            // ── Storage & Uptime ─────────────────────────────────────────────
-            val storageR = sh("""
-                storage_total_kb=0; storage_used_kb=0
-                # Try multiple methods to read /data storage
-                # Method 1: df with numeric blocks
-                _df=${'$'}(df -k /data 2>/dev/null | awk 'NR==2{print}')
-                if [ -z "${'$'}_df" ]; then
-                  _df=${'$'}(df /data 2>/dev/null | awk 'NR==2{print}')
-                fi
-                if [ -n "${'$'}_df" ]; then
-                  _total=${'$'}(echo "${'$'}_df" | awk '{print ${'$'}2}' | tr -cd '0-9')
-                  _used=${'$'}(echo "${'$'}_df" | awk '{print ${'$'}3}' | tr -cd '0-9')
-                  # df without -k may return 512-byte blocks; heuristic: if total < 1000 it's in MB
-                  if [ -n "${'$'}_total" ] && [ "${'$'}_total" -gt 0 ] 2>/dev/null; then
-                    storage_total_kb=${'$'}_total
-                    storage_used_kb=${'$'}_used
-                  fi
-                fi
-                # Method 2: /proc/mounts + statvfs via shell arithmetic on /data/misc
-                if [ "${'$'}storage_total_kb" -eq 0 ] 2>/dev/null; then
-                  _stat=${'$'}(stat -f /data 2>/dev/null)
-                  _bsize=${'$'}(echo "${'$'}_stat" | awk '/Block size/{print ${'$'}3}')
-                  _btotal=${'$'}(echo "${'$'}_stat" | awk '/Blocks: Total/{print ${'$'}3}')
-                  _bfree=${'$'}(echo "${'$'}_stat" | awk '/Blocks: Total/{print ${'$'}6}')
-                  if [ -n "${'$'}_bsize" ] && [ "${'$'}_btotal" -gt 0 ] 2>/dev/null; then
-                    storage_total_kb=${'$'}(( (_bsize * _btotal) / 1024 ))
-                    storage_used_kb=${'$'}(( (_bsize * (_btotal - _bfree)) / 1024 ))
-                  fi
-                fi
-                echo storage_total_kb=${'$'}storage_total_kb
-                echo storage_used_kb=${'$'}storage_used_kb
+            // ── Storage (Kotlin-native StatFs, reliable on all ROMs incl. Android 13 GKI) ──
+            val (storageTotalKb, storageUsedKb) = runCatching {
+                // Primary: /data partition via StatFs (works on all Android versions)
+                val dataFs = StatFs(Environment.getDataDirectory().absolutePath)
+                val blockSize = dataFs.blockSizeLong
+                val totalBlocks = dataFs.blockCountLong
+                val freeBlocks = dataFs.availableBlocksLong
+                val totalKb = (blockSize * totalBlocks) / 1024L
+                val usedKb  = (blockSize * (totalBlocks - freeBlocks)) / 1024L
+                Pair(totalKb, usedKb)
+            }.getOrElse {
+                // Fallback: /data/data (user partition) if /data is not directly accessible
+                runCatching {
+                    val fs = StatFs("/data/data")
+                    val bs = fs.blockSizeLong
+                    Pair(
+                        (bs * fs.blockCountLong) / 1024L,
+                        (bs * (fs.blockCountLong - fs.availableBlocksLong)) / 1024L
+                    )
+                }.getOrElse { Pair(0L, 0L) }
+            }
+
+            // ── Uptime ────────────────────────────────────────────────────────
+            val uptimeR = sh("""
                 up=${'$'}(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)
                 echo uptime=${'$'}(printf "%dd_%dh_%dm" ${'$'}((up/86400)) ${'$'}(((up%86400)/3600)) ${'$'}(((up%3600)/60)))
             """.trimIndent())
-            val sm = parseKv(storageR.stdout)
+            val sm = parseKv(uptimeR.stdout)
 
             dev.aether.manager.data.MonitorState(
                 cpuUsage       = cpuUsage,
@@ -474,8 +469,8 @@ object RootEngine {
                 gpuTemp        = gpuTempC,
                 thermalTemp    = thermalTempC,
                 batTemp        = batTempC,
-                storageUsedGb  = (sm["storage_used_kb"]?.toLongOrNull()  ?: 0L) / 1_048_576f,
-                storageTotalGb = (sm["storage_total_kb"]?.toLongOrNull() ?: 0L) / 1_048_576f,
+                storageUsedGb  = storageUsedKb  / 1_048_576f,
+                storageTotalGb = storageTotalKb / 1_048_576f,
                 uptime         = (sm["uptime"] ?: "").replace("_", " "),
                 batLevel       = batLevel,
                 cpuGovernor    = cpuGovernor,

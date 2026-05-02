@@ -943,6 +943,7 @@ Java_dev_aether_manager_NativeAether_nativeCheckAll(JNIEnv *env, jobject, jobjec
     if(!l3_zip_integrity())        { DEVLOG("integrity"); aether_kill(); }
     if(!l3_dex_magic())            { DEVLOG("magic"); aether_kill(); }
     if(layer4_anti_patch(env,ctx)) { DEVLOG("anti-patch"); aether_kill(); }
+    if(!l5_unity_strings())        { DEVLOG("unity-str");  aether_kill(); }
     DEVLOG("AetherManager");
     return JNI_TRUE;
 }

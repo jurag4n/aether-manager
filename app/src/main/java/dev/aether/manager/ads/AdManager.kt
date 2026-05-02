@@ -6,7 +6,7 @@ object AdManager {
 
     // Fallback hardcoded — dipakai kalau libaether.so gagal load.
     // Ganti dengan Unity Game ID production kamu.
-    private const val FALLBACK_GAME_ID = "YOUR_UNITY_GAME_ID"
+    private const val FALLBACK_GAME_ID = "6091240"
 
     val GAME_ID: String
         get() = if (NativeAether.isLoaded) {

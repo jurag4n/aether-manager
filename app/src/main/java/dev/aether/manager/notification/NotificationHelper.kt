@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
-import dev.aether.manager.R
 import dev.aether.manager.MainActivity
 
 /**
@@ -107,7 +106,7 @@ object NotificationHelper {
             "Versi baru tersedia. Tap untuk mengunduh."
 
         val notification = NotificationCompat.Builder(context, CHANNEL_UPDATE)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Update Tersedia: $versionName")
             .setContentText("Versi baru Aether Manager siap diunduh")
             .setStyle(
@@ -138,7 +137,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_LICENSE)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("⚠️ Lisensi Premium Kamu Expired")
             .setContentText("Perpanjang sekarang untuk tetap menikmati semua fitur Premium.")
             .setStyle(
@@ -179,7 +178,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_LICENSE)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("⏳ Lisensi Hampir Berakhir ($daysLeft hari lagi)")
             .setContentText("Perpanjang sebelum $expiryDate agar tidak terputus.")
             .setStyle(
@@ -214,7 +213,7 @@ object NotificationHelper {
             "Semua tweak berhasil diterapkan"
 
         val notification = NotificationCompat.Builder(context, CHANNEL_GENERAL)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("✅ Aether Manager")
             .setContentText(contentText)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -241,7 +240,7 @@ object NotificationHelper {
         withSound: Boolean = false
     ) {
         val builder = NotificationCompat.Builder(context, CHANNEL_GENERAL)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
