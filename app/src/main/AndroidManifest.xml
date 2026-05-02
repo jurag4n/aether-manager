@@ -73,10 +73,6 @@
                 android:resource="@xml/file_provider_paths"/>
         </provider>
 
-        <!-- AdMob App ID -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-5043818314955328~2380701071"/>
 
         <receiver
             android:name=".service.BootReceiver"

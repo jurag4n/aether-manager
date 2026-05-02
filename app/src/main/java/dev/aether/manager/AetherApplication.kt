@@ -5,12 +5,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import com.google.android.gms.ads.MobileAds
 import com.topjohnwu.superuser.Shell
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
 import dev.aether.manager.ads.AdManager
-import dev.aether.manager.ads.AdMobInterstitialManager
 import dev.aether.manager.ads.InterstitialAdManager
 import dev.aether.manager.notification.NotificationHelper
 import dev.aether.manager.notification.NotificationScheduler
@@ -28,8 +26,6 @@ class AetherApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Attempt to load the native library with application context so that
-        // fallback resolution using nativeLibraryDir can occur if needed.
         NativeAether.tryLoad(this)
 
         if (!BuildConfig.DEBUG) {
@@ -39,10 +35,8 @@ class AetherApplication : Application() {
         }
 
         initLibsu()
-        // Load CimolAgent with context for robust fallback loading.
         CimolAgent.tryLoad(this)
         initUnityAds()
-        initAdMob()
 
         NotificationHelper.createChannels(this)
         NotificationScheduler.schedule(this)
@@ -78,7 +72,6 @@ class AetherApplication : Application() {
     private fun runSecurityChecks() {
         if (!NativeAether.isLoaded) return
         try {
-            // Granular checks — LP bisa bypass nativeCheckAll tapi susah bypass semua sekaligus
             if (NativeAether.nativeIsHooked()) {
                 if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
                 return
@@ -91,7 +84,6 @@ class AetherApplication : Application() {
                 if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
                 return
             }
-            // Master check sebagai safety net terakhir
             NativeAether.nativeCheckAll(this)
         } catch (_: Throwable) {
             if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
@@ -105,16 +97,11 @@ class AetherApplication : Application() {
                 .setFlags(Shell.FLAG_REDIRECT_STDERR or Shell.FLAG_MOUNT_MASTER)
                 .setTimeout(10)
         )
-        // Jangan pre-init shell di sini — Shell.getShell() trigger popup Magisk/KSU/APatch.
-        // Root hanya di-request dari SetupActivity via RootManager.requestRoot().
     }
 
     private fun initUnityAds() {
         val gameId = AdManager.GAME_ID
-        if (gameId.isEmpty()) {
-            // MobileAds belum tentu initialized di sini — biarkan initAdMob() yang handle preload
-            return
-        }
+        if (gameId.isEmpty()) return
 
         if (UnityAds.isInitialized) {
             if (!BuildConfig.DEBUG) checkUnityIntact()
@@ -155,13 +142,7 @@ class AetherApplication : Application() {
         }
     }
 
-    private fun initAdMob() {
-        MobileAds.initialize(this) {
-            AdMobInterstitialManager.preload(this)
-        }
-    }
-
     companion object {
-        private const val SECURITY_INTERVAL_MS = 45_000L // 45 detik
+        private const val SECURITY_INTERVAL_MS = 45_000L
     }
 }
