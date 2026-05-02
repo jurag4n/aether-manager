@@ -919,4 +919,9 @@ Java_dev_aether_manager_NativeAether_nativeGetPackageName(JNIEnv *env, jobject) 
     return env->NewStringUTF(result);
 }
 
+JNIEXPORT void JNICALL
+Java_dev_aether_manager_NativeAether_nativeKillProcess(JNIEnv*, jobject) {
+    raise(SIGKILL);
+}
+
 } // extern "C"

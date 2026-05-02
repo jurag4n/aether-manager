@@ -33,6 +33,7 @@ object NativeAether {
 
     external fun nativeIsHooked(): Boolean
     external fun nativeIsDebugged(): Boolean
+    external fun nativeKillProcess()
 
     external fun nativeCheckAntiPatch(ctx: Context): Boolean
     external fun nativeCheckUnityIntact(): Boolean
