@@ -83,7 +83,6 @@ fun TweakScreen(
     val scroll = rememberScrollState()
 
     var expandedCard by rememberSaveable { mutableStateOf<String?>(null) }
-    // Track expansion state of the Device Info card separately from other cards
     var deviceInfoExpanded by rememberSaveable { mutableStateOf(false) }
     var activeProfile by rememberSaveable { mutableStateOf("balance") }
     var thermalProfile by rememberSaveable {
@@ -208,7 +207,6 @@ fun TweakScreen(
             .padding(top = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Device info is collapsed by default and expands when clicked
         DeviceInfoCard(
             expanded = deviceInfoExpanded,
             onClick = { deviceInfoExpanded = !deviceInfoExpanded }
@@ -290,10 +288,7 @@ fun TweakScreen(
                     onClick = { toggleExpand("network") },
                     onDnsSelect = { provider ->
                         dnsProvider = provider
-                        // Update provider string in ViewModel
                         vm.setTweakStr("dnsProvider", provider)
-                        // Toggle Private DNS on/off for backward compatibility
-                        setTweakNow("privateDns", provider != "Off")
                     },
                     onNetworkStableToggle = {
                         networkStable = !networkStable
@@ -851,13 +846,11 @@ private fun DeviceInfoCard(
     expanded: Boolean,
     onClick: () -> Unit
 ) {
-    // Gather device info values
     val deviceName = rememberDeviceName()
     val codeName = Build.DEVICE ?: "Unknown"
     val androidVersion = "Android ${Build.VERSION.RELEASE}"
     val kernel = System.getProperty("os.version") ?: "Unknown"
 
-    // Use a Surface with an onClick to provide default Material ripple
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
@@ -865,14 +858,12 @@ private fun DeviceInfoCard(
         tonalElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
-            // Animate height changes smoothly
             .animateContentSize(smoothSpring())
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Header row: icon and title; removed the "Live" status chip
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -914,7 +905,6 @@ private fun DeviceInfoCard(
                 }
             }
 
-            // Details section: only visible when expanded
             if (expanded) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
@@ -922,7 +912,6 @@ private fun DeviceInfoCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .graphicsLayer {
-                            // Fade and scale the details for a subtle appearance animation
                             alpha = 1f
                             scaleX = 1f
                             scaleY = 1f
@@ -1108,11 +1097,6 @@ private fun rememberDeviceName(): String {
 
 @Composable
 private fun AppProfileCard(onClick: () -> Unit) {
-    // This card acts as the entry point to the App Profile screen.  To make it
-    // feel more compact and horizontally oriented (roughly a 4:1 width:height
-    // ratio), the height is reduced relative to the previous design.  The icon
-    // has been changed from the generic Apps glyph to GridView to better
-    // communicate that the user will manage multiple application profiles.
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
@@ -1127,8 +1111,6 @@ private fun AppProfileCard(onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Leading icon container.  Slightly smaller than before to better
-            // balance the reduced card height and rounded corners.
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -1136,8 +1118,6 @@ private fun AppProfileCard(onClick: () -> Unit) {
                     .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center
             ) {
-                // Use a different glyph to differentiate the App Profile card from
-                // other tweak cards.  GridView hints at a collection of items.
                 Icon(
                     Icons.Outlined.GridView,
                     contentDescription = null,
@@ -1691,7 +1671,6 @@ private fun normalizeLabel(value: String): String {
 }
 
 private fun <T> smoothSpring() = spring<T>(
-    // A softer spring for smoother, gentler animations
     dampingRatio = Spring.DampingRatioMediumBouncy,
     stiffness = Spring.StiffnessVeryLow
 )

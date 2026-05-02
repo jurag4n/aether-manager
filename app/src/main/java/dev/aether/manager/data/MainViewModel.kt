@@ -58,15 +58,6 @@ data class TweaksState(
     val ksm: Boolean = false,
     val ksmAggressive: Boolean = false,
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // New toggles for modern tweak engine
-    //
-    // networkStable     — enable network buffer tuning for more stable latency
-    // swap              — enable swap tuning (swappiness/vm pressure)
-    // killBackground    — aggressively drop caches & trim app caches
-    // dnsProvider       — selected private DNS provider ("", "Cloudflare", "Google", "Quad9", "CleanBrowsing")
-    // cpuFreqLock       — lock CPU frequencies to their current maximum
-    // These fields default to off/blank.
     val networkStable: Boolean = false,
     val swap: Boolean = false,
     val killBackground: Boolean = false,
@@ -98,119 +89,6 @@ data class MonitorState(
     val batStatus: String = "Unknown",
 )
 
-/** Per-apply status — ditampilkan di UI sebagai badge/toast */
-data class ApplyStatus(
-    val running:  Boolean = false,
-    val lastOk:   Boolean = true,
-    val summary:  String  = "",
-    val totalMs:  Long    = 0L,
-)
-
-sealed class UiState<out T> {
-    object Loading : UiState<Nothing>()
-    data class Success<T>(val data: T) : UiState<T>()
-    data class Error(val msg: String) : UiState<Nothing>()
-}
-
-class MainViewModel(app: Application) : AndroidViewModel(app) {
-
-    // ── Root & device info ────────────────────────────────────────────────────
-
-    private val _rootGranted = MutableStateFlow<Boolean?>(null)
-    val rootGranted: StateFlow<Boolean?> = _rootGranted.asStateFlow()
-
-    private val _deviceInfo = MutableStateFlow<UiState<DeviceInfo>>(UiState.Loading)
-    val deviceInfo: StateFlow<UiState<DeviceInfo>> = _deviceInfo.asStateFlow()
-
-    // ── Tweaks ────────────────────────────────────────────────────────────────
-
-    private val _tweaks = MutableStateFlow(TweaksState())
-    val tweaks: StateFlow<TweaksState> = _tweaks.asStateFlow()
-
-    // Apply status — dipakai UI untuk spinner/snackbar/badge
-    private val _applyStatus = MutableStateFlow(ApplyStatus())
-    val applyStatus: StateFlow<ApplyStatus> = _applyStatus.asStateFlow()
-
-    // Legacy compat — beberapa composable masih pakai ini
-    private val _applyingTweak = MutableStateFlow(false)
-    val applyingTweak: StateFlow<Boolean> = _applyingTweak.asStateFlow()
-
-    // ── Tweak Apply Queue ─────────────────────────────────────────────────────
-    //
-    // Mekanisme baru — tanpa debounce yang rawan bug:
-    //
-    // 1. setTweak() / setTweakStr():
-    //    a. Update UI state INSTANT (optimistic)
-    //    b. Kirim sinyal ke applyChannel (CONFLATED — kalau ada antrian, override)
-    //
-    // 2. applyWorker coroutine (loop seumur ViewModel):
-    //    a. Tunggu sinyal dari channel
-    //    b. Baca state UI saat itu (sudah include semua perubahan yang dikumpul)
-    //    c. Tulis conf + apply kernel dalam satu Shell batch
-    //
-    // Efek: user toggle 5 switch cepat → hanya 1 Shell.cmd() yang dijalankan
-    // karena channel CONFLATED membuang sinyal duplikat.
-    // Tidak ada race, tidak ada debounce 150ms yang kadang hangfire.
-
-    private val applyChannel = Channel<Unit>(capacity = Channel.CONFLATED)
-    private var applyWorkerJob: Job? = null
-
-    // ── Monitor ───────────────────────────────────────────────────────────────
-
-    private val _monitorState = MutableStateFlow(MonitorState())
-    val monitorState: StateFlow<MonitorState> = _monitorState.asStateFlow()
-
-    private var monitorStarted = false
-    private var monitorJob: Job? = null
-
-    // ── Snack ─────────────────────────────────────────────────────────────────
-
-    private val _snackMessage = MutableStateFlow<String?>(null)
-    val snackMessage: StateFlow<String?> = _snackMessage.asStateFlow()
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Init
-    // ─────────────────────────────────────────────────────────────────────────
-
-    init {
-        startApplyWorker()
-        _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
-        startMonitorLoop()
-        viewModelScope.launch { initFromCachedRoot() }
-    }
-
-    private suspend fun initFromCachedRoot() {
-        val fallback = RootEngine.getDeviceInfoFallback()
-        _deviceInfo.value = UiState.Success(fallback)
-
-        val hasRoot = RootEngine.hasRoot()
-        _rootGranted.value = hasRoot
-        if (hasRoot) {
-            loadAll()
-        } else {
-            _deviceInfo.value = UiState.Success(fallback)
-        }
-        if (!monitorStarted) startMonitorLoop()
-    }
-
-    fun refresh() = viewModelScope.launch {
-        val fallback = RootEngine.getDeviceInfoFallback()
-        _deviceInfo.value = UiState.Success(fallback)
-
-        val hasRoot = RootEngine.hasRoot()
-        _rootGranted.value = hasRoot
-        if (hasRoot) {
-            loadAll()
-        } else {
-            _deviceInfo.value = UiState.Success(fallback)
-        }
-        if (!monitorStarted) startMonitorLoop()
-    }
-
-    /**
-     * Refresh hanya jika state masih Loading atau root belum diketahui.
-     * Dipanggil dari ON_RESUME agar Home tidak stuck skeleton setelah balik dari SetupActivity.
-     */
     fun refreshIfNeeded() {
         val current = (_deviceInfo.value as? UiState.Success)?.data
         if (_deviceInfo.value is UiState.Loading || (RootManager.isRootGranted && current?.rootType == "Unknown")) {
@@ -229,9 +107,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             while (isActive) {
                 if (!_applyStatus.value.running) {
                     try {
-                        // Refresh CPU/GPU/memory/temperature stats every second instead of
-                        // the previous three-second interval.  A shorter delay makes
-                        // the real‑time monitor feel more responsive.
                         _monitorState.value = RootEngine.getMonitorState()
                     } catch (_: Exception) {}
                 }
@@ -263,15 +138,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _tweaks.value = mapToTweaksState(map)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Apply Worker — coroutine yang jalan seumur ViewModel
-    // Baca channel CONFLATED → tidak ada antrian menumpuk
-    // ─────────────────────────────────────────────────────────────────────────
-
     private fun startApplyWorker() {
         applyWorkerJob = viewModelScope.launch(Dispatchers.IO) {
             for (signal in applyChannel) {
-                // Ambil state UI sekarang — sudah include semua toggle yang terkumpul
                 val current = _tweaks.value
                 val map = tweaksStateToMap(current)
                 executeApply(map)
@@ -279,14 +148,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // setTweak / setTweakStr — instant UI + enqueue apply
-    // ─────────────────────────────────────────────────────────────────────────
-
     fun setTweak(key: String, value: Boolean) {
-        // 1. Update UI state INSTANT (optimistic)
         _tweaks.value = applyTweakToState(_tweaks.value, key, value)
-        // 2. Enqueue apply — CONFLATED: kalau worker belum selesai, sinyal baru override yang lama
         applyChannel.trySend(Unit)
     }
 
@@ -294,10 +157,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _tweaks.value = applyTweakStrToState(_tweaks.value, key, value)
         applyChannel.trySend(Unit)
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Root guard — request ulang jika cache libsu hilang setelah proses restart
-    // ─────────────────────────────────────────────────────────────────────────
 
     private suspend fun ensureRootReady(requestIfNeeded: Boolean = true): Boolean {
         val alreadyReady = RootManager.isRootGranted || RootEngine.hasRoot()
@@ -317,10 +176,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (granted && !monitorStarted) startMonitorLoop()
         return granted
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // executeApply — inti apply, dipanggil dari worker
-    // ─────────────────────────────────────────────────────────────────────────
 
     private suspend fun executeApply(map: Map<String, String>) {
         _applyStatus.value = ApplyStatus(running = true)
@@ -345,7 +200,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
 
             if (result.success) {
-                // Trigger iklan setelah aksi penting selesai (subject to minIntervalMs guard)
                 AdScheduler.tryShowAfterAction()
             }
 
@@ -360,9 +214,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 snack(msg)
             }
 
-            // Kick off the auto‑backup after the apply has completed.  Launching
-            // this asynchronously prevents the backup process (which may take
-            // several hundred milliseconds) from blocking the apply operation.
             viewModelScope.launch {
                 autoBackupIfEnabled()
             }
@@ -373,10 +224,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             snack("Gagal apply: ${e.message}")
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // setProfile — apply langsung tanpa mengganggu worker
-    // ─────────────────────────────────────────────────────────────────────────
 
     fun setProfile(profile: String) = viewModelScope.launch(Dispatchers.IO) {
         _applyingTweak.value = true
@@ -390,17 +237,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
 
-            // Tulis profile file
             RootEngine.writeFile(RootEngine.PROFILE_FILE, profile)
 
-            // Update state lokal dengan profile baru, lalu apply
             val newState = _tweaks.value.copy()
             val map = tweaksStateToMap(newState).toMutableMap()
             map["profile"] = profile
 
             val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
 
-            // Update UI state dari map
             _tweaks.value = mapToTweaksState(map)
 
             _applyingTweak.value = false
@@ -411,11 +255,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 totalMs = result.totalMs,
             )
 
-            // Refresh device info so the profile badge updates
             val info = RootEngine.getDeviceInfo()
             _deviceInfo.value = UiState.Success(info)
             _monitorState.value = RootEngine.getMonitorState()
-            // Do not show a success toast here; the UI will reflect the new profile
 
         } catch (e: Exception) {
             _applyingTweak.value = false
@@ -424,19 +266,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // applyAll — force apply semua tweak sekarang (manual "Apply" button)
-    // ─────────────────────────────────────────────────────────────────────────
-
     fun applyAll() = viewModelScope.launch(Dispatchers.IO) {
         val map = tweaksStateToMap(_tweaks.value)
         executeApply(map)
-        // Skip success snack for apply; only errors will trigger a toast
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // tweaksStateToMap — TweaksState → Map<String,String> untuk Shell script
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun tweaksStateToMap(s: TweaksState): Map<String, String> = buildMap {
         put("schedboost",        if (s.schedboost)      "1" else "0")
@@ -474,20 +307,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         put("ksm",               if (s.ksm)             "1" else "0")
         put("ksm_aggressive",    if (s.ksmAggressive)   "1" else "0")
 
-        // New tweak keys for network, memory and CPU lock
         put("network_stable",    if (s.networkStable)    "1" else "0")
         put("swap",              if (s.swap)              "1" else "0")
         put("kill_background",   if (s.killBackground)   "1" else "0")
         put("dns_provider",      s.dnsProvider)
         put("cpu_freq_lock",     if (s.cpuFreqLock)      "1" else "0")
-        // Profile dibaca dari RootEngine.PROFILE_FILE, tidak disimpan di TweaksState
-        // tapi dibutuhkan script — baca dari disk saat ini
         put("profile", RootEngine.readProfileSync())
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // mapToTweaksState
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun mapToTweaksState(map: Map<String, String>) = TweaksState(
         schedboost       = map["schedboost"]        == "1",
@@ -524,7 +350,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         touchSampleRate  = map["touch_sample_rate"]  ?: "default",
         ksm              = map["ksm"]                == "1",
         ksmAggressive    = map["ksm_aggressive"]     == "1",
-        // New toggles
         networkStable    = map["network_stable"]    == "1",
         swap             = map["swap"]              == "1",
         killBackground   = map["kill_background"]   == "1",
@@ -534,7 +359,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applyTweakToState(state: TweaksState, key: String, value: Boolean): TweaksState =
         when (key) {
-            // ── snake_case (canonical keys dari conf file) ────────────────
             "schedboost"       -> state.copy(schedboost = value)
             "cpu_boost"        -> state.copy(cpuBoost = value)
             "gpu_throttle_off" -> state.copy(gpuThrottleOff = value)
@@ -560,11 +384,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "swap"             -> state.copy(swap = value)
             "kill_background"  -> state.copy(killBackground = value)
             "cpu_freq_lock"    -> state.copy(cpuFreqLock = value)
-            // ── camelCase aliases — digunakan oleh TweakScreen.kt ─────────
-            // FIX: TweakScreen memanggil setTweak() dengan camelCase keys;
-            // tanpa aliases ini semua toggle di TweakScreen tidak berpengaruh
-            // karena jatuh ke `else -> state` dan apply channel tidak membawa
-            // perubahan apapun.
             "cpuBoost"         -> state.copy(cpuBoost = value)
             "gpuThrottleOff"   -> state.copy(gpuThrottleOff = value)
             "tcpBbr"           -> state.copy(tcpBbr = value)
@@ -584,8 +403,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "cpusetOpt"        -> state.copy(cpusetOpt = value)
             "mtkBoost"         -> state.copy(mtkBoost = value)
             "ioScheduler"      -> state.copy(ioLatencyOpt = value)
-            // privateDns: toggle DNS provider on/off (Cloudflare default)
-            "privateDns"       -> state.copy(dnsProvider = if (value) "Cloudflare" else "")
+            "privateDns"       -> state
             else               -> state
         }
 
@@ -604,14 +422,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "cpu_freq_gold_max"  -> state.copy(cpuFreqGoldMax = value)
             "cpu_freq_silver_min"-> state.copy(cpuFreqSilverMin = value)
             "cpu_freq_silver_max"-> state.copy(cpuFreqSilverMax = value)
-            // New string-based toggles
             "dnsProvider", "dns_provider" -> state.copy(dnsProvider = value)
             else                 -> state
         }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Safe mode & reboot
-    // ─────────────────────────────────────────────────────────────────────────
 
     fun toggleSafeMode(enable: Boolean) = viewModelScope.launch {
         RootEngine.toggleSafeMode(enable)
@@ -621,10 +434,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun reboot(mode: RootEngine.RebootMode) = viewModelScope.launch {
         RootEngine.reboot(mode)
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Backup & Reset
-    // ─────────────────────────────────────────────────────────────────────────
 
     private val _backupList    = MutableStateFlow<List<BackupManager.BackupEntry>>(emptyList())
     val backupList: StateFlow<List<BackupManager.BackupEntry>> = _backupList.asStateFlow()
@@ -674,22 +483,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resetTweaks() = viewModelScope.launch(Dispatchers.IO) {
         RootEngine.resetTweaks()
         loadTweaks()
-        // Suppress success toast; UI will reflect default state
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Auto-backup
-    // ─────────────────────────────────────────────────────────────────────────
 
     private suspend fun autoBackupIfEnabled() {
         try {
             if (SettingsPrefs.getAutoBackup(getApplication())) BackupManager.createBackup()
         } catch (_: Exception) {}
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Snack helper
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun snack(msg: String) {
         _snackMessage.value = msg
@@ -698,10 +498,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun clearSnack() {
         _snackMessage.value = null
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Settings
-    // ─────────────────────────────────────────────────────────────────────────
 
     private val _darkModeOverride = MutableStateFlow(SettingsPrefs.isDarkModeOverride(getApplication()))
     private val _darkMode         = MutableStateFlow(SettingsPrefs.getDarkMode(getApplication()))
@@ -760,14 +556,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resetToDefaults() = viewModelScope.launch(Dispatchers.IO) {
         RootEngine.resetTweaks()
         loadTweaks()
-        // Suppress success toast; UI will reflect default state
     }
 
     fun clearAppCache() = viewModelScope.launch(Dispatchers.IO) {
         try {
             getApplication<Application>().cacheDir?.deleteRecursively()
             getApplication<Application>().externalCacheDir?.deleteRecursively()
-            // Do not show a success toast when clearing cache
         } catch (e: Exception) {
             snack("Gagal hapus cache: ${e.message}")
         }
