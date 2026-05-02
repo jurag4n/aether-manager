@@ -170,7 +170,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun refreshMonitor() = viewModelScope.launch {
+    fun refreshMonitor() = viewModelScope.launch(Dispatchers.IO) {
         _monitorState.value = RootEngine.getMonitorState()
     }
 
@@ -277,17 +277,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 AdScheduler.tryShowAfterAction()
             }
 
-            if (!result.success) {
-                val failedSubs = result.subsystems.filter { !it.ok }
-                val msg = when {
-                    failedSubs.size == 1 && failedSubs[0].name == "shell" ->
-                        "Apply gagal — shell tidak merespons"
-                    else ->
-                        "Apply partial — gagal: ${failedSubs.joinToString(", ") { it.name }}"
-                }
-                snack(msg)
-            }
-
             viewModelScope.launch {
                 autoBackupIfEnabled()
             }
@@ -295,7 +284,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             _applyingTweak.value = false
             _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = e.message ?: "error")
-            snack("Gagal apply: ${e.message}")
         }
     }
 
@@ -336,7 +324,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             _applyingTweak.value = false
             _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = e.message ?: "error")
-            snack("Gagal set profile: ${e.message}")
         }
     }
 

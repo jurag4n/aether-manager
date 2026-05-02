@@ -261,7 +261,7 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            if (item.value > 0f) "%.1f°C".format(item.value) else "—°C",
+                            if (item.value > 0f) "%.0f°C".format(item.value) else "—°C",
                             fontSize = 34.sp,
                             lineHeight = 36.sp,
                             fontWeight = FontWeight.Black,

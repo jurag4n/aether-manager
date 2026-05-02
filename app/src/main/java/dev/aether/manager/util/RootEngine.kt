@@ -247,12 +247,21 @@ object RootEngine {
         return if (c in 15f..125f) c else 0f
     }
 
-    private fun normRaw(raw: Long): Float = when {
-        raw <= 0L      -> 0f
-        raw > 100_000L -> 0f
-        raw > 1_000L   -> raw / 1000f
-        raw > 200L     -> raw / 10f
-        else           -> raw.toFloat()
+    private fun normRaw(raw: Long): Float {
+        if (raw <= 0L) return 0f
+        // 1) Millidegrees — paling umum di Android thermal zone (mis. 45000 → 45°C)
+        if (raw >= 1_000L) {
+            val c = raw / 1000f
+            if (c in 15f..125f) return c
+        }
+        // 2) Tenths of degrees (mis. 450 → 45°C) — beberapa kernel lama
+        if (raw >= 100L) {
+            val c = raw / 10f
+            if (c in 15f..125f) return c
+        }
+        // 3) Raw degrees (mis. 45 → 45°C)
+        val c = raw.toFloat()
+        return if (c in 15f..125f) c else 0f
     }
 
     private fun validTemp(v: Float) = v in 15f..125f

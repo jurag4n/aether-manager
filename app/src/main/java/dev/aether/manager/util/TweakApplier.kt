@@ -19,7 +19,9 @@ object TweakApplier {
         val subsystems: List<SubsystemResult>,
         val totalMs:    Long,
     ) {
-        val success: Boolean get() = subsystems.all { it.ok }
+        // Dianggap sukses selama shell bisa jalan.
+        // Node yang gagal ditulis (karena tidak ada di device) bukan kegagalan apply.
+        val success: Boolean get() = subsystems.none { it.name == "shell" && !it.ok }
         val summary: String  get() {
             val ok  = subsystems.count { it.ok }
             val all = subsystems.size
@@ -82,6 +84,8 @@ object TweakApplier {
             append(buildCpuGovernor(t, profile))
             append(buildCpuFreq(t, profile))
             append(buildCpuBoost(t, profile))
+            append(buildMtkBoost(t))
+            append(buildCpuset(t))
             append(buildSched(t, profile))
             append(buildThermal(t))
             append(buildGpu(t, profile))
@@ -89,6 +93,10 @@ object TweakApplier {
             append(buildMemory(t))
             append(buildIo(t))
             append(buildNetwork(t))
+            append(buildKsm(t))
+            append(buildTouch(t))
+            append(buildUiAnim(t))
+            append(buildMisc(t))
         }
     }
 
@@ -163,7 +171,9 @@ devfreq_unlock() {
 # marker — diparse Kotlin untuk SubsystemResult
 _begin() { _A=0; _S=0; _F=0; }
 _end()   {
-  if [ ${'$'}_F -eq 0 ]; then _st=ok; else _st=fail; fi
+  # Subsystem ok jika ada node berhasil ditulis, atau semua dilewati (tidak ada di device).
+  # Hanya fail jika 0 berhasil DAN ada yang error — bukan karena node tidak ada.
+  if [ ${'$'}_F -gt 0 ] && [ ${'$'}_A -eq 0 ]; then _st=fail; else _st=ok; fi
   echo "RESULT:${'$'}1:${'$'}_st:a=${'$'}_A:s=${'$'}_S:f=${'$'}_F"
 }
 

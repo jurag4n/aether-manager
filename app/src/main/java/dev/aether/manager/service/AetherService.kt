@@ -198,6 +198,17 @@ class BootReceiver : BroadcastReceiver() {
                 TweakApplier.apply(tweaks)
             }
 
+            // Restart app_monitor.sh jika script-nya ada (app profiles aktif)
+            val monitorScript = "${RootEngine.CONF_DIR}/app_monitor.sh"
+            try {
+                if (RootEngine.fileExists(monitorScript)) {
+                    RootEngine.sh(
+                        "pkill -f app_monitor.sh 2>/dev/null || true",
+                        "sh $monitorScript >/dev/null 2>&1 &"
+                    )
+                }
+            } catch (_: Exception) { /* non-critical */ }
+
         } catch (e: Exception) {
         }
     }
