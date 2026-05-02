@@ -849,8 +849,8 @@ private fun ExpandableTweakCard(
                 visible = expanded,
                 enter = fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) +
                         expandVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)),
-                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh)) +
-                        shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh))
+                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh)) +
+                        shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh))
             ) {
                 Column(
                     modifier = Modifier
@@ -961,8 +961,8 @@ private fun DeviceInfoCard(
                 visible = expanded,
                 enter = fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) +
                         expandVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)),
-                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh)) +
-                        shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh))
+                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh)) +
+                        shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh))
             ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
@@ -1739,5 +1739,5 @@ private fun <T> smoothSpring() = spring<T>(
 
 private fun <T> snappySpring() = spring<T>(
     dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMediumHigh
+    stiffness = Spring.StiffnessHigh
 )
