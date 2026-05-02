@@ -31,7 +31,6 @@
 #  define DEVLOG(fmt, ...) ((void)0)
 #endif
 
-#define XK_SIG    0x3F
 #define XK_PATH   0x71
 #define XK_KW     0xA3
 #define XK_URL    0x5C
@@ -111,22 +110,12 @@ static void bytes_to_hex(const uint8_t *src, size_t len, char *dst) {
 }
 
 __attribute__((visibility("hidden")))
-static int hash_file(const char *path, char out[65]) {
-    int fd=open(path,O_RDONLY); if(fd<0) return -1;
-    sha256_ctx_t c; sha256_init(&c);
-    uint8_t buf[8192]; ssize_t n;
-    while((n=read(fd,buf,sizeof(buf)))>0) sha256_update(&c,buf,(size_t)n);
-    close(fd);
-    uint8_t d[SHA256_DIGEST_LEN]; sha256_final(&c,d);
-    bytes_to_hex(d,SHA256_DIGEST_LEN,out);
-    return 0;
-}
-
-__attribute__((visibility("hidden")))
 static void xdec(const unsigned char *src, size_t len, uint8_t key, char *dst) {
     for (size_t i=0;i<len;i++) dst[i]=(char)(src[i]^key);
     dst[len]='\0';
 }
+
+// ─── OBFUSCATED PATH / KEYWORD CONSTANTS ─────────────────────────────────────
 
 static const uint8_t EP_PROC_STATUS[] = {0x5E,0x01,0x03,0x1E,0x12,0x5E,0x02,0x14,0x1D,0x17,0x5E,0x02,0x05,0x10,0x05,0x04,0x02};
 static const uint8_t EP_PROC_MAPS[]   = {0x5E,0x01,0x03,0x1E,0x12,0x5E,0x02,0x14,0x1D,0x17,0x5E,0x1C,0x10,0x01,0x02};
@@ -158,43 +147,36 @@ static const uint8_t EK_LP_LITEPATCHER[] = {0xCC,0xD1,0xC4,0x8D,0xCF,0xCA,0xD7,0
 static const uint8_t EK_LP_PKG2[]        = {0xCF,0xD6,0xC0,0xC8,0xDA,0x8D,0xD3,0xC2,0xD7,0xC0,0xCB,0xC6,0xD1};
 static const uint8_t EK_LP_PKG3[]        = {0xD3,0xC2,0xD7,0xC0,0xCB,0x8D,0xC2,0xD3,0xD3,0xCF,0xCA,0xC0,0xC2,0xD7,0xCA,0xCC,0xCD};
 
-static const uint8_t EU_GITHUB_API[] = {
-    0x34,0x28,0x28,0x2C,0x2F,0x66,0x73,0x73,0x3D,0x2C,0x35,0x72,
-    0x3B,0x35,0x28,0x34,0x29,0x3E,0x72,0x3F,0x33,0x31,0x73,0x2E,
-    0x39,0x2C,0x33,0x2F,0x73,0x3D,0x39,0x28,0x34,0x39,0x2E,0x38,
-    0x39,0x2A,0x6C,0x6D,0x73,0x3D,0x39,0x28,0x34,0x39,0x2E,0x71,
-    0x31,0x3D,0x32,0x3D,0x3B,0x39,0x2E,0x73,0x2E,0x39,0x30,0x39,
-    0x3D,0x2F,0x39,0x2F,0x73,0x30,0x3D,0x28,0x39,0x2F,0x28
+// ─── OBFUSCATED URL CONSTANTS (XK_URL = 0x5C) ────────────────────────────────
+// https://aether-app-weld.vercel.app/api
+static const uint8_t EU_VERCEL_API[]  = {
+    0x34,0x28,0x28,0x2C,0x2F,0x66,0x73,0x73,0x3D,0x39,0x28,0x34,0x39,0x2E,0x71,
+    0x3D,0x2C,0x2C,0x71,0x2B,0x39,0x30,0x38,0x72,0x2A,0x39,0x2E,0x3F,0x39,0x30,
+    0x72,0x3D,0x2C,0x2C,0x73,0x3D,0x2C,0x35
+};
+// https://github.com/aetherdev01/aether-manager
+static const uint8_t EU_GITHUB_REPO[] = {
+    0x34,0x28,0x28,0x2C,0x2F,0x66,0x73,0x73,0x3B,0x35,0x28,0x34,0x29,0x3E,0x72,
+    0x3F,0x33,0x31,0x73,0x3D,0x39,0x28,0x34,0x39,0x2E,0x38,0x39,0x2A,0x6C,0x6D,
+    0x73,0x3D,0x39,0x28,0x34,0x39,0x2E,0x71,0x31,0x3D,0x32,0x3D,0x3B,0x39,0x2E
+};
+// https://t.me/AetherDev22
+static const uint8_t EU_TELEGRAM[]    = {
+    0x34,0x28,0x28,0x2C,0x2F,0x66,0x73,0x73,0x28,0x72,0x31,0x39,0x73,0x1D,0x39,
+    0x28,0x34,0x39,0x2E,0x18,0x39,0x2A,0x6E,0x6E
+};
+// Original GitHub API URL (existing)
+static const uint8_t EU_GITHUB_API[]  = {
+    0x34,0x28,0x28,0x2C,0x2F,0x66,0x73,0x73,0x3D,0x35,0x28,0x34,0x29,0x3E,0x72,
+    0x3F,0x33,0x31,0x73,0x3D,0x39,0x28,0x34,0x39,0x2E,0x38,0x39,0x2A,0x6C,0x6D,
+    0x73,0x3D,0x39,0x28,0x34,0x39,0x2E,0x71,0x31,0x3D,0x32,0x3D,0x3B,0x39,0x2E,
+    0x73,0x39,0x39,0x2C,0x73,0x39,0x39,0x2E,0x39,0x38,0x39,0x3D,0x73,0x2E,0x39,
+    0x30,0x39,0x3D,0x2F,0x39,0x2F,0x73,0x30,0x3D,0x28,0x39,0x2F,0x28
 };
 
 static const uint8_t EM_GAME_ID[] = {0xF1,0xF7,0xFE,0xF6,0xF5,0xF3,0xF7};
 
-static const uint8_t EXPECTED_SIG_ENC[32] = {
-    0x87,0xEC,0x4E,0xFE,0x9F,0x50,0x7B,0x61,
-    0x18,0xB3,0x59,0x4D,0x16,0x3C,0xCE,0x87,
-    0xFD,0x22,0x5E,0xD8,0xEB,0x18,0xC0,0xCA,
-    0x6A,0x34,0x04,0x9F,0x51,0x73,0xD3,0x67
-};
-
-__attribute__((visibility("hidden")))
-static void decode_expected_sig(char out[65]) {
-    static const char H[]="0123456789abcdef";
-    for (int i=0;i<32;i++) {
-        uint8_t b=(uint8_t)(EXPECTED_SIG_ENC[i]^XK_SIG);
-        out[i*2]=H[(b>>4)&0xF]; out[i*2+1]=H[b&0xF];
-    }
-    out[64]='\0';
-}
-
-__attribute__((visibility("hidden")))
-static int check_sig_native(const char *actual) {
-    if(!actual||strlen(actual)<64) return 0;
-    char expected[65]; decode_expected_sig(expected);
-    char a[65]={0},e[65]={0};
-    for(int i=0;i<64&&actual[i];i++) a[i]=(char)((actual[i]>='A'&&actual[i]<='F')?actual[i]+32:actual[i]);
-    for(int i=0;i<64&&expected[i];i++) e[i]=(char)((expected[i]>='A'&&expected[i]<='F')?expected[i]+32:expected[i]);
-    return memcmp(a,e,64)==0;
-}
+// ─── LAYER 1 — ANTI-HOOK (Frida detection) ───────────────────────────────────
 
 __attribute__((visibility("hidden")))
 static int l1_tracer_pid(void) {
@@ -286,6 +268,8 @@ static int layer1_anti_hook(void) {
     return 0;
 }
 
+// ─── LAYER 2 — ANTI-DEBUG ────────────────────────────────────────────────────
+
 __attribute__((visibility("hidden")))
 static int l2_timing_check(void) {
     struct timeval t0, t1;
@@ -315,9 +299,14 @@ static int layer2_anti_debug(void) {
     return 0;
 }
 
+// ─── LAYER 3 — ZIP/DEX INTEGRITY ─────────────────────────────────────────────
+
 static const uint8_t ZIP_LFH[4]  = {0x50,0x4B,0x03,0x04};
 static const uint8_t ZIP_EOCD[4] = {0x50,0x4B,0x05,0x06};
 static const uint8_t ZIP_CD[4]   = {0x50,0x4B,0x01,0x02};
+
+__attribute__((visibility("hidden")))
+static void get_source_dir(JNIEnv *env, jobject ctx, char *out, size_t outlen);
 
 __attribute__((visibility("hidden")))
 static int get_apk_path(char *out, size_t outlen) {
@@ -396,6 +385,8 @@ static int l3_dex_magic(void) {
     if(dex_found&&!dex_valid) return 0;
     return 1;
 }
+
+// ─── LAYER 4 — ANTI-PATCH (LuckyPatcher, etc.) ───────────────────────────────
 
 __attribute__((visibility("hidden")))
 static int l4_lp_filesystem(void) {
@@ -535,6 +526,8 @@ static int layer4_anti_patch(JNIEnv *env, jobject ctx) {
     return 0;
 }
 
+// ─── LAYER 5 — UNITY INTEGRITY ───────────────────────────────────────────────
+
 __attribute__((visibility("hidden")))
 static int file_has_needle(const char *path, const char *needle, size_t nlen) {
     int fd=open(path,O_RDONLY); if(fd<0) return -1;
@@ -619,15 +612,12 @@ static void get_source_dir(JNIEnv *env, jobject ctx, char *out, size_t outlen) {
 }
 
 // ─── LAYER 7 — ANTI-CLONER ───────────────────────────────────────────────────
-// Deteksi app cloner: Parallel Space, Dual Space, Island, 2Accounts, dll.
-// Cloner biasanya membungkus APK dalam package mereka sendiri → path /data/data
-// berisi package cloner bukan package asli.
 
-static const uint8_t EK_PARALLEL[]    = {0xD3,0xC2,0xD1,0xC2,0xCF,0xCF,0xC6,0xCF,0xD0}; // parallels -> parallel
-static const uint8_t EK_DUALSPACE[]   = {0xC7,0xD6,0xC2,0xCF,0xD0,0xD3,0xC2,0xC0,0xC6}; // dualspace
-static const uint8_t EK_CLONEAPP[]    = {0xC0,0xCF,0xCC,0xCD,0xC6,0xC2,0xD3,0xD3}; // cloneapp
-static const uint8_t EK_TWINMATE[]    = {0xD7,0xD4,0xCA,0xCD,0xCE,0xC2,0xD7,0xC6}; // twinmate
-static const uint8_t EK_MULTISPACE[]  = {0xCE,0xD6,0xCF,0xD7,0xCA,0xD0,0xD3,0xC2,0xC0,0xC6}; // multispace
+static const uint8_t EK_PARALLEL[]    = {0xD3,0xC2,0xD1,0xC2,0xCF,0xCF,0xC6,0xCF,0xD0};
+static const uint8_t EK_DUALSPACE[]   = {0xC7,0xD6,0xC2,0xCF,0xD0,0xD3,0xC2,0xC0,0xC6};
+static const uint8_t EK_CLONEAPP[]    = {0xC0,0xCF,0xCC,0xCD,0xC6,0xC2,0xD3,0xD3};
+static const uint8_t EK_TWINMATE[]    = {0xD7,0xD4,0xCA,0xCD,0xCE,0xC2,0xD7,0xC6};
+static const uint8_t EK_MULTISPACE[]  = {0xCE,0xD6,0xCF,0xD7,0xCA,0xD0,0xD3,0xC2,0xC0,0xC6};
 
 __attribute__((visibility("hidden")))
 static int layer7_anti_cloner(JNIEnv *env, jobject ctx) {
@@ -651,9 +641,6 @@ static int layer7_anti_cloner(JNIEnv *env, jobject ctx) {
 }
 
 // ─── LAYER 8 — ELF SELF-INTEGRITY ────────────────────────────────────────────
-// Verifikasi bahwa libaether.so tidak dimodifikasi di memory:
-// bandingkan section .rodata yang sudah dimuat dengan copy dari disk.
-// Jika berbeda → ada patcher/injector yang mengubah konten library.
 
 __attribute__((visibility("hidden")))
 static int layer8_elf_self_integrity(void) {
@@ -709,19 +696,13 @@ static int layer8_elf_self_integrity(void) {
     return result;
 }
 
-// ─── LAYER 9 — STACK CANARY POISON ───────────────────────────────────────────
-// Deteksi apakah GOT/PLT sudah di-hook dengan membandingkan pointer fungsi
-// libc standar terhadap alamat yang diketahui dari dlopen("libc.so").
-// Jika berbeda → GOT sudah ditulis ulang oleh injector.
+// ─── LAYER 9 — GOT HOOK CHECK ────────────────────────────────────────────────
 
 __attribute__((visibility("hidden")))
 static int layer9_got_hook_check(void) {
     void *libc=dlopen("libc.so",RTLD_NOW|RTLD_NOLOAD);
     if(!libc) libc=dlopen("libc.so.6",RTLD_NOW|RTLD_NOLOAD);
     if(!libc) return 0;
-
-    typedef int(*fopen_t)(const char*,const char*);
-    typedef int(*read_t)(int,void*,size_t);
 
     void *sym_fopen = dlsym(libc,"fopen");
     void *sym_read  = dlsym(libc,"read");
@@ -737,39 +718,16 @@ static int layer9_got_hook_check(void) {
     return 0;
 }
 
+// ─── EARLY CONSTRUCTOR ───────────────────────────────────────────────────────
+
 __attribute__((constructor(101), visibility("hidden")))
 static void early_security_check(void) {
     if (l1_frida_maps()) { DEVLOG("frida_maps"); _exit(1); }
 }
 
+// ─── JNI EXPORTS ─────────────────────────────────────────────────────────────
+
 extern "C" {
-
-JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetApkHash(JNIEnv *env, jobject, jobject ctx) {
-    char path[512]={0}; get_source_dir(env,ctx,path,sizeof(path));
-    char hex[65]; if(hash_file(path,hex)!=0) return nullptr;
-    return env->NewStringUTF(hex);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeCheckIntegrity(JNIEnv *env, jobject, jobject ctx, jstring expJ) {
-    if(!expJ) return JNI_TRUE;
-    char path[512]={0}; get_source_dir(env,ctx,path,sizeof(path));
-    char actual[65]; if(hash_file(path,actual)!=0) return JNI_FALSE;
-    const char *exp=env->GetStringUTFChars(expJ,nullptr);
-    int ok=(strcasecmp(actual,exp)==0);
-    env->ReleaseStringUTFChars(expJ,exp);
-    return ok?JNI_TRUE:JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeCheckSignature(JNIEnv *env, jobject, jstring sigJ) {
-    if(!sigJ) return JNI_FALSE;
-    const char *hex=env->GetStringUTFChars(sigJ,nullptr);
-    int ok=check_sig_native(hex);
-    env->ReleaseStringUTFChars(sigJ,hex);
-    return ok?JNI_TRUE:JNI_FALSE;
-}
 
 JNIEXPORT jboolean JNICALL
 Java_dev_aether_manager_NativeAether_nativeIsHooked(JNIEnv *, jobject) {
@@ -838,6 +796,29 @@ JNIEXPORT jstring JNICALL
 Java_dev_aether_manager_NativeAether_nativeGetGithubApi(JNIEnv *env, jobject) {
     char buf[sizeof(EU_GITHUB_API)+1];
     xdec(EU_GITHUB_API,sizeof(EU_GITHUB_API),XK_URL,buf);
+    return env->NewStringUTF(buf);
+}
+
+// ─── URL GETTERS (obfuscated, XOR decode saat runtime) ───────────────────────
+
+JNIEXPORT jstring JNICALL
+Java_dev_aether_manager_NativeAether_nativeGetVercelApi(JNIEnv *env, jobject) {
+    char buf[sizeof(EU_VERCEL_API)+1];
+    xdec(EU_VERCEL_API,sizeof(EU_VERCEL_API),XK_URL,buf);
+    return env->NewStringUTF(buf);
+}
+
+JNIEXPORT jstring JNICALL
+Java_dev_aether_manager_NativeAether_nativeGetGithubRepo(JNIEnv *env, jobject) {
+    char buf[sizeof(EU_GITHUB_REPO)+1];
+    xdec(EU_GITHUB_REPO,sizeof(EU_GITHUB_REPO),XK_URL,buf);
+    return env->NewStringUTF(buf);
+}
+
+JNIEXPORT jstring JNICALL
+Java_dev_aether_manager_NativeAether_nativeGetTelegram(JNIEnv *env, jobject) {
+    char buf[sizeof(EU_TELEGRAM)+1];
+    xdec(EU_TELEGRAM,sizeof(EU_TELEGRAM),XK_URL,buf);
     return env->NewStringUTF(buf);
 }
 
@@ -917,11 +898,6 @@ Java_dev_aether_manager_NativeAether_nativeGetPackageName(JNIEnv *env, jobject) 
     }
     fclose(f); if(!result[0]) return nullptr;
     return env->NewStringUTF(result);
-}
-
-JNIEXPORT void JNICALL
-Java_dev_aether_manager_NativeAether_nativeKillProcess(JNIEnv*, jobject) {
-    raise(SIGKILL);
 }
 
 } // extern "C"

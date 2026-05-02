@@ -27,13 +27,9 @@ object NativeAether {
         }.getOrElse { false }
     }
 
-    external fun nativeCheckSignature(sigHashHex: String): Boolean
-    external fun nativeGetApkHash(ctx: Context): String?
-    external fun nativeCheckIntegrity(ctx: Context, expectedHash: String): Boolean
-
+    // ── Security checks ──────────────────────────────────────────────────────
     external fun nativeIsHooked(): Boolean
     external fun nativeIsDebugged(): Boolean
-    external fun nativeKillProcess()
 
     external fun nativeCheckAntiPatch(ctx: Context): Boolean
     external fun nativeCheckUnityIntact(): Boolean
@@ -44,8 +40,19 @@ object NativeAether {
 
     external fun nativeCheckAll(ctx: Context): Boolean
 
+    // ── Data / URL getters (decoded from obfuscated constants at runtime) ────
     external fun nativeGetGameId(): String
     external fun nativeGetGithubApi(): String
+
+    /** https://aether-app-weld.vercel.app/api */
+    external fun nativeGetVercelApi(): String
+
+    /** https://github.com/aetherdev01/aether-manager */
+    external fun nativeGetGithubRepo(): String
+
+    /** https://t.me/AetherDev22 */
+    external fun nativeGetTelegram(): String
+
     external fun nativeGetAdblockDnsKeywords(): Array<String>
     external fun nativeGetHostsSignatures(): Array<String>
     external fun nativeGetPackageName(): String?
