@@ -428,9 +428,35 @@ object RootEngine {
 
             // ── Storage & Uptime ─────────────────────────────────────────────
             val storageR = sh("""
-                df_out=${'$'}(df -k /data 2>/dev/null | tail -1)
-                echo storage_total_kb=${'$'}(echo "${'$'}df_out" | awk '{print ${'$'}2}')
-                echo storage_used_kb=${'$'}(echo "${'$'}df_out" | awk '{print ${'$'}3}')
+                storage_total_kb=0; storage_used_kb=0
+                # Try multiple methods to read /data storage
+                # Method 1: df with numeric blocks
+                _df=${'$'}(df -k /data 2>/dev/null | awk 'NR==2{print}')
+                if [ -z "${'$'}_df" ]; then
+                  _df=${'$'}(df /data 2>/dev/null | awk 'NR==2{print}')
+                fi
+                if [ -n "${'$'}_df" ]; then
+                  _total=${'$'}(echo "${'$'}_df" | awk '{print ${'$'}2}' | tr -cd '0-9')
+                  _used=${'$'}(echo "${'$'}_df" | awk '{print ${'$'}3}' | tr -cd '0-9')
+                  # df without -k may return 512-byte blocks; heuristic: if total < 1000 it's in MB
+                  if [ -n "${'$'}_total" ] && [ "${'$'}_total" -gt 0 ] 2>/dev/null; then
+                    storage_total_kb=${'$'}_total
+                    storage_used_kb=${'$'}_used
+                  fi
+                fi
+                # Method 2: /proc/mounts + statvfs via shell arithmetic on /data/misc
+                if [ "${'$'}storage_total_kb" -eq 0 ] 2>/dev/null; then
+                  _stat=${'$'}(stat -f /data 2>/dev/null)
+                  _bsize=${'$'}(echo "${'$'}_stat" | awk '/Block size/{print ${'$'}3}')
+                  _btotal=${'$'}(echo "${'$'}_stat" | awk '/Blocks: Total/{print ${'$'}3}')
+                  _bfree=${'$'}(echo "${'$'}_stat" | awk '/Blocks: Total/{print ${'$'}6}')
+                  if [ -n "${'$'}_bsize" ] && [ "${'$'}_btotal" -gt 0 ] 2>/dev/null; then
+                    storage_total_kb=${'$'}(( (_bsize * _btotal) / 1024 ))
+                    storage_used_kb=${'$'}(( (_bsize * (_btotal - _bfree)) / 1024 ))
+                  fi
+                fi
+                echo storage_total_kb=${'$'}storage_total_kb
+                echo storage_used_kb=${'$'}storage_used_kb
                 up=${'$'}(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)
                 echo uptime=${'$'}(printf "%dd_%dh_%dm" ${'$'}((up/86400)) ${'$'}(((up%86400)/3600)) ${'$'}(((up%3600)/60)))
             """.trimIndent())
