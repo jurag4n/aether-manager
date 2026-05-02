@@ -8,11 +8,8 @@ import com.unity3d.ads.UnityAds
 import com.unity3d.ads.UnityAdsShowOptions
 
 /**
- * Mengelola lifecycle Unity Ads Interstitial:
- * load → ready → show → complete/fail → load lagi.
- *
- * Thread-safety: @Volatile untuk semua flag.
- * Tidak pernah lempar exception ke caller.
+ * Iklan interstitial via Unity Ads saja.
+ * AdMob dihapus.
  */
 object InterstitialAdManager {
 
@@ -26,7 +23,6 @@ object InterstitialAdManager {
             unityLoaded  = true
             unityLoading = false
         }
-
         override fun onUnityAdsFailedToLoad(
             placementId: String,
             error: UnityAds.UnityAdsLoadError,
@@ -66,7 +62,6 @@ object InterstitialAdManager {
             object : IUnityAdsShowListener {
                 override fun onUnityAdsShowStart(placementId: String) {}
                 override fun onUnityAdsShowClick(placementId: String) {}
-
                 override fun onUnityAdsShowComplete(
                     placementId: String,
                     state: UnityAds.UnityAdsShowCompletionState,
@@ -74,7 +69,6 @@ object InterstitialAdManager {
                     onDone?.invoke()
                     preloadUnity()
                 }
-
                 override fun onUnityAdsShowFailure(
                     placementId: String,
                     error: UnityAds.UnityAdsShowError,

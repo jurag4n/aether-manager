@@ -35,7 +35,6 @@ class AetherApplication : Application() {
         }
 
         initLibsu()
-        CimolAgent.tryLoad(this)
         initUnityAds()
 
         NotificationHelper.createChannels(this)
@@ -118,7 +117,6 @@ class AetherApplication : Application() {
                     if (!BuildConfig.DEBUG) checkUnityIntact()
                     InterstitialAdManager.preload(this@AetherApplication)
                 }
-
                 override fun onInitializationFailed(
                     error: UnityAds.UnityAdsInitializationError,
                     message: String,

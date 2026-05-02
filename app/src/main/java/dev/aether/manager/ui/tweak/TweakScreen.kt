@@ -27,7 +27,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.DeveloperBoard
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Smartphone
+import androidx.compose.material.icons.outlined.BatteryFull
+import androidx.compose.material.icons.outlined.VideogameAsset
+import androidx.compose.material.icons.outlined.PowerOff
+import androidx.compose.material.icons.outlined.Snowing
+import androidx.compose.material.icons.outlined.Sunny
+import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Lock
@@ -418,7 +427,9 @@ private fun CpuCard(
 ) {
     ExpandableTweakCard(
         modifier = modifier,
-        icon = Icons.Outlined.Memory,
+        // Use a more appropriate and unique icon for the CPU card
+        // DeveloperBoard represents the hardware/processor instead of the previous Memory icon
+        icon = Icons.Outlined.DeveloperBoard,
         title = "CPU",
         subtitle = "Governor & frequency lock",
         badge = if (locked) "Locked" else governor,
@@ -486,7 +497,8 @@ private fun GpuCard(
 ) {
     ExpandableTweakCard(
         modifier = modifier,
-        icon = Icons.Outlined.GridView,
+        // Use GraphicEq icon to better convey GPU/graphics tuning and avoid duplicating GridView
+        icon = Icons.Outlined.GraphicEq,
         title = "GPU",
         subtitle = "Profile, frequency, renderer",
         badge = if (locked) "Locked" else profile,
@@ -558,6 +570,7 @@ private fun NetworkCard(
 ) {
     ExpandableTweakCard(
         modifier = modifier,
+        // The Wifi icon remains appropriate for network related settings
         icon = Icons.Outlined.Wifi,
         title = "Network",
         subtitle = "DNS private, stabilizer, TCP",
@@ -605,6 +618,7 @@ private fun MemoryCard(
 ) {
     ExpandableTweakCard(
         modifier = modifier,
+        // Retain the Memory icon for the Memory card since CPU now uses DeveloperBoard
         icon = Icons.Outlined.Memory,
         title = "Memory",
         subtitle = "ZRAM, LMK, swap, cleaner",
@@ -631,6 +645,7 @@ private fun IoSchedulerCard(
 ) {
     ExpandableTweakCard(
         modifier = modifier,
+        // Use Storage icon to represent I/O scheduler settings
         icon = Icons.Outlined.Storage,
         title = "I/O Scheduler",
         subtitle = "Disk read/write queue",
@@ -660,7 +675,8 @@ private fun SchedBoostCard(
 ) {
     ExpandableTweakCard(
         modifier = modifier,
-        icon = Icons.Outlined.Speed,
+        // Use TrendingUp to represent boosting the scheduler instead of Speed to avoid duplication
+        icon = Icons.Outlined.TrendingUp,
         title = "Sched Boost",
         subtitle = "Game booster scheduler",
         badge = if (active) mode else "Off",
@@ -688,6 +704,7 @@ private fun ThermalProfileCard(
 ) {
     ExpandableTweakCard(
         modifier = Modifier.fillMaxWidth(),
+        // Keep Thermostat for the main thermal profile card; other thermal chips will get unique icons
         icon = Icons.Outlined.Thermostat,
         title = "Thermal Profile",
         subtitle = "Thermal tweak terpisah",
@@ -851,6 +868,20 @@ private fun DeviceInfoCard(
     val androidVersion = "Android ${Build.VERSION.RELEASE}"
     val kernel = System.getProperty("os.version") ?: "Unknown"
 
+    // Animate the detail section similar to other cards: fade and shrink when collapsing
+    val detailAlpha by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = tween(if (expanded) 320 else 220),
+        label = "device_info_alpha"
+    )
+    val detailScale by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0.92f,
+        animationSpec = smoothSpring(),
+        label = "device_info_scale"
+    )
+    // Keep content visible while alpha is not yet fully zero
+    val showDetails = expanded || detailAlpha > 0.02f
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
@@ -858,7 +889,10 @@ private fun DeviceInfoCard(
         tonalElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(smoothSpring())
+            // Use a medium stiffness spring for faster expansion/collapse of the entire card
+            .animateContentSize(
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+            )
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -876,8 +910,9 @@ private fun DeviceInfoCard(
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
+                    // Use a smartphone icon for Device Info to better represent the device details
                     Icon(
-                        imageVector = Icons.Outlined.Memory,
+                        imageVector = Icons.Outlined.Smartphone,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(23.dp)
@@ -905,16 +940,16 @@ private fun DeviceInfoCard(
                 }
             }
 
-            if (expanded) {
+            if (showDetails) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .graphicsLayer {
-                            alpha = 1f
-                            scaleX = 1f
-                            scaleY = 1f
+                            alpha = detailAlpha
+                            scaleX = detailScale
+                            scaleY = detailScale
                         }
                         .animateContentSize(smoothSpring())
                 ) {
@@ -1003,7 +1038,8 @@ private fun ProfileModeSelector(
                 modifier = Modifier.weight(1f),
                 key = "balance",
                 label = "Balance",
-                icon = Icons.Outlined.Tune,
+                // Use AccountBalance icon to represent the balanced profile instead of the Tune icon
+                icon = Icons.Outlined.AccountBalance,
                 selected = current == "balance",
                 onSelect = onSelect
             )
@@ -1409,7 +1445,8 @@ private fun ProfileSelector(
                 modifier = Modifier.weight(1f),
                 key = "default",
                 label = "Stock",
-                icon = Icons.Outlined.Thermostat,
+                // Use Sunny icon for the default/stock thermal profile to indicate a neutral state
+                icon = Icons.Outlined.Sunny,
                 selected = current == "default" || current == "stock",
                 onSelect = onSelect
             )
@@ -1417,7 +1454,8 @@ private fun ProfileSelector(
                 modifier = Modifier.weight(1f),
                 key = "cool",
                 label = "Cool",
-                icon = Icons.Outlined.Thermostat,
+                // Use Snowing icon to represent a cooler thermal profile
+                icon = Icons.Outlined.Snowing,
                 selected = current == "cool",
                 onSelect = onSelect
             )
@@ -1430,7 +1468,8 @@ private fun ProfileSelector(
                 modifier = Modifier.weight(1f),
                 key = "gaming",
                 label = "Gaming",
-                icon = Icons.Outlined.Speed,
+                // Use VideogameAsset icon for gaming profile to clearly convey the intent
+                icon = Icons.Outlined.VideogameAsset,
                 selected = current == "gaming",
                 onSelect = onSelect
             )
@@ -1438,7 +1477,8 @@ private fun ProfileSelector(
                 modifier = Modifier.weight(1f),
                 key = "throttle_off",
                 label = "Throttle Off",
-                icon = Icons.Outlined.FlashOn,
+                // Use PowerOff icon for throttle off to distinguish it from other performance modes
+                icon = Icons.Outlined.PowerOff,
                 selected = current == "throttle_off",
                 onSelect = onSelect
             )
@@ -1651,11 +1691,16 @@ private fun activeProfileLabel(value: String): String {
 }
 
 private fun activeProfileIcon(value: String): ImageVector {
+    // Provide unique icons for each active profile state to avoid duplicates and reflect the mode semantics
     return when (value.lowercase()) {
+        // Performance uses a flash icon to indicate high power
         "performance" -> Icons.Outlined.FlashOn
+        // Extreme uses the speed icon to indicate maximum performance
         "extreme" -> Icons.Outlined.Speed
-        "battery", "powersave" -> Icons.Outlined.Memory
-        else -> Icons.Outlined.Tune
+        // Battery and powersave use a battery icon instead of the previous memory icon
+        "battery", "powersave" -> Icons.Outlined.BatteryFull
+        // Balance falls back to AccountBalance icon
+        else -> Icons.Outlined.AccountBalance
     }
 }
 

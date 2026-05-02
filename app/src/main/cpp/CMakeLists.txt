@@ -65,20 +65,3 @@ target_link_libraries(aether PRIVATE
     android
     log
 )
-
-add_library(cimolagent SHARED libcimolagent.cpp)
-
-target_compile_features(cimolagent PRIVATE cxx_std_17)
-
-set_target_properties(cimolagent PROPERTIES
-    INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
-    NO_SONAME TRUE
-)
-
-target_compile_options(cimolagent PRIVATE ${COMMON_COMPILE_OPTIONS})
-target_link_options(cimolagent PRIVATE ${COMMON_LINK_OPTIONS})
-
-target_link_libraries(cimolagent PRIVATE
-    android
-    log
-)

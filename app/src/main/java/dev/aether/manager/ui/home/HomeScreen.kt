@@ -82,13 +82,6 @@ fun HomeScreen(vm: MainViewModel) {
     val deviceState by vm.deviceInfo.collectAsState()
     val monitorState by vm.monitorState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            vm.refreshMonitor()
-            kotlinx.coroutines.delay(1_000)
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
