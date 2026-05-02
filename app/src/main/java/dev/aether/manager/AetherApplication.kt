@@ -15,13 +15,22 @@ import dev.aether.manager.notification.NotificationScheduler
 
 class AetherApplication : Application() {
 
-    private val securityHandler = Handler(Looper.getMainLooper())
+    // Background thread for security checks — avoids ANR from l1_frida_port()
+    // which opens 3 socket connections on each call.
+    private val securityExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "aether-sec").also { it.isDaemon = true }
+    }
+
     private val periodicSecurityCheck = object : Runnable {
         override fun run() {
-            if (!BuildConfig.DEBUG) runSecurityChecks()
+            if (!BuildConfig.DEBUG) {
+                securityExecutor.execute { runSecurityChecks() }
+            }
             securityHandler.postDelayed(this, SECURITY_INTERVAL_MS)
         }
     }
+
+    private val securityHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
         super.onCreate()
@@ -29,9 +38,14 @@ class AetherApplication : Application() {
         NativeAether.tryLoad(this)
 
         if (!BuildConfig.DEBUG) {
+            // checkSignature runs on main thread (no I/O, just crypto) — fine
             checkSignature()
-            runSecurityChecks()
-            securityHandler.postDelayed(periodicSecurityCheck, SECURITY_INTERVAL_MS)
+            // All other checks go to background: l1_frida_port() does 3 socket
+            // connects per call; running on main thread risks ANR.
+            securityExecutor.execute {
+                runSecurityChecks()
+                securityHandler.postDelayed(periodicSecurityCheck, SECURITY_INTERVAL_MS)
+            }
         }
 
         initLibsu()
@@ -46,6 +60,11 @@ class AetherApplication : Application() {
     }
 
     private fun checkSignature() {
+        // Safety guard: if EXPECTED_SIGNATURE is still the placeholder, skip the
+        // check entirely. Without this, every release build dies immediately because
+        // no real cert hash can ever match the placeholder string.
+        if (EXPECTED_SIGNATURE == SIGNATURE_PLACEHOLDER) return
+
         if (!NativeAether.isLoaded) { killSelf(); return }
         try {
             @Suppress("DEPRECATION")
@@ -141,6 +160,12 @@ class AetherApplication : Application() {
 
     companion object {
         private const val SECURITY_INTERVAL_MS = 45_000L
-        private const val EXPECTED_SIGNATURE = "GANTI_DENGAN_SHA256_SIGNING_CERT_KAMU"
+
+        // Replace EXPECTED_SIGNATURE with the actual SHA-256 hex of your signing cert.
+        // To get it: run  `apksigner verify --print-certs your.apk`  and copy the
+        // "Signer #1 certificate SHA-256 digest" value (lowercase hex, 64 chars).
+        // Until it's set, checkSignature() is skipped (see SIGNATURE_PLACEHOLDER guard).
+        private const val SIGNATURE_PLACEHOLDER = "GANTI_DENGAN_SHA256_SIGNING_CERT_KAMU"
+        private const val EXPECTED_SIGNATURE    = SIGNATURE_PLACEHOLDER
     }
 }

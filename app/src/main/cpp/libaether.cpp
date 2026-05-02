@@ -294,7 +294,11 @@ static int l2_self_ptrace(void) {
 
 __attribute__((visibility("hidden")))
 static int layer2_anti_debug(void) {
-    if (l2_self_ptrace())  return 1;
+    // l2_self_ptrace() intentionally removed:
+    // PTRACE_TRACEME returns EPERM on Android 10+ due to SELinux/seccomp policy,
+    // even without any debugger — causes false-positive kill on all modern rooted
+    // devices. Debugger is already covered by l1_tracer_pid() in Layer 1
+    // (reads TracerPid from /proc/self/status which is reliable).
     if (l2_timing_check()) return 1;
     return 0;
 }
@@ -719,10 +723,14 @@ static int layer9_got_hook_check(void) {
 }
 
 // ─── EARLY CONSTRUCTOR ───────────────────────────────────────────────────────
-
+// NOTE: Do NOT call _exit() here. This constructor runs before Application.onCreate()
+// and before BuildConfig.DEBUG is accessible, so any kill here is unconditional and
+// will fire on dev devices with Magisk/KernelSU modules (false positive).
+// Actual enforcement is delegated to the JNI layer (nativeIsHooked) which is gated
+// by BuildConfig.DEBUG in AetherApplication.
 __attribute__((constructor(101), visibility("hidden")))
 static void early_security_check(void) {
-    if (l1_frida_maps()) { DEVLOG("frida_maps"); _exit(1); }
+    DEVLOG("libaether loaded");
 }
 
 // ─── JNI EXPORTS ─────────────────────────────────────────────────────────────
