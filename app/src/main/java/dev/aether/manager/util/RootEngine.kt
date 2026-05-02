@@ -139,14 +139,16 @@ object RootEngine {
      * Read the current active profile synchronously. If the profile file
      * does not exist or is empty the default "balance" profile is returned.
      */
-    fun readProfileSync(): String = try {
+    fun readProfileSync(): String {
         val granted = Shell.isAppGrantedRoot() == true || RootManager.isRootGranted
         if (!granted) return "balance"
-        Shell.cmd("cat $PROFILE_FILE 2>/dev/null || echo balance")
-            .exec().out.joinToString("").trim()
-            .ifBlank { "balance" }
-    } catch (_: Exception) {
-        "balance"
+        return try {
+            Shell.cmd("cat $PROFILE_FILE 2>/dev/null || echo balance")
+                .exec().out.joinToString("").trim()
+                .ifBlank { "balance" }
+        } catch (_: Exception) {
+            "balance"
+        }
     }
 
     /**
