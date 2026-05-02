@@ -89,6 +89,80 @@ data class MonitorState(
     val batStatus: String = "Unknown",
 )
 
+// ── UI state wrapper ──────────────────────────────────────────────────────────
+sealed class UiState<out T> {
+    object Loading : UiState<Nothing>()
+    data class Success<T>(val data: T) : UiState<T>()
+    data class Error(val msg: String) : UiState<Nothing>()
+}
+
+// ── Apply status ──────────────────────────────────────────────────────────────
+data class ApplyStatus(
+    val running: Boolean = false,
+    val lastOk:  Boolean = true,
+    val summary: String  = "",
+    val totalMs: Long    = 0L,
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+    // ── Device info ───────────────────────────────────────────────────────────
+    private val _deviceInfo = MutableStateFlow<UiState<DeviceInfo>>(UiState.Loading)
+    val deviceInfo: StateFlow<UiState<DeviceInfo>> = _deviceInfo.asStateFlow()
+
+    // ── Tweaks ────────────────────────────────────────────────────────────────
+    private val _tweaks = MutableStateFlow(TweaksState())
+    val tweaks: StateFlow<TweaksState> = _tweaks.asStateFlow()
+
+    // ── Apply status ──────────────────────────────────────────────────────────
+    private val _applyStatus   = MutableStateFlow(ApplyStatus())
+    val applyStatus: StateFlow<ApplyStatus> = _applyStatus.asStateFlow()
+
+    private val _applyingTweak = MutableStateFlow(false)
+    val applyingTweak: StateFlow<Boolean>   = _applyingTweak.asStateFlow()
+
+    // ── Root ──────────────────────────────────────────────────────────────────
+    private val _rootGranted = MutableStateFlow(false)
+    val rootGranted: StateFlow<Boolean> = _rootGranted.asStateFlow()
+
+    // ── Monitor ───────────────────────────────────────────────────────────────
+    private val _monitorState = MutableStateFlow(MonitorState())
+    val monitorState: StateFlow<MonitorState> = _monitorState.asStateFlow()
+
+    // ── Snack ─────────────────────────────────────────────────────────────────
+    private val _snackMessage = MutableStateFlow<String?>(null)
+    val snackMessage: StateFlow<String?> = _snackMessage.asStateFlow()
+
+    // ── Coroutine handles ─────────────────────────────────────────────────────
+    private var monitorJob:      Job? = null
+    private var applyWorkerJob:  Job? = null
+    private var monitorStarted       = false
+    private val applyChannel         = Channel<Unit>(Channel.CONFLATED)
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (ensureRootReady(requestIfNeeded = false)) {
+                _deviceInfo.value = UiState.Loading
+                loadAll()
+            } else {
+                _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
+            }
+            startApplyWorker()
+        }
+    }
+
+    // ── Public refresh ────────────────────────────────────────────────────────
+    fun refresh() = viewModelScope.launch(Dispatchers.IO) {
+        _deviceInfo.value = UiState.Loading
+        try {
+            loadAll()
+        } catch (e: Exception) {
+            _deviceInfo.value = UiState.Error(e.message ?: "error")
+        }
+    }
+
     fun refreshIfNeeded() {
         val current = (_deviceInfo.value as? UiState.Success)?.data
         if (_deviceInfo.value is UiState.Loading || (RootManager.isRootGranted && current?.rootType == "Unknown")) {

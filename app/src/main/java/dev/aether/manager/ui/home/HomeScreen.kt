@@ -131,9 +131,9 @@ private fun InfoDeviceSkeleton() {
 
 @Composable
 private fun InfoDeviceError(msg: String, onRetry: () -> Unit) {
-    Card(
+    Surface(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        color = MaterialTheme.colorScheme.errorContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
