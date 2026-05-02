@@ -46,42 +46,6 @@
     public static native java.lang.String nativeGetPackageName();
 }
 
-# =============================================================================
-# JNI — libcimolagent.so
-# =============================================================================
-
--keep class dev.aether.manager.CimolAgent {
-    public static boolean tryLoad();
-    public static boolean isAvailable();
-    public static native int[] getCpuFreqsNow();
-    public static native int[] getCpuFreqMinMax();
-    public static native java.lang.String[] getCpuGovernors();
-    public static native int getCpuUsagePercent(int);
-    public static native int[] getThermalRaw();
-    public static native java.lang.String[] getThermalTypes();
-    public static native int getCpuTempMilliC();
-    public static native int getGpuTempMilliC();
-    public static native long[] getMemInfoKb();
-    public static native long[] getZramStats();
-    public static native long[] getBatteryStats();
-    public static native java.lang.String getBatteryStatus();
-    public static native java.lang.String[] getIoSchedulers();
-    public static native boolean setIoScheduler(java.lang.String, java.lang.String);
-    public static native long[] getKsmStats();
-    public static native long[] getProcessStats();
-    public static native java.lang.String getProcessName(int);
-    public static native int getGpuFreqNow();
-    public static native int getGpuBusyPercent();
-    public static native java.lang.String execWithTimeout(java.lang.String, int);
-    public static native boolean writeSysfs(java.lang.String, java.lang.String);
-    public static native java.lang.String readSysfs(java.lang.String);
-}
-
--keepclassmembers class dev.aether.manager.CimolAgent$ThermalZone {
-    <fields>;
-    <init>(...);
-}
-
 # Safety net untuk semua native method
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;

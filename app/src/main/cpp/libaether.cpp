@@ -528,7 +528,7 @@ static int l3_dex_magic(void) {
     char path[512]={0}; if(!get_apk_path(path,sizeof(path))) return 1;
     int fd=open(path,O_RDONLY); if(fd<0) return 1;
     const uint8_t DEX_PFX[4]={0x64,0x65,0x78,0x0A};
-    const char *VERS[]={"035","036","037","038","039","040","041","042",NULL};
+    const char *VERS[]={"035","036","037","038","039","040","041","042","043","044",NULL};
     const size_t BSZ=65536;
     uint8_t *buf=(uint8_t*)malloc(BSZ+8); if(!buf){close(fd);return 1;}
     int dex_found=0,dex_valid=0; ssize_t n; int first=1;

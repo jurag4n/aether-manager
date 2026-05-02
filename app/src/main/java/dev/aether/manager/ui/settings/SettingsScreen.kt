@@ -1,11 +1,16 @@
 package dev.aether.manager.ui.settings
 
-import dev.aether.manager.license.LicenseManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -21,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -28,14 +34,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.FastOutSlowInEasing
+import dev.aether.manager.data.AppsUiState
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.LocalLanguage
 import dev.aether.manager.i18n.LocalSetLanguage
 import dev.aether.manager.i18n.LocalStrings
+import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.util.BackupManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,308 +53,274 @@ fun SettingsScreen(
     onResetMonitor  : () -> Unit,
     onOpenLicense   : () -> Unit = {},
 ) {
-    val s           = LocalStrings.current
-    val ctx         = LocalContext.current
+    val s   = LocalStrings.current
+    val ctx = LocalContext.current
 
     BackHandler(onBack = onBack)
-    val backupList  by vm.backupList.collectAsState()
-    val working     by vm.backupWorking.collectAsState()
 
-    var showReset         by remember { mutableStateOf(false) }
-    var showResetProfiles by remember { mutableStateOf(false) }
-    var showResetMonitor  by remember { mutableStateOf(false) }
-    var restoreTarget     by remember { mutableStateOf<String?>(null) }
-    val scrollState       = rememberScrollState()
-
-    // ── AppProfile state (untuk cek apakah ada profiles/monitor) ─────────
+    val backupList by vm.backupList.collectAsState()
+    val working    by vm.backupWorking.collectAsState()
     val appsUiState by apVm.state.collectAsState()
-    val hasProfiles = (appsUiState as? dev.aether.manager.data.AppsUiState.Ready)
-        ?.profiles?.isNotEmpty() ?: false
-    val monitorActive = (appsUiState as? dev.aether.manager.data.AppsUiState.Ready)
-        ?.monitorRunning ?: false
 
-    // ── Toast ─────────────────────────────────────────────────────────────
+    val hasProfiles = (appsUiState as? AppsUiState.Ready)?.profiles?.isNotEmpty() ?: false
+    val monitorActive = (appsUiState as? AppsUiState.Ready)?.monitorRunning ?: false
+
+    var showReset by remember { mutableStateOf(false) }
+    var showResetProfiles by remember { mutableStateOf(false) }
+    var showResetMonitor by remember { mutableStateOf(false) }
+    var restoreTarget by remember { mutableStateOf<String?>(null) }
+    var processingFile by remember { mutableStateOf<String?>(null) }
+
+    var appearanceExpanded by remember(Unit) { mutableStateOf(false) }
+    var generalExpanded by remember(Unit) { mutableStateOf(false) }
+    var backupExpanded by remember(Unit) { mutableStateOf(false) }
+
+    val isLicensed = remember { LicenseManager.isActive(ctx) }
+    val scrollState = rememberScrollState()
+
+    val darkModeOverride by vm.darkModeOverride.collectAsState()
+    val darkMode by vm.darkMode.collectAsState()
+    val dynamicColor by vm.dynamicColor.collectAsState()
+    val autoBackup by vm.autoBackup.collectAsState()
+    val applyOnBoot by vm.applyOnBoot.collectAsState()
+    val notifications by vm.notifications.collectAsState()
+
+    val currentLanguage = LocalLanguage.current
+    val setLanguage = LocalSetLanguage.current
+    var showLangSheet by remember { mutableStateOf(false) }
+
     val backupEvent by vm.backupEvent.collectAsState()
     LaunchedEffect(backupEvent) {
         val ev = backupEvent ?: return@LaunchedEffect
         val msg = when (ev) {
-            is dev.aether.manager.data.MainViewModel.BackupEvent.Success -> when (ev.msgKey) {
-                "create"         -> s.backupSuccessCreate
-                "restore"        -> s.backupSuccessRestore
-                "delete"         -> s.backupSuccessDelete
-                "reset"          -> s.backupSuccessReset
-                "resetProfiles"  -> s.backupSuccessResetProfiles
-                "resetMonitor"   -> s.backupSuccessResetMonitor
-                else             -> s.backupSuccessCreate
+            is MainViewModel.BackupEvent.Success -> when (ev.msgKey) {
+                "create" -> s.backupSuccessCreate
+                "restore" -> s.backupSuccessRestore
+                "delete" -> s.backupSuccessDelete
+                "reset" -> s.backupSuccessReset
+                "resetProfiles" -> s.backupSuccessResetProfiles
+                "resetMonitor" -> s.backupSuccessResetMonitor
+                else -> s.backupSuccessCreate
             }
-            is dev.aether.manager.data.MainViewModel.BackupEvent.Failure -> when (ev.msgKey) {
-                "create"  -> s.backupFailCreate
+            is MainViewModel.BackupEvent.Failure -> when (ev.msgKey) {
+                "create" -> s.backupFailCreate
                 "restore" -> s.backupFailRestore
-                else      -> s.backupFailReset
+                else -> s.backupFailReset
             }
         }
         android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
         vm.clearBackupEvent()
     }
 
-    // ── Collapsible section states ────────────────────────────────────────
-    // Tidak pakai rememberSaveable agar selalu collapsed saat Settings dibuka ulang
-    var backupExpanded     by remember(Unit) { mutableStateOf(false) }
-    var appearanceExpanded by remember(Unit) { mutableStateOf(false) }
-    var generalExpanded    by remember(Unit) { mutableStateOf(false) }
-    val isLicensed         = remember { LicenseManager.isActive(ctx) }
-
-    // ── Settings state from ViewModel (persisted) ─────────────────────────
-    val darkModeOverride by vm.darkModeOverride.collectAsState()
-    val darkMode         by vm.darkMode.collectAsState()
-    val dynamicColor     by vm.dynamicColor.collectAsState()
-    val autoBackup       by vm.autoBackup.collectAsState()
-    val applyOnBoot      by vm.applyOnBoot.collectAsState()
-    val notifications    by vm.notifications.collectAsState()
-
-    // ── Language ──────────────────────────────────────────────────────────
-    val currentLanguage = LocalLanguage.current
-    val setLanguage     = LocalSetLanguage.current
-    var showLangSheet   by remember { mutableStateOf(false) }
-
     LaunchedEffect(Unit) { vm.loadBackups() }
+    LaunchedEffect(working) { if (!working) processingFile = null }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        s.settingsTitle,
-                        fontWeight = FontWeight.Medium,
-                        fontSize   = 20.sp
+                        text = s.settingsTitle,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 20.sp
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = s.settingsBtnBack)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = s.settingsBtnBack
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor         = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 )
             )
         }
     ) { paddingValues ->
-
-        Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(top = 10.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
             SettingsLicenseCard(
-                isLicensed    = isLicensed,
+                isLicensed = isLicensed,
                 onOpenLicense = onOpenLicense
             )
 
-            // ══ Appearance ════════════════════════════════════════════════
+            SettingsQuickActions(
+                currentLanguage = currentLanguage.nativeName,
+                onLanguageClick = { showLangSheet = true },
+                onBackupClick = { backupExpanded = true }
+            )
+
             SettingsSectionCard(
-                icon     = Icons.Outlined.Palette,
-                title    = s.settingsSectionAppearance,
+                icon = Icons.Outlined.Palette,
+                title = s.settingsSectionAppearance,
+                subtitle = "Tema, warna, dan bahasa aplikasi",
                 expanded = appearanceExpanded,
                 onToggle = { appearanceExpanded = !appearanceExpanded }
             ) {
-                Column(modifier = Modifier.padding(bottom = 4.dp)) {
-                    val systemDark = isSystemInDarkTheme()
-                    SettingsRowSwitch(
-                        icon            = Icons.Outlined.DarkMode,
-                        title           = s.settingsDarkMode,
-                        subtitle        = if (darkModeOverride) s.settingsDarkModeDesc
-                                          else s.settingsDarkModeDesc,
-                        checked         = if (darkModeOverride) darkMode else systemDark,
-                        onCheckedChange = { vm.setDarkMode(it) }
-                    )
-                    SettingsDivider()
-                    SettingsRowSwitch(
-                        icon            = Icons.Outlined.ColorLens,
-                        title           = s.settingsDynamicColor,
-                        subtitle        = s.settingsDynamicColorDesc,
-                        checked         = dynamicColor,
-                        onCheckedChange = { vm.setDynamicColor(it) }
-                    )
-                    SettingsDivider()
-                    SettingsRowInfo(
-                        icon     = Icons.Outlined.Language,
-                        title    = s.settingsLanguage,
-                        subtitle = currentLanguage.nativeName,
-                        onClick  = { showLangSheet = true }
-                    )
-                }
+                val systemDark = isSystemInDarkTheme()
+                SettingsRowSwitch(
+                    icon = Icons.Outlined.DarkMode,
+                    title = s.settingsDarkMode,
+                    subtitle = s.settingsDarkModeDesc,
+                    checked = if (darkModeOverride) darkMode else systemDark,
+                    onCheckedChange = { vm.setDarkMode(it) }
+                )
+                SettingsDivider()
+                SettingsRowSwitch(
+                    icon = Icons.Outlined.ColorLens,
+                    title = s.settingsDynamicColor,
+                    subtitle = s.settingsDynamicColorDesc,
+                    checked = dynamicColor,
+                    onCheckedChange = { vm.setDynamicColor(it) }
+                )
+                SettingsDivider()
+                SettingsRowInfo(
+                    icon = Icons.Outlined.Language,
+                    title = s.settingsLanguage,
+                    subtitle = currentLanguage.nativeName,
+                    onClick = { showLangSheet = true }
+                )
             }
 
-            // ══ General ═══════════════════════════════════════════════════
             SettingsSectionCard(
-                icon     = Icons.Outlined.Tune,
-                title    = s.settingsSectionGeneral,
+                icon = Icons.Outlined.Tune,
+                title = s.settingsSectionGeneral,
+                subtitle = "Backup otomatis, boot, dan notifikasi",
                 expanded = generalExpanded,
                 onToggle = { generalExpanded = !generalExpanded }
             ) {
-                Column(modifier = Modifier.padding(bottom = 4.dp)) {
-                    SettingsRowSwitch(
-                        icon            = Icons.Outlined.CloudUpload,
-                        title           = s.settingsAutoBackup,
-                        subtitle        = s.settingsAutoBackupDesc,
-                        checked         = autoBackup,
-                        onCheckedChange = { vm.setAutoBackup(it) }
-                    )
-                    SettingsDivider()
-                    SettingsRowSwitch(
-                        icon            = Icons.Outlined.FlashOn,
-                        title           = s.settingsApplyOnBoot,
-                        subtitle        = s.settingsApplyOnBootDesc,
-                        checked         = applyOnBoot,
-                        onCheckedChange = { vm.setApplyOnBoot(it) }
-                    )
-                    SettingsDivider()
-                    SettingsRowSwitch(
-                        icon            = Icons.Outlined.Notifications,
-                        title           = s.settingsNotifications,
-                        subtitle        = s.settingsNotificationsDesc,
-                        checked         = notifications,
-                        onCheckedChange = { vm.setNotifications(it) }
-                    )
-                }
+                SettingsRowSwitch(
+                    icon = Icons.Outlined.CloudUpload,
+                    title = s.settingsAutoBackup,
+                    subtitle = s.settingsAutoBackupDesc,
+                    checked = autoBackup,
+                    onCheckedChange = { vm.setAutoBackup(it) }
+                )
+                SettingsDivider()
+                SettingsRowSwitch(
+                    icon = Icons.Outlined.FlashOn,
+                    title = s.settingsApplyOnBoot,
+                    subtitle = s.settingsApplyOnBootDesc,
+                    checked = applyOnBoot,
+                    onCheckedChange = { vm.setApplyOnBoot(it) }
+                )
+                SettingsDivider()
+                SettingsRowSwitch(
+                    icon = Icons.Outlined.Notifications,
+                    title = s.settingsNotifications,
+                    subtitle = s.settingsNotificationsDesc,
+                    checked = notifications,
+                    onCheckedChange = { vm.setNotifications(it) }
+                )
             }
 
-            // ══ Backup & Reset ════════════════════════════════════════════
-            var processingFile by remember { mutableStateOf<String?>(null) }
-            LaunchedEffect(working) { if (!working) processingFile = null }
-
             SettingsSectionCard(
-                icon     = Icons.Outlined.Archive,
-                title    = "Backup Reset",
+                icon = Icons.Outlined.Archive,
+                title = "Backup Reset",
+                subtitle = if (backupList.isEmpty()) s.settingsNoBackup else "${backupList.size} backup tersimpan",
                 expanded = backupExpanded,
                 onToggle = { backupExpanded = !backupExpanded }
             ) {
-                Column(
-                    modifier            = Modifier.padding(bottom = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    SettingsActionRow(
-                        icon      = Icons.Outlined.Save,
-                        title     = s.settingsBtnBackup,
-                        subtitle  = s.backupSubtitleBackup,
-                        iconTint  = MaterialTheme.colorScheme.primary,
-                        iconBg    = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-                        isLoading = working && processingFile == null
-                                     && !showReset && !showResetProfiles && !showResetMonitor,
-                        enabled   = !working,
-                        onClick   = { vm.createBackup() }
-                    )
-                    SettingsDivider()
-                    SettingsActionRow(
-                        icon     = Icons.Outlined.RestartAlt,
-                        title    = s.settingsBtnResetDefault,
-                        subtitle = s.backupSubtitleReset,
-                        iconTint = MaterialTheme.colorScheme.error,
-                        iconBg   = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
-                        enabled  = !working,
-                        onClick  = { showReset = true }
-                    )
-                    SettingsDivider()
-                    SettingsActionRow(
-                        icon      = Icons.Outlined.ManageAccounts,
-                        title     = s.settingsBtnResetProfiles,
-                        subtitle  = if (hasProfiles) s.backupSubtitleResetProfiles
-                                    else s.backupNoProfiles,
-                        iconTint  = if (hasProfiles) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                        iconBg    = if (hasProfiles) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
-                                    else MaterialTheme.colorScheme.surfaceVariant,
-                        enabled   = !working && hasProfiles,
-                        showChip  = !hasProfiles,
-                        chipText  = s.backupNoProfiles,
-                        onClick   = { showResetProfiles = true }
-                    )
-                    SettingsDivider()
-                    SettingsActionRow(
-                        icon      = Icons.Outlined.MonitorHeart,
-                        title     = s.settingsBtnResetMonitor,
-                        subtitle  = if (monitorActive) s.backupSubtitleResetMonitor
-                                    else s.backupMonitorInactive,
-                        iconTint  = if (monitorActive) MaterialTheme.colorScheme.tertiary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                        iconBg    = if (monitorActive) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
-                                    else MaterialTheme.colorScheme.surfaceVariant,
-                        enabled   = !working && monitorActive,
-                        showChip  = !monitorActive,
-                        chipText  = s.backupMonitorInactive,
-                        onClick   = { showResetMonitor = true }
-                    )
+                SettingsActionRow(
+                    icon = Icons.Outlined.Save,
+                    title = s.settingsBtnBackup,
+                    subtitle = s.backupSubtitleBackup,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    isLoading = working && processingFile == null && !showReset && !showResetProfiles && !showResetMonitor,
+                    enabled = !working,
+                    onClick = { vm.createBackup() }
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    icon = Icons.Outlined.RestartAlt,
+                    title = s.settingsBtnResetDefault,
+                    subtitle = s.backupSubtitleReset,
+                    iconTint = MaterialTheme.colorScheme.error,
+                    iconBg = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.62f),
+                    enabled = !working,
+                    onClick = { showReset = true }
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    icon = Icons.Outlined.ManageAccounts,
+                    title = s.settingsBtnResetProfiles,
+                    subtitle = if (hasProfiles) s.backupSubtitleResetProfiles else s.backupNoProfiles,
+                    iconTint = if (hasProfiles) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    iconBg = if (hasProfiles) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.62f) else MaterialTheme.colorScheme.surfaceVariant,
+                    enabled = !working && hasProfiles,
+                    showChip = !hasProfiles,
+                    chipText = s.backupNoProfiles,
+                    onClick = { showResetProfiles = true }
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    icon = Icons.Outlined.MonitorHeart,
+                    title = s.settingsBtnResetMonitor,
+                    subtitle = if (monitorActive) s.backupSubtitleResetMonitor else s.backupMonitorInactive,
+                    iconTint = if (monitorActive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    iconBg = if (monitorActive) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.62f) else MaterialTheme.colorScheme.surfaceVariant,
+                    enabled = !working && monitorActive,
+                    showChip = !monitorActive,
+                    chipText = s.backupMonitorInactive,
+                    onClick = { showResetMonitor = true }
+                )
 
-                    // ── Backup list ───────────────────────────────────────
-                    HorizontalDivider(
-                        modifier  = Modifier.padding(horizontal = 14.dp),
-                        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                        thickness = 0.5.dp
-                    )
-                    if (backupList.isEmpty()) {
-                        Row(
-                            modifier              = Modifier.fillMaxWidth().padding(14.dp),
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Outlined.FolderOff, null,
-                                tint     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                s.settingsNoBackup,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        backupList.forEachIndexed { index, entry ->
-                            SettingsBackupItem(
-                                entry        = entry,
-                                working      = working,
-                                isProcessing = processingFile == entry.filename,
-                                profileLabel = s.settingsBackupProfile.format(entry.profile),
-                                deleteLabel  = s.settingsBtnDelete,
-                                onRestore    = { processingFile = entry.filename; restoreTarget = entry.filename },
-                                onDelete     = { processingFile = entry.filename; vm.deleteBackup(entry.filename) }
-                            )
-                            if (index < backupList.lastIndex) {
-                                HorizontalDivider(
-                                    modifier  = Modifier.padding(start = 62.dp, end = 14.dp),
-                                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                                    thickness = 0.5.dp
-                                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    thickness = 0.5.dp
+                )
+
+                if (backupList.isEmpty()) {
+                    EmptyBackupRow(text = s.settingsNoBackup)
+                } else {
+                    backupList.forEachIndexed { index, entry ->
+                        SettingsBackupItem(
+                            entry = entry,
+                            working = working,
+                            isProcessing = processingFile == entry.filename,
+                            profileLabel = s.settingsBackupProfile.format(entry.profile),
+                            deleteLabel = s.settingsBtnDelete,
+                            onRestore = {
+                                processingFile = entry.filename
+                                restoreTarget = entry.filename
+                            },
+                            onDelete = {
+                                processingFile = entry.filename
+                                vm.deleteBackup(entry.filename)
                             }
+                        )
+                        if (index < backupList.lastIndex) {
+                            SettingsDivider(start = 70.dp)
                         }
                     }
                 }
             }
-
         }
-        } // Box
     }
-
-    // ── Dialogs ───────────────────────────────────────────────────────────
 
     if (showReset) {
         AlertDialog(
             onDismissRequest = { showReset = false },
-            icon  = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(s.settingsResetTitle) },
-            text  = { Text(s.settingsResetDesc) },
+            text = { Text(s.settingsResetDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showReset = false; vm.resetToDefaults() },
-                    colors  = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) { Text(s.settingsResetConfirm) }
             },
             dismissButton = {
@@ -361,9 +332,9 @@ fun SettingsScreen(
     restoreTarget?.let { fname ->
         AlertDialog(
             onDismissRequest = { restoreTarget = null },
-            icon  = { Icon(Icons.Outlined.Restore, null) },
+            icon = { Icon(Icons.Outlined.Restore, null) },
             title = { Text(s.settingsRestoreTitle) },
-            text  = { Text(s.settingsRestoreDesc) },
+            text = { Text(s.settingsRestoreDesc) },
             confirmButton = {
                 TextButton(onClick = { restoreTarget = null; vm.restoreBackup(fname) }) {
                     Text(s.settingsRestoreConfirm)
@@ -378,13 +349,13 @@ fun SettingsScreen(
     if (showResetProfiles) {
         AlertDialog(
             onDismissRequest = { showResetProfiles = false },
-            icon  = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(s.settingsResetProfilesTitle) },
-            text  = { Text(s.settingsResetProfilesDesc) },
+            text = { Text(s.settingsResetProfilesDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showResetProfiles = false; onResetProfiles() },
-                    colors  = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) { Text(s.settingsResetConfirm) }
             },
             dismissButton = {
@@ -396,13 +367,13 @@ fun SettingsScreen(
     if (showResetMonitor) {
         AlertDialog(
             onDismissRequest = { showResetMonitor = false },
-            icon  = { Icon(Icons.Outlined.MonitorHeart, null, tint = MaterialTheme.colorScheme.tertiary) },
+            icon = { Icon(Icons.Outlined.MonitorHeart, null, tint = MaterialTheme.colorScheme.tertiary) },
             title = { Text(s.settingsResetMonitorTitle) },
-            text  = { Text(s.settingsResetMonitorDesc) },
+            text = { Text(s.settingsResetMonitorDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showResetMonitor = false; onResetMonitor() },
-                    colors  = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.tertiary)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.tertiary)
                 ) { Text(s.settingsResetConfirm) }
             },
             dismissButton = {
@@ -411,19 +382,17 @@ fun SettingsScreen(
         )
     }
 
-
-    // ── Language picker bottom sheet ──────────────────────────────────────
     if (showLangSheet) {
         LanguagePickerSheet(
-            current  = currentLanguage,
-            onSelect = { lang -> setLanguage(lang); showLangSheet = false },
+            current = currentLanguage,
+            onSelect = { lang ->
+                setLanguage(lang)
+                showLangSheet = false
+            },
             onDismiss = { showLangSheet = false }
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -432,60 +401,83 @@ private fun LanguagePickerSheet(
     onSelect : (AppLanguage) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 18.dp)
                 .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                "Pilih Bahasa / Select Language",
-                style      = MaterialTheme.typography.titleMedium,
+                text = "Pilih Bahasa / Select Language",
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                modifier   = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 4.dp)
             )
             AppLanguage.entries.forEach { lang ->
                 val selected = lang == current
                 Surface(
-                    shape    = RoundedCornerShape(12.dp),
-                    color    = if (selected) MaterialTheme.colorScheme.primaryContainer
-                               else MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth().clickable { onSelect(lang) }
+                    shape = RoundedCornerShape(18.dp),
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.26f)
+                                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable { onSelect(lang) }
                 ) {
                     Row(
-                        modifier          = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            lang.langIcon,
-                            style      = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color      = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                                         else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Column(Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                lang.nativeName,
-                                style      = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color      = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                                             else MaterialTheme.colorScheme.onSurface
+                                text = lang.langIcon,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(1.dp)
+                        ) {
+                            Text(
+                                text = lang.nativeName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                lang.displayName,
+                                text = lang.displayName,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                                         else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         if (selected) {
                             Icon(
-                                Icons.Outlined.CheckCircle, null,
-                                tint     = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(21.dp)
                             )
                         }
                     }
@@ -495,156 +487,252 @@ private fun LanguagePickerSheet(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun SettingsLicenseCard(
     isLicensed    : Boolean,
     onOpenLicense : () -> Unit,
 ) {
+    val bg = if (isLicensed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.52f)
+             else MaterialTheme.colorScheme.surfaceContainerLow
+    val border = if (isLicensed) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+                 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.36f)
+
     Surface(
+        shape = RoundedCornerShape(26.dp),
+        color = bg,
+        border = BorderStroke(1.dp, border),
+        tonalElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpenLicense),
-        shape  = RoundedCornerShape(18.dp),
-        color  = if (isLicensed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f)
-                 else MaterialTheme.colorScheme.surfaceContainerLow,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (isLicensed) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        )
+            .clip(RoundedCornerShape(26.dp))
+            .clickable(onClick = onOpenLicense)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .background(
-                        if (isLicensed) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-                        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                        RoundedCornerShape(12.dp)
-                    ),
-                contentAlignment = Alignment.Center
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            if (isLicensed) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
+                            RoundedCornerShape(16.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isLicensed) Icons.Outlined.CheckCircle else Icons.Outlined.WorkspacePremium,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = if (isLicensed) "Premium Active" else "Aether Manager",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = if (isLicensed) "License aktif dan fitur premium tersedia" else "Aktivasi lisensi untuk membuka fitur premium",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Icon(
-                    imageVector = if (isLicensed) Icons.Outlined.CheckCircle else Icons.Outlined.WorkspacePremium,
+                    imageVector = Icons.Outlined.ChevronRight,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f),
                     modifier = Modifier.size(20.dp)
                 )
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = if (isLicensed) "Premium Active" else "Aether Manager",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = if (isLicensed) "License active" else "Tap untuk aktivasi lisensi dan hapus iklan",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                Icons.Outlined.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                modifier = Modifier.size(18.dp)
+
+            StatusPill(
+                text = if (isLicensed) "Licensed" else "Tap untuk aktivasi",
+                icon = if (isLicensed) Icons.Outlined.CheckCircle else Icons.Outlined.WorkspacePremium,
+                tint = if (isLicensed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                container = if (isLicensed) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceContainerHigh
             )
         }
     }
 }
 
 @Composable
-private fun SettingsDivider() = HorizontalDivider(
-    modifier  = Modifier.padding(horizontal = 14.dp),
-    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-    thickness = 0.5.dp
-)
+private fun SettingsQuickActions(
+    currentLanguage : String,
+    onLanguageClick : () -> Unit,
+    onBackupClick   : () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        SettingsMiniActionCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Outlined.Language,
+            title = "Language",
+            subtitle = currentLanguage,
+            onClick = onLanguageClick
+        )
+        SettingsMiniActionCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Outlined.Archive,
+            title = "Backup",
+            subtitle = "Kelola data",
+            onClick = onBackupClick
+        )
+    }
+}
+
+@Composable
+private fun SettingsMiniActionCard(
+    modifier : Modifier = Modifier,
+    icon     : ImageVector,
+    title    : String,
+    subtitle : String,
+    onClick  : () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
+        modifier = modifier
+            .heightIn(min = 84.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun SettingsSectionCard(
     icon     : ImageVector,
     title    : String,
+    subtitle : String,
     expanded : Boolean,
     onToggle : () -> Unit,
-    content  : @Composable () -> Unit
+    content  : @Composable ColumnScope.() -> Unit
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        label       = "chevron"
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "settings_chevron"
     )
-    // Use a softer surface with a subtle elevation and remove the heavy border
-    // for a cleaner appearance.  Increasing the corner radius and slightly
-    // raising the opacity of the container helps separate sections from the
-    // background without overwhelming the design.
+
     Surface(
-        shape    = RoundedCornerShape(20.dp),
-        color    = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.95f),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(tween(durationMillis = 240, easing = FastOutSlowInEasing))
     ) {
         Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
                     .clickable(onClick = onToggle)
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 15.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(13.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
-                        .background(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                            RoundedCornerShape(10.dp)
-                        ),
+                        .size(40.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        icon, null,
-                        tint     = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
+                        imageVector = Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(21.dp)
+                            .rotate(rotation)
                     )
                 }
-                Text(
-                    title,
-                    modifier   = Modifier.weight(1f),
-                    style      = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Icon(
-                    Icons.Outlined.KeyboardArrowDown, null,
-                    tint     = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp).rotate(rotation)
-                )
             }
+
             AnimatedVisibility(
                 visible = expanded,
-                enter   = expandVertically(
-                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
-                ),
-                exit    = shrinkVertically(
-                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-                )
+                enter = expandVertically(animationSpec = tween(220, easing = FastOutSlowInEasing)) + fadeIn(tween(160)),
+                exit = shrinkVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) + fadeOut(tween(120))
             ) {
-                Column {
-                    HorizontalDivider(
-                        color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                        thickness = 0.5.dp
-                    )
-                    content()
-                }
+                Column(
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    content = content
+                )
             }
         }
     }
 }
+
+@Composable
+private fun SettingsDivider(start: androidx.compose.ui.unit.Dp = 16.dp) = HorizontalDivider(
+    modifier = Modifier.padding(start = start, end = 16.dp),
+    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
+    thickness = 0.5.dp
+)
 
 @Composable
 private fun SettingsRowSwitch(
@@ -657,17 +745,25 @@ private fun SettingsRowSwitch(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title,    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall,  color = MaterialTheme.colorScheme.onSurfaceVariant)
+        IconBubble(
+            icon = icon,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            container = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange, modifier = Modifier.height(24.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -678,30 +774,39 @@ private fun SettingsRowInfo(
     subtitle : String,
     onClick  : (() -> Unit)?,
 ) {
-    val mod = if (onClick != null)
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp)
-    else
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)
+    val modifier = Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(18.dp))
+        .let { base -> if (onClick != null) base.clickable(onClick = onClick) else base }
+        .padding(horizontal = 16.dp, vertical = 13.dp)
 
     Row(
-        modifier              = mod,
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title,    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall,  color = MaterialTheme.colorScheme.onSurfaceVariant)
+        IconBubble(
+            icon = icon,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            container = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (onClick != null) {
-            Icon(Icons.Outlined.ChevronRight, null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                modifier = Modifier.size(19.dp)
+            )
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SettingsActionRow(
@@ -719,66 +824,77 @@ private fun SettingsActionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.5f)
+            .alpha(if (enabled) 1f else 0.48f)
+            .clip(RoundedCornerShape(18.dp))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
         Box(
-            modifier         = Modifier.size(36.dp).background(iconBg, RoundedCornerShape(10.dp)),
+            modifier = Modifier
+                .size(40.dp)
+                .background(iconBg, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier    = Modifier.size(18.dp),
+                    modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
-                    color       = iconTint
+                    color = iconTint
                 )
             } else {
-                Icon(icon, null, tint = iconTint, modifier = Modifier.size(18.dp))
+                Icon(icon, null, tint = iconTint, modifier = Modifier.size(19.dp))
             }
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             if (showChip) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                ) {
-                    Row(
-                        modifier              = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.Info, null,
-                            modifier = Modifier.size(11.dp),
-                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            chipText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                StatusPill(
+                    text = chipText,
+                    icon = Icons.Outlined.Info,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    container = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
             } else {
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (!showChip) {
             Icon(
-                Icons.Outlined.ChevronRight, null,
-                tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.size(18.dp)
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.42f),
+                modifier = Modifier.size(19.dp)
             )
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun EmptyBackupRow(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        IconBubble(
+            icon = Icons.Outlined.FolderOff,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            container = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
 
 @Composable
 private fun SettingsBackupItem(
@@ -793,35 +909,81 @@ private fun SettingsBackupItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment     = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(10.dp)),
+                .size(42.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center
         ) {
             if (isProcessing) {
                 CircularProgressIndicator(
-                    modifier    = Modifier.size(17.dp),
+                    modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
-                    color       = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary
                 )
             } else {
-                Icon(Icons.Outlined.Archive, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Outlined.Archive, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
             }
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Text(entry.timestamp, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-            Text(profileLabel,    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(entry.timestamp, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            Text(profileLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        IconButton(onClick = onRestore, enabled = !working, modifier = Modifier.size(36.dp)) {
-            Icon(Icons.Outlined.Restore, "Restore", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
+        IconButton(onClick = onRestore, enabled = !working, modifier = Modifier.size(38.dp)) {
+            Icon(Icons.Outlined.Restore, "Restore", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
         }
-        IconButton(onClick = onDelete, enabled = !working, modifier = Modifier.size(36.dp)) {
-            Icon(Icons.Outlined.Delete, deleteLabel, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(19.dp))
+        IconButton(onClick = onDelete, enabled = !working, modifier = Modifier.size(38.dp)) {
+            Icon(Icons.Outlined.Delete, deleteLabel, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun IconBubble(
+    icon      : ImageVector,
+    tint      : Color,
+    container : Color,
+) {
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .background(container, RoundedCornerShape(13.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun StatusPill(
+    text      : String,
+    icon      : ImageVector,
+    tint      : Color,
+    container : Color,
+) {
+    Surface(
+        shape = RoundedCornerShape(50.dp),
+        color = container
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(13.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = tint
+            )
         }
     }
 }
