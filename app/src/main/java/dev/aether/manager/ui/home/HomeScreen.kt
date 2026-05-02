@@ -1,13 +1,12 @@
 package dev.aether.manager.ui.home
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -20,13 +19,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -39,16 +36,12 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.Widgets
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -79,7 +72,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.data.MonitorState
 import dev.aether.manager.data.UiState
-
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
 import kotlin.math.PI
@@ -89,7 +81,13 @@ import kotlin.math.sin
 fun HomeScreen(vm: MainViewModel) {
     val deviceState by vm.deviceInfo.collectAsState()
     val monitorState by vm.monitorState.collectAsState()
-    val info = (deviceState as? UiState.Success)?.data
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            vm.refreshMonitor()
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -173,7 +171,6 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 
         GpuInfoCard(state, info)
         MemoryInfoCard(state)
-        DeviceInfoCard(info)
     }
 }
 
@@ -264,7 +261,7 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            if (item.value > 0f) "%.0f°C".format(item.value) else "—°C",
+                            if (item.value > 0f) "%.1f°C".format(item.value) else "—°C",
                             fontSize = 34.sp,
                             lineHeight = 36.sp,
                             fontWeight = FontWeight.Black,
@@ -325,7 +322,7 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("FREKUENSI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(state.gpuFreq.ifBlank { "— MHz" }, fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    Text(normalizeGpuFreq(state.gpuFreq), fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("GPU Type", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
@@ -376,48 +373,6 @@ private fun MemoryInfoCard(state: MonitorState) {
     }
 }
 
-@Composable
-private fun DeviceInfoCard(info: DeviceInfo?) {
-    TappableCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(13.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconBadge(Icons.Outlined.Info, MaterialTheme.colorScheme.primary)
-                    Text(
-                        "Device Info",
-                        fontSize = 21.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-            val deviceName = info?.model?.takeIf { it.isNotBlank() } ?: "Unknown Device"
-            val codename = info?.socRaw?.takeIf { it.isNotBlank() } ?: info?.soc?.label.orEmpty().ifBlank { "Unknown" }
-            val android = info?.android?.takeIf { it.isNotBlank() } ?: "?"
-            val kernel = info?.kernel?.takeIf { it.isNotBlank() } ?: "?"
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                InfoTile(Icons.Outlined.Widgets, deviceName, "Nama Perangkat", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                InfoTile(Icons.Outlined.Memory, codename, "CodeName", Color(0xFFFF9CAF), Modifier.weight(1f))
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                InfoTile(Icons.Outlined.Info, android, "Android", MaterialTheme.colorScheme.secondary, Modifier.weight(1f))
-                InfoTile(Icons.Outlined.Storage, kernel, "Kernel", MaterialTheme.colorScheme.tertiary, Modifier.weight(1f))
-            }
-        }
-    }
-}
 
 
 @Composable
@@ -469,16 +424,6 @@ private fun PillText(text: String, color: Color = MaterialTheme.colorScheme.prim
     }
 }
 
-@Composable
-private fun InfoLine(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-    }
-}
 
 @Composable
 private fun SmallToggleIcon(icon: ImageVector, active: Boolean) {
@@ -517,7 +462,11 @@ private fun InfoTile(icon: ImageVector, value: String, label: String, color: Col
 
 @Composable
 private fun MemoryMetricRow(icon: ImageVector, label: String, used: String, total: String, pct: Float, color: Color) {
-    val anim by animateFloatAsState(pct, tween(700, easing = FastOutSlowInEasing), label = "memory_$label")
+    val anim by animateFloatAsState(
+        targetValue = pct,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 200f),
+        label = "memory_$label"
+    )
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -590,7 +539,6 @@ private data class TempItem(val label: String, val value: Float, val icon: Image
 
 private fun ratio(used: Long, total: Long): Float = if (total > 0L) (used.toFloat() / total).coerceIn(0f, 1f) else 0f
 private fun ratio(used: Float, total: Float): Float = if (total > 0f) (used / total).coerceIn(0f, 1f) else 0f
-private fun Int.floorMod(size: Int): Int = ((this % size) + size) % size
 private fun advertisedStorageGb(rawGb: Float): Float = when {
     rawGb <= 0f -> 0f
     rawGb <= 20f -> 16f
@@ -633,6 +581,14 @@ private fun shortGpuName(value: String): String {
 
 private fun fmtMb(mb: Long): String = if (mb >= 1024) "%.1f GB".format(mb / 1024f) else "$mb MB"
 private fun normalizeCpuFreq(value: String): String = value.replace("\n", " ").replace(Regex("""\s+"""), " ").trim().ifBlank { "— MHz" }
+private fun normalizeGpuFreq(value: String): String {
+    val trimmed = value.trim()
+    if (trimmed.isBlank()) return "— MHz"
+    val numeric = trimmed.replace(Regex("[^0-9.]"), "")
+    val num = numeric.toFloatOrNull() ?: return "— MHz"
+    if (num <= 0f) return "— MHz"
+    return trimmed
+}
 
 @Composable
 fun TabSectionTitle(
