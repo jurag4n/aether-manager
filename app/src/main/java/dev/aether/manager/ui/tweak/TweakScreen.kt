@@ -759,27 +759,35 @@ private fun ExpandableTweakCard(
         label = "badge_fg_$title"
     )
     val cardScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.99f,
-        animationSpec = smoothSpring(),
+        targetValue = if (expanded) 1f else 0.9f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "card_scale_$title"
     )
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = tween(if (expanded) 320 else 220),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "detail_alpha_$title"
     )
     val detailScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.965f,
-        animationSpec = smoothSpring(),
+        targetValue = if (expanded) 1f else 0.92f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "detail_scale_$title"
     )
     val detailOffset by animateFloatAsState(
-        targetValue = if (expanded) 0f else when (side) {
-            ExpandSide.Left -> -18f
-            ExpandSide.Right -> 18f
-            ExpandSide.Center -> 0f
-        },
-        animationSpec = smoothSpring(),
+        targetValue = if (expanded) 0f else 24f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "detail_offset_$title"
     )
     Surface(
@@ -839,15 +847,17 @@ private fun ExpandableTweakCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(tween(280)) + expandVertically(smoothSpring()),
-                exit = fadeOut(tween(200)) + shrinkVertically(snappySpring())
+                enter = fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) +
+                        expandVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)),
+                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh)) +
+                        shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh))
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .graphicsLayer {
                             alpha = detailAlpha
-                            translationX = detailOffset
+                            translationY = detailOffset
                             scaleX = detailScale
                             scaleY = detailScale
                         },
@@ -871,13 +881,27 @@ private fun DeviceInfoCard(
 
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = tween(if (expanded) 320 else 220),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "device_info_alpha"
     )
     val detailScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.965f,
-        animationSpec = smoothSpring(),
+        targetValue = if (expanded) 1f else 0.92f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "device_info_scale"
+    )
+    val detailOffset by animateFloatAsState(
+        targetValue = if (expanded) 0f else 24f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "device_info_offset"
     )
     Surface(
         onClick = onClick,
@@ -935,8 +959,10 @@ private fun DeviceInfoCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(tween(280)) + expandVertically(smoothSpring()),
-                exit = fadeOut(tween(200)) + shrinkVertically(snappySpring())
+                enter = fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) +
+                        expandVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)),
+                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh)) +
+                        shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh))
             ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
@@ -945,6 +971,7 @@ private fun DeviceInfoCard(
                         .fillMaxWidth()
                         .graphicsLayer {
                             alpha = detailAlpha
+                            translationY = detailOffset
                             scaleX = detailScale
                             scaleY = detailScale
                         }
@@ -1706,11 +1733,11 @@ private fun normalizeLabel(value: String): String {
 }
 
 private fun <T> smoothSpring() = spring<T>(
-    dampingRatio = Spring.DampingRatioMediumBouncy,
-    stiffness = Spring.StiffnessLow
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMedium
 )
 
 private fun <T> snappySpring() = spring<T>(
     dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMediumLow
+    stiffness = Spring.StiffnessMediumHigh
 )

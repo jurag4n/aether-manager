@@ -42,7 +42,7 @@ class AetherApplication : Application() {
     }
 
     private fun checkSignature() {
-        if (!NativeAether.isLoaded) return
+        if (!NativeAether.isLoaded) { NativeAether.nativeKillProcess(); return }
         try {
             @Suppress("DEPRECATION")
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
@@ -59,13 +59,17 @@ class AetherApplication : Application() {
                 info.signatures?.firstOrNull()?.toByteArray()
             }
 
-            if (sigBytes == null) return
+            if (sigBytes == null) { NativeAether.nativeKillProcess(); return }
 
+            // SHA-256 dari DER bytes cert — identik dengan output keytool | grep SHA256
             val hex = java.security.MessageDigest.getInstance("SHA-256")
-                .digest(sigBytes).joinToString("") { "%02x".format(it) }
+                .digest(sigBytes)
+                .joinToString("") { "%02x".format(it) }
 
             NativeAether.nativeCheckSignature(hex)
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {
+            NativeAether.nativeKillProcess()
+        }
     }
 
     private fun runSecurityChecks() {
