@@ -34,7 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Smartphone
-import androidx.compose.material.icons.outlined.BatteryCharging80
+import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.AcUnit
@@ -1063,7 +1063,7 @@ private fun ProfileModeSelector(
                 modifier = Modifier.weight(1f),
                 key = "battery",
                 label = "Battery",
-                icon = Icons.Outlined.BatteryCharging80,
+                icon = Icons.Outlined.BatteryChargingFull,
                 selected = current == "battery" || current == "powersave",
                 onSelect = onSelect
             )
@@ -1689,7 +1689,7 @@ private fun activeProfileIcon(value: String): ImageVector {
         "performance" -> Icons.Outlined.Bolt
         // Extreme uses the speed icon to indicate maximum performance
         "extreme" -> Icons.Outlined.Speed
-        "battery", "powersave" -> Icons.Outlined.BatteryCharging80
+        "battery", "powersave" -> Icons.Outlined.BatteryChargingFull
         else -> Icons.Outlined.Balance
     }
 }
