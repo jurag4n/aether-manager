@@ -2,6 +2,7 @@ package dev.aether.manager.license
 
 import android.content.Context
 import android.provider.Settings
+import dev.aether.manager.NativeAether
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -11,7 +12,7 @@ import java.security.MessageDigest
 
 object LicenseManager {
 
-    private const val API_BASE = "https://aether-app-weld.vercel.app/api"
+    private val API_BASE: String get() = NativeAether.nativeGetVercelApi()
 
     fun getDeviceId(ctx: Context): String {
         val androidId = Settings.Secure.getString(

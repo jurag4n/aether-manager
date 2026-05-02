@@ -21,7 +21,7 @@ set(COMMON_COMPILE_OPTIONS
     -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.
     -fmacro-prefix-map=${CMAKE_SOURCE_DIR}=.
     $<$<CONFIG:Release>:-DNDEBUG>
-    $<$<NOT:$<CONFIG:Release>>:-DDEV_LOG=0>
+    $<$<NOT:$<CONFIG:Release>>:-DDEV_LOG=1>
 )
 
 set(COMMON_LINK_OPTIONS

@@ -41,8 +41,12 @@ class AetherApplication : Application() {
         NotificationScheduler.schedule(this)
     }
 
+    private fun killSelf() {
+        android.os.Process.killProcess(android.os.Process.myPid())
+    }
+
     private fun checkSignature() {
-        if (!NativeAether.isLoaded) { NativeAether.nativeKillProcess(); return }
+        if (!NativeAether.isLoaded) { killSelf(); return }
         try {
             @Suppress("DEPRECATION")
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
@@ -59,16 +63,15 @@ class AetherApplication : Application() {
                 info.signatures?.firstOrNull()?.toByteArray()
             }
 
-            if (sigBytes == null) { NativeAether.nativeKillProcess(); return }
+            if (sigBytes == null) { killSelf(); return }
 
-            // SHA-256 dari DER bytes cert — identik dengan output keytool | grep SHA256
             val hex = java.security.MessageDigest.getInstance("SHA-256")
                 .digest(sigBytes)
                 .joinToString("") { "%02x".format(it) }
 
-            NativeAether.nativeCheckSignature(hex)
+            if (hex != EXPECTED_SIGNATURE) killSelf()
         } catch (_: Throwable) {
-            NativeAether.nativeKillProcess()
+            killSelf()
         }
     }
 
@@ -76,16 +79,16 @@ class AetherApplication : Application() {
         if (!NativeAether.isLoaded) return
         try {
             if (NativeAether.nativeIsHooked()) {
-                NativeAether.nativeKillProcess(); return
+                killSelf(); return
             }
             if (NativeAether.nativeIsDebugged()) {
-                NativeAether.nativeKillProcess(); return
+                killSelf(); return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
-                NativeAether.nativeKillProcess(); return
+                killSelf(); return
             }
         } catch (_: Throwable) {
-            if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
+            if (NativeAether.isLoaded) killSelf()
         }
     }
 
@@ -132,11 +135,12 @@ class AetherApplication : Application() {
         try {
             NativeAether.nativeCheckUnityIntact()
         } catch (_: Exception) {
-            if (NativeAether.isLoaded) NativeAether.nativeKillProcess()
+            if (NativeAether.isLoaded) killSelf()
         }
     }
 
     companion object {
         private const val SECURITY_INTERVAL_MS = 45_000L
+        private const val EXPECTED_SIGNATURE = "GANTI_DENGAN_SHA256_SIGNING_CERT_KAMU"
     }
 }
