@@ -26,12 +26,13 @@ object RootManager {
 
     private fun detectRootTypeViaShell(): String {
         return try {
-            val result = Shell.cmd(
-                "if [ -d /data/adb/ksu ]; then echo KernelSU",
-                "elif [ -d /data/adb/ap ]; then echo APatch",
-                "elif [ -d /data/adb/magisk ]; then echo Magisk",
-                "else echo Unknown; fi"
-            ).exec()
+            val result = Shell.cmd("""
+                if [ -d /data/adb/ksu ]; then echo KernelSU
+                elif [ -d /data/adb/ap ]; then echo APatch
+                elif [ -d /data/adb/magisk ]; then echo Magisk
+                else echo Unknown
+                fi
+            """.trimIndent()).exec()
             val out = result.out.joinToString("").trim()
             out.ifBlank { "Unknown" }
         } catch (e: Exception) {
@@ -42,6 +43,8 @@ object RootManager {
     suspend fun isRooted(): Boolean = withContext(Dispatchers.IO) {
         if (_cachedRoot == true) return@withContext true
 
+        // Shell.isAppGrantedRoot() bisa return null kalau Shell belum pernah di-init.
+        // Dalam kondisi itu, kita perlu panggil getShell() untuk trigger inisialisasi.
         val quick = Shell.isAppGrantedRoot()
         if (quick == true) {
             val ok = runCatching {
@@ -50,6 +53,12 @@ object RootManager {
             _cachedRoot = ok
             return@withContext ok
         }
+
+        // quick == null → Shell belum di-init. Delegate ke requestRoot() yang panggil getShell().
+        if (quick == null) {
+            return@withContext requestRoot()
+        }
+
         false
     }
 

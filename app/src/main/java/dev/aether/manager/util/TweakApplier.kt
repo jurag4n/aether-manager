@@ -612,6 +612,20 @@ done
         if (t["kill_background"] == "1") {
             append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
             append("pm trim-caches 0 2>/dev/null && _A=\$((_A+1)) || _S=\$((_S+1))\n")
+            // Actual kill background processes — ini yang utama, am kill-all matikan semua cached proses
+            append("am kill-all 2>/dev/null && _A=\$((_A+1)) || _S=\$((_S+1))\n")
+            // Fallback: kill proses cached di /proc yang bukan system UID (>= 10000)
+            append("""
+for _pid in /proc/[0-9]*; do
+  [ -r "${'$'}_pid/status" ] || continue
+  _uid=$(awk '/^Uid:/{print $2}' "${'$'}_pid/status" 2>/dev/null)
+  [ -z "${'$'}_uid" ] && continue
+  [ "${'$'}_uid" -ge 10000 ] 2>/dev/null || continue
+  _oom=$(cat "${'$'}_pid/oom_score_adj" 2>/dev/null)
+  # oom_score_adj >= 700 = cached/expendable background
+  [ -n "${'$'}_oom" ] && [ "${'$'}_oom" -ge 700 ] 2>/dev/null && kill -9 $(basename "${'$'}_pid") 2>/dev/null
+done
+""".trimIndent() + "\n")
         }
 
         append("_end \"memory\"\n")

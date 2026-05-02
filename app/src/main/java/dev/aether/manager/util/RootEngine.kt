@@ -269,7 +269,20 @@ object RootEngine {
     suspend fun getMonitorState(): dev.aether.manager.data.MonitorState =
         withContext(Dispatchers.IO) {
             val agent = dev.aether.manager.CimolAgent
-            val useAgent = agent.isAvailable
+
+            // Validasi CimolAgent: lakukan probe kecil untuk memastikan data valid.
+            // Kalau semua return 0 (permission sysfs ditolak / device tidak support),
+            // jangan pakai agent — fallback ke shell yang sudah terbukti jalan.
+            val useAgent: Boolean = if (agent.isAvailable) {
+                runCatching {
+                    val freqs = agent.getCpuFreqsNow()
+                    val mem   = agent.getMemInfoKb()
+                    // Agent dianggap valid kalau minimal ada satu freq > 0 DAN total RAM > 0
+                    freqs.any { it > 0 } && (mem.getOrElse(0) { 0L } > 0L)
+                }.getOrDefault(false)
+            } else {
+                false
+            }
 
             val cpuUsage: Int
             val cpuFreqMhz: Long
