@@ -147,7 +147,7 @@ fun SettingsScreen(
                 .verticalScroll(scrollState)
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
-                .padding(top = 10.dp, bottom = 32.dp),
+                .padding(top = 8.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             SettingsLicenseCard(
@@ -155,16 +155,10 @@ fun SettingsScreen(
                 onOpenLicense = onOpenLicense
             )
 
-            SettingsQuickActions(
-                currentLanguage = currentLanguage.nativeName,
-                onLanguageClick = { showLangSheet = true },
-                onBackupClick = { backupExpanded = true }
-            )
-
             SettingsSectionCard(
                 icon = Icons.Outlined.Palette,
                 title = s.settingsSectionAppearance,
-                subtitle = "Tema, warna, dan bahasa aplikasi",
+                subtitle = "Tema, warna, dan tampilan aplikasi",
                 expanded = appearanceExpanded,
                 onToggle = { appearanceExpanded = !appearanceExpanded }
             ) {
@@ -184,19 +178,12 @@ fun SettingsScreen(
                     checked = dynamicColor,
                     onCheckedChange = { vm.setDynamicColor(it) }
                 )
-                SettingsDivider()
-                SettingsRowInfo(
-                    icon = Icons.Outlined.Language,
-                    title = s.settingsLanguage,
-                    subtitle = currentLanguage.nativeName,
-                    onClick = { showLangSheet = true }
-                )
             }
 
             SettingsSectionCard(
                 icon = Icons.Outlined.Tune,
                 title = s.settingsSectionGeneral,
-                subtitle = "Backup otomatis, boot, dan notifikasi",
+                subtitle = "Boot, notifikasi, dan bahasa",
                 expanded = generalExpanded,
                 onToggle = { generalExpanded = !generalExpanded }
             ) {
@@ -223,11 +210,18 @@ fun SettingsScreen(
                     checked = notifications,
                     onCheckedChange = { vm.setNotifications(it) }
                 )
+                SettingsDivider()
+                SettingsRowInfo(
+                    icon = Icons.Outlined.Language,
+                    title = s.settingsLanguage,
+                    subtitle = currentLanguage.nativeName,
+                    onClick = { showLangSheet = true }
+                )
             }
 
             SettingsSectionCard(
                 icon = Icons.Outlined.Archive,
-                title = "Backup Reset",
+                title = "Backup & Reset",
                 subtitle = if (backupList.isEmpty()) s.settingsNoBackup else "${backupList.size} backup tersimpan",
                 expanded = backupExpanded,
                 onToggle = { backupExpanded = !backupExpanded }
@@ -509,7 +503,7 @@ private fun SettingsLicenseCard(
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -566,79 +560,6 @@ private fun SettingsLicenseCard(
 }
 
 @Composable
-private fun SettingsQuickActions(
-    currentLanguage : String,
-    onLanguageClick : () -> Unit,
-    onBackupClick   : () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        SettingsMiniActionCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Outlined.Language,
-            title = "Language",
-            subtitle = currentLanguage,
-            onClick = onLanguageClick
-        )
-        SettingsMiniActionCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Outlined.Archive,
-            title = "Backup",
-            subtitle = "Kelola data",
-            onClick = onBackupClick
-        )
-    }
-}
-
-@Composable
-private fun SettingsMiniActionCard(
-    modifier : Modifier = Modifier,
-    icon     : ImageVector,
-    title    : String,
-    subtitle : String,
-    onClick  : () -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
-        modifier = modifier
-            .heightIn(min = 84.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun SettingsSectionCard(
     icon     : ImageVector,
     title    : String,
@@ -660,7 +581,9 @@ private fun SettingsSectionCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(tween(durationMillis = 240, easing = FastOutSlowInEasing))
+            .animateContentSize(
+                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+            )
     ) {
         Column {
             Row(
@@ -668,7 +591,7 @@ private fun SettingsSectionCard(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
                     .clickable(onClick = onToggle)
-                    .padding(horizontal = 16.dp, vertical = 15.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(13.dp)
             ) {
@@ -715,11 +638,18 @@ private fun SettingsSectionCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = expandVertically(animationSpec = tween(220, easing = FastOutSlowInEasing)) + fadeIn(tween(160)),
-                exit = shrinkVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) + fadeOut(tween(120))
+                enter = expandVertically(
+                    expandFrom = Alignment.Top,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeIn(tween(durationMillis = 160, delayMillis = 35)),
+                exit = shrinkVertically(
+                    shrinkTowards = Alignment.Top,
+                    animationSpec = tween(240, easing = FastOutSlowInEasing)
+                ) + fadeOut(tween(durationMillis = 120))
             ) {
                 Column(
                     modifier = Modifier.padding(bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
                     content = content
                 )
             }
@@ -747,7 +677,7 @@ private fun SettingsRowSwitch(
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 13.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
@@ -778,7 +708,7 @@ private fun SettingsRowInfo(
         .fillMaxWidth()
         .clip(RoundedCornerShape(18.dp))
         .let { base -> if (onClick != null) base.clickable(onClick = onClick) else base }
-        .padding(horizontal = 16.dp, vertical = 13.dp)
+        .padding(horizontal = 16.dp, vertical = 14.dp)
 
     Row(
         modifier = modifier,
@@ -827,7 +757,7 @@ private fun SettingsActionRow(
             .alpha(if (enabled) 1f else 0.48f)
             .clip(RoundedCornerShape(18.dp))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {

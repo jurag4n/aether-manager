@@ -248,7 +248,7 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
                     top    = 12.dp,
                     bottom = 100.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 item(key = "apps_header") {
@@ -361,7 +361,7 @@ private fun SearchFilterBar(
             selected = selectedFilter,
             onSelect = onFilterChange,
             modifier = Modifier
-                .width(142.dp)
+                .width(136.dp)
                 .height(50.dp)
         )
     }
@@ -590,7 +590,7 @@ private fun AppProfileStatusCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Outlined.Apps,
+                    Icons.Outlined.Tune,
                     contentDescription = null,
                     tint = accent,
                     modifier = Modifier.size(22.dp)
@@ -702,7 +702,7 @@ private fun AppListItem(
     )
 
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(24.dp),
         color = cardBg,
         border = BorderStroke(1.dp, cardBorder),
         modifier = Modifier.fillMaxWidth()
@@ -714,7 +714,7 @@ private fun AppListItem(
                     animationSpec = tween(220, easing = FastOutSlowInEasing)
                 )
                 .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(11.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -722,7 +722,7 @@ private fun AppListItem(
                     .clip(RoundedCornerShape(18.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
+                        indication = LocalIndication.current,
                         onClick = onClick
                     )
                     .padding(2.dp),
@@ -733,8 +733,8 @@ private fun AppListItem(
                     bitmap = iconBitmap,
                     label = app.label,
                     isEnabled = isEnabled,
-                    size = 46.dp,
-                    cornerSize = 14.dp
+                    size = 44.dp,
+                    cornerSize = 13.dp
                 )
 
                 Column(
@@ -761,28 +761,36 @@ private fun AppListItem(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        AppChip(
-                            label = if (isEnabled) "Enabled" else "Disabled",
-                            icon = Icons.Outlined.CheckCircle,
-                            active = isEnabled
-                        )
-                        AppChip(
-                            label = profileModeLabel(profile),
-                            icon = filterForProfile(profile).icon(),
-                            active = isEnabled
-                        )
-                        AppChip(
-                            label = refreshRateLabel(currentProfile.refreshRate),
-                            icon = Icons.Outlined.DisplaySettings,
-                            active = isEnabled
-                        )
+                        if (profile == null) {
+                            AppChip(
+                                label = "Default",
+                                icon = Icons.Outlined.Apps,
+                                active = false
+                            )
+                        } else {
+                            AppChip(
+                                label = if (isEnabled) "Enabled" else "Disabled",
+                                icon = if (isEnabled) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                                active = isEnabled
+                            )
+                            AppChip(
+                                label = profileModeLabel(profile),
+                                icon = filterForProfile(profile).icon(),
+                                active = isEnabled
+                            )
+                            AppChip(
+                                label = refreshRateLabel(currentProfile.refreshRate),
+                                icon = Icons.Outlined.DisplaySettings,
+                                active = isEnabled
+                            )
+                        }
                     }
                 }
 
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(13.dp))
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(
                             if (expanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
                             else MaterialTheme.colorScheme.surfaceContainerHigh
@@ -790,7 +798,7 @@ private fun AppListItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Filled.KeyboardArrowDown,
+                        Icons.Outlined.ExpandMore,
                         contentDescription = null,
                         tint = if (expanded) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -803,16 +811,19 @@ private fun AppListItem(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(tween(120)) + expandVertically(
-                    animationSpec = tween(220, easing = FastOutSlowInEasing),
+                enter = fadeIn(tween(140, easing = LinearOutSlowInEasing)) + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
                     expandFrom = Alignment.Top
                 ),
-                exit = fadeOut(tween(90)) + shrinkVertically(
-                    animationSpec = tween(160, easing = FastOutSlowInEasing),
+                exit = fadeOut(tween(110, easing = FastOutLinearInEasing)) + shrinkVertically(
+                    animationSpec = tween(190, easing = FastOutSlowInEasing),
                     shrinkTowards = Alignment.Top
                 )
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
@@ -890,7 +901,7 @@ private fun ProfileSwitchRow(
                 .fillMaxWidth()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = null
+                    indication = LocalIndication.current
                 ) { onCheckedChange(!checked) }
                 .padding(horizontal = 13.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -904,7 +915,7 @@ private fun ProfileSwitchRow(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Outlined.CheckCircle,
+                    if (checked) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
                     contentDescription = null,
                     tint = accent,
                     modifier = Modifier.size(19.dp)
@@ -1012,7 +1023,7 @@ private fun CompactProfileDropdown(
                             overflow = TextOverflow.Ellipsis
                         )
                         Icon(
-                            Icons.Filled.KeyboardArrowDown,
+                            Icons.Outlined.ExpandMore,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
@@ -1076,20 +1087,20 @@ private fun CompactProfileDropdown(
 @Composable
 private fun AppChip(label: String, icon: ImageVector, active: Boolean) {
     val bg  = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-              else MaterialTheme.colorScheme.surfaceContainerHigh
+              else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f)
     val fg  = if (active) MaterialTheme.colorScheme.primary
               else MaterialTheme.colorScheme.onSurfaceVariant
     val brd = if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
-              else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+              else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f)
 
     Surface(
         shape    = RoundedCornerShape(50),
         color    = bg,
         border   = BorderStroke(0.6.dp, brd),
-        modifier = Modifier.height(24.dp)
+        modifier = Modifier.height(25.dp)
     ) {
         Row(
-            modifier              = Modifier.padding(horizontal = 8.dp),
+            modifier              = Modifier.padding(horizontal = 9.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
