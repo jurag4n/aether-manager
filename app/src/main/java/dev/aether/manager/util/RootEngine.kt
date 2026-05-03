@@ -26,8 +26,7 @@ object RootEngine {
     }
 
     suspend fun sh(script: String): ShellResult = withContext(Dispatchers.IO) {
-        val appGranted = runCatching { Shell.isAppGrantedRoot() }.getOrNull()
-        val canRun = appGranted == true || RootManager.isRootGranted
+        val canRun = RootManager.ensureRootShellSync(requestIfNeeded = true)
 
         if (!canRun) {
             return@withContext ShellResult(1, "", "Root not granted")
@@ -69,7 +68,7 @@ object RootEngine {
         sh(cmds.joinToString("\n"))
 
     suspend fun ensureConfDir() {
-        sh("mkdir -p $CONF_DIR")
+        sh("mkdir -p '$CONF_DIR' && chmod 700 '$CONF_DIR'")
     }
 
     suspend fun readFile(path: String): String =
@@ -208,11 +207,15 @@ object RootEngine {
         parseKv(readFile(TWEAKS_CONF))
 
     suspend fun writeTweakConf(key: String, value: String): Boolean {
+        val safeKey = key.filter { it.isLetterOrDigit() || it == '_' || it == '-' }
+        val safeValue = value.replace("'", "'\\''")
         val script = """
-            if grep -q '^$key=' $TWEAKS_CONF 2>/dev/null; then
-              sed -i 's|^$key=.*|$key=$value|' $TWEAKS_CONF
+            mkdir -p '$CONF_DIR'
+            touch '$TWEAKS_CONF'
+            if grep -q '^$safeKey=' '$TWEAKS_CONF' 2>/dev/null; then
+              sed -i 's|^$safeKey=.*|$safeKey=$safeValue|' '$TWEAKS_CONF'
             else
-              echo '$key=$value' >> $TWEAKS_CONF
+              printf '%s\n' '$safeKey=$safeValue' >> '$TWEAKS_CONF'
             fi
         """.trimIndent()
         return sh(script).exitCode == 0

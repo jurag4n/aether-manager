@@ -150,9 +150,10 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             showAdBlockDialog = false
             return@LaunchedEffect
         }
-        delay(1_500L)
+        delay(900L)
+        NativeAether.tryLoad(context)
         val detected = AdBlockChecker.isAdblockActive(context)
-        if (detected) showAdBlockDialog = true
+        showAdBlockDialog = detected
     }
 
     if (showAdBlockDialog && !isPremium) {

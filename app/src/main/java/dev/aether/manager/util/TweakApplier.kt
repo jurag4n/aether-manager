@@ -30,8 +30,7 @@ object TweakApplier {
     }
 
     private fun runScript(script: String): String {
-        val appGranted = runCatching { Shell.isAppGrantedRoot() }.getOrNull()
-        val canRun = appGranted == true || RootManager.isRootGranted
+        val canRun = RootManager.ensureRootShellSync(requestIfNeeded = true)
 
         if (!canRun) return "RESULT:shell:fail:a=0:s=0:f=1"
 
@@ -62,7 +61,9 @@ object TweakApplier {
         val t0 = System.currentTimeMillis()
 
         val dir = confPath.substringBeforeLast('/')
-        val confLines = tweaks.entries.joinToString("\n") { (k, v) -> "$k=$v" }
+        val confLines = tweaks.entries
+            .filter { (k, _) -> k.all { it.isLetterOrDigit() || it == '_' || it == '-' } }
+            .joinToString("\n") { (k, v) -> "$k=${v.replace("\n", " ").replace("\r", " ")}" }
         val writeConf = buildString {
             appendLine("mkdir -p $dir")
             appendLine("cat > $confPath << 'AEOF'")
@@ -78,7 +79,7 @@ object TweakApplier {
     }
 
     private fun buildFullScript(t: Map<String, String>): String {
-        val profile = t["profile"] ?: "balance"
+        val profile = (t["profile"] ?: "balance").lowercase()
         return buildString {
             append(SHELL_HELPERS)
             append(buildCpuGovernor(t, profile))
@@ -108,12 +109,10 @@ apply() {
   local val="${'$'}1" node="${'$'}2"
   [ -f "${'$'}node" ] || { _S=${'$'}((_S+1)); return 1; }
   chmod 644 "${'$'}node" 2>/dev/null
-  if echo "${'$'}val" > "${'$'}node" 2>/dev/null; then
+  if printf '%s' "${'$'}val" > "${'$'}node" 2>/dev/null; then
     _A=${'$'}((_A+1))
-    chmod 444 "${'$'}node" 2>/dev/null
   else
     _F=${'$'}((_F+1))
-    chmod 444 "${'$'}node" 2>/dev/null
   fi
 }
 
@@ -122,7 +121,7 @@ write() {
   local val="${'$'}1" node="${'$'}2"
   [ -f "${'$'}node" ] || { _S=${'$'}((_S+1)); return 1; }
   chmod 644 "${'$'}node" 2>/dev/null
-  if echo "${'$'}val" > "${'$'}node" 2>/dev/null; then
+  if printf '%s' "${'$'}val" > "${'$'}node" 2>/dev/null; then
     _A=${'$'}((_A+1))
   else
     _F=${'$'}((_F+1))
@@ -181,7 +180,7 @@ _end()   {
 
     private fun buildCpuGovernor(t: Map<String, String>, profile: String): String {
         val target = when (profile) {
-            "performance" -> "performance"
+            "performance", "extreme" -> "performance"
             "battery"     -> "powersave"
             "gaming"      -> t["cpu_governor"]?.takeIf { it.isNotBlank() } ?: "performance"
             else          -> t["cpu_governor"]?.takeIf { it.isNotBlank() } ?: "schedutil"
@@ -224,7 +223,7 @@ for pol in /sys/devices/system/cpu/cpufreq/policy*/; do
 done
 _end "cpu_freq"
 """
-            profile == "gaming" || profile == "performance" -> """
+            profile == "gaming" || profile == "performance" || profile == "extreme" -> """
 _begin
 # cpu_freq — max perf (safe: write only, no chmod 444 lock)
 for pol in /sys/devices/system/cpu/cpufreq/policy*/; do
@@ -323,7 +322,7 @@ _end "cpu_freq"
     }
 
     private fun buildCpuBoost(t: Map<String, String>, profile: String): String {
-        val on = t["cpu_boost"] == "1" || profile == "gaming" || profile == "performance"
+        val on = t["cpu_boost"] == "1" || profile == "gaming" || profile == "performance" || profile == "extreme"
         return if (on) """
 _begin
 # cpu_boost — enable
@@ -406,7 +405,7 @@ _end "cpuset"
     private fun buildSched(t: Map<String, String>, profile: String): String {
         val boost = if (t["schedboost"] == "1" || profile == "gaming" || profile == "performance") "1" else "0"
         val (upmig, downmig) = when (profile) {
-            "gaming", "performance" -> "85" to "75"
+            "gaming", "performance", "extreme" -> "85" to "75"
             "battery"               -> "99" to "95"
             else                    -> "95" to "85"
         }
@@ -472,7 +471,7 @@ _end "thermal"
     }
 
     private fun buildGpu(t: Map<String, String>, profile: String): String {
-        val perf = t["gpu_throttle_off"] == "1" || profile == "gaming" || profile == "performance"
+        val perf = t["gpu_throttle_off"] == "1" || profile == "gaming" || profile == "performance" || profile == "extreme"
         return if (perf) """
 _begin
 # gpu — performance (safe: tanpa force_clk_on/idle_timer paksa)
@@ -683,7 +682,7 @@ done
                 "control d", "controld" -> "p2.freedns.controld.com"
                 "nextdns"         -> "dns.nextdns.io"
                 else               -> provider
-            }
+            }.filter { it.isLetterOrDigit() || it == '.' || it == '-' }
         } else null
         return buildString {
             append("_begin\n# network\n")

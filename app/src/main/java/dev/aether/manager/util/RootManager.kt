@@ -41,38 +41,43 @@ object RootManager {
     }
 
     suspend fun isRooted(): Boolean = withContext(Dispatchers.IO) {
-        if (_cachedRoot == true) return@withContext true
-
-        // Shell.isAppGrantedRoot() bisa return null kalau Shell belum pernah di-init.
-        // Dalam kondisi itu, kita perlu panggil getShell() untuk trigger inisialisasi.
-        val quick = Shell.isAppGrantedRoot()
-        if (quick == true) {
-            val ok = runCatching {
-                Shell.cmd("id -u").exec().out.joinToString("").trim() == "0"
-            }.getOrDefault(false)
-            _cachedRoot = ok
-            return@withContext ok
-        }
-
-        // quick == null → Shell belum di-init. Delegate ke requestRoot() yang panggil getShell().
-        if (quick == null) {
-            return@withContext requestRoot()
-        }
-
-        false
+        ensureRootShell(requestIfNeeded = true)
     }
 
     suspend fun requestRoot(): Boolean = withContext(Dispatchers.IO) {
         _cachedRoot = null
-        return@withContext try {
-            val shell = Shell.getShell()
-            val granted = shell.isRoot
-            _cachedRoot = granted
-            granted
-        } catch (e: Exception) {
+        ensureRootShell(requestIfNeeded = true)
+    }
+
+    fun ensureRootShellSync(requestIfNeeded: Boolean = true): Boolean {
+        if (_cachedRoot == true) return true
+        return try {
+            val quick = Shell.isAppGrantedRoot()
+            when {
+                quick == true -> {
+                    val ok = Shell.cmd("id -u").exec().out.joinToString("").trim() == "0"
+                    _cachedRoot = ok
+                    ok
+                }
+                requestIfNeeded -> {
+                    val shell = Shell.getShell()
+                    val ok = shell.isRoot && Shell.cmd("id -u").exec().out.joinToString("").trim() == "0"
+                    _cachedRoot = ok
+                    ok
+                }
+                else -> {
+                    _cachedRoot = false
+                    false
+                }
+            }
+        } catch (_: Exception) {
             _cachedRoot = false
             false
         }
+    }
+
+    suspend fun ensureRootShell(requestIfNeeded: Boolean = true): Boolean = withContext(Dispatchers.IO) {
+        ensureRootShellSync(requestIfNeeded)
     }
 
     fun clearCache() { _cachedRoot = null }
