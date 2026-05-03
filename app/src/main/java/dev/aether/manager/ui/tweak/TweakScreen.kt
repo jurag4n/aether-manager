@@ -695,7 +695,7 @@ private fun ExpandableTweakCard(
         targetValue = if (expanded) 1f else 0.98f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            stiffness = Spring.StiffnessMedium
         ),
         label = "card_scale_$title"
     )
@@ -705,7 +705,7 @@ private fun ExpandableTweakCard(
         targetValue = if (expanded) 28.dp else 22.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            stiffness = Spring.StiffnessMedium
         ),
         label = "card_corner_$title"
     )
@@ -715,7 +715,7 @@ private fun ExpandableTweakCard(
         targetValue = if (expanded) 4.dp else 0.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            stiffness = Spring.StiffnessMedium
         ),
         label = "card_elev_$title"
     )
@@ -725,7 +725,7 @@ private fun ExpandableTweakCard(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "detail_alpha_$title"
     )
@@ -733,7 +733,7 @@ private fun ExpandableTweakCard(
         targetValue = if (expanded) 1f else 0.94f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "detail_scale_$title"
     )
@@ -741,7 +741,7 @@ private fun ExpandableTweakCard(
         targetValue = if (expanded) 0f else 20f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "detail_offset_$title"
     )
@@ -765,7 +765,7 @@ private fun ExpandableTweakCard(
                 .animateContentSize(
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
+                        stiffness = Spring.StiffnessMedium
                     )
                 ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -815,9 +815,9 @@ private fun ExpandableTweakCard(
                     expandFrom = Alignment.Top
                 ),
                 exit = fadeOut(
-                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)
+                    animationSpec = tween(durationMillis = 200)
                 ) + shrinkVertically(
-                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+                    animationSpec = tween(durationMillis = 220),
                     shrinkTowards = Alignment.Top
                 )
             ) {
@@ -852,7 +852,7 @@ private fun DeviceInfoCard(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "device_info_alpha"
     )
@@ -860,7 +860,7 @@ private fun DeviceInfoCard(
         targetValue = if (expanded) 1f else 0.92f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "device_info_scale"
     )
@@ -868,7 +868,7 @@ private fun DeviceInfoCard(
         targetValue = if (expanded) 0f else 24f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "device_info_offset"
     )
@@ -879,7 +879,12 @@ private fun DeviceInfoCard(
         tonalElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(smoothSpring())
+            .animateContentSize(
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        )
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -933,9 +938,9 @@ private fun DeviceInfoCard(
                             spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
                             expandFrom = Alignment.Top
                         ),
-                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) +
+                exit  = fadeOut(tween(durationMillis = 200)) +
                         shrinkVertically(
-                            spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+                            tween(durationMillis = 220),
                             shrinkTowards = Alignment.Top
                         )
             ) {
