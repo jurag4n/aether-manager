@@ -12,7 +12,15 @@ import java.security.MessageDigest
 
 object LicenseManager {
 
-    private val API_BASE: String get() = NativeAether.nativeGetVercelApi()
+    /**
+     * Kembalikan URL endpoint activate dari native layer.
+     * Fallback ke hardcoded jika library belum ter-load (dev/test env).
+     */
+    private fun activateUrl(): String =
+        if (NativeAether.isLoaded)
+            runCatching { NativeAether.nativeGetActivateUrl() }.getOrNull()
+                ?: "https://aether-app-weld.vercel.app/api/activate"
+        else "https://aether-app-weld.vercel.app/api/activate"
 
     fun getDeviceId(ctx: Context): String {
         val androidId = Settings.Secure.getString(
@@ -41,7 +49,7 @@ object LicenseManager {
         withContext(Dispatchers.IO) {
             try {
                 val deviceId = getDeviceId(ctx)
-                val url  = URL("$API_BASE/activate")
+                val url  = URL(activateUrl())
                 val conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json")
@@ -59,8 +67,8 @@ object LicenseManager {
 
                 val code     = conn.responseCode
                 val response = (if (code == 200) conn.inputStream else conn.errorStream)
-                    .bufferedReader().readText()
-                val json     = JSONObject(response)
+                    ?.bufferedReader()?.readText() ?: "{}"
+                val json     = runCatching { JSONObject(response) }.getOrDefault(JSONObject())
 
                 if (code == 200) {
                     val expiresAt = json.optLong("expiresAt", -1L)

@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -84,12 +85,6 @@ import androidx.compose.ui.unit.dp
 import dev.aether.manager.data.MainViewModel
 import kotlin.math.cos
 import kotlin.math.sin
-
-private enum class ExpandSide {
-    Left,
-    Right,
-    Center
-}
 
 @Composable
 fun TweakScreen(
@@ -236,139 +231,115 @@ fun TweakScreen(
             onSelect = { setActiveProfileNow(it) }
         )
 
-        ExpandablePair(
-            expandedKey = expandedCard,
-            leftKey = "cpu",
-            rightKey = "gpu",
-            left = { modifier, expanded ->
-                CpuCard(
-                    modifier = modifier,
-                    expanded = expanded,
-                    active = tweaks.cpuBoost || cpuFreqLocked,
-                    governor = cpuGovernor,
-                    minFreq = minCpuFreq,
-                    maxFreq = maxCpuFreq,
-                    locked = cpuFreqLocked,
-                    onClick = { toggleExpand("cpu") },
-                    onGovernorChange = {
-                        cpuGovernor = it
-                        setTweakNow("cpuBoost", it != "Battery")
-                    },
-                    onMinFreqChange = { minCpuFreq = it },
-                    onMaxFreqChange = { maxCpuFreq = it },
-                    onLockClick = {
-                        cpuFreqLocked = !cpuFreqLocked
-                        setTweakNow("cpuFreqLock", cpuFreqLocked)
-                    }
-                )
+        CpuCard(
+            modifier = Modifier.fillMaxWidth(),
+            expanded = expandedCard == "cpu",
+            active = tweaks.cpuBoost || cpuFreqLocked,
+            governor = cpuGovernor,
+            minFreq = minCpuFreq,
+            maxFreq = maxCpuFreq,
+            locked = cpuFreqLocked,
+            onClick = { toggleExpand("cpu") },
+            onGovernorChange = {
+                cpuGovernor = it
+                setTweakNow("cpuBoost", it != "Battery")
             },
-            right = { modifier, expanded ->
-                GpuCard(
-                    modifier = modifier,
-                    expanded = expanded,
-                    active = tweaks.gpuThrottleOff || gpuLocked,
-                    profile = gpuProfile,
-                    minFreq = minGpuFreq,
-                    maxFreq = maxGpuFreq,
-                    locked = gpuLocked,
-                    renderer = renderer,
-                    onClick = { toggleExpand("gpu") },
-                    onProfileChange = {
-                        gpuProfile = it
-                        setTweakNow("gpuThrottleOff", it == "Performance")
-                    },
-                    onMinFreqChange = { minGpuFreq = it },
-                    onMaxFreqChange = { maxGpuFreq = it },
-                    onLockClick = {
-                        gpuLocked = !gpuLocked
-                        setTweakNow("gpuThrottleOff", gpuLocked)
-                    },
-                    onRendererClick = { rendererDialog = true }
-                )
+            onMinFreqChange = { minCpuFreq = it },
+            onMaxFreqChange = { maxCpuFreq = it },
+            onLockClick = {
+                cpuFreqLocked = !cpuFreqLocked
+                setTweakNow("cpuFreqLock", cpuFreqLocked)
             }
+        )
+
+        GpuCard(
+            modifier = Modifier.fillMaxWidth(),
+            expanded = expandedCard == "gpu",
+            active = tweaks.gpuThrottleOff || gpuLocked,
+            profile = gpuProfile,
+            minFreq = minGpuFreq,
+            maxFreq = maxGpuFreq,
+            locked = gpuLocked,
+            renderer = renderer,
+            onClick = { toggleExpand("gpu") },
+            onProfileChange = {
+                gpuProfile = it
+                setTweakNow("gpuThrottleOff", it == "Performance")
+            },
+            onMinFreqChange = { minGpuFreq = it },
+            onMaxFreqChange = { maxGpuFreq = it },
+            onLockClick = {
+                gpuLocked = !gpuLocked
+                setTweakNow("gpuThrottleOff", gpuLocked)
+            },
+            onRendererClick = { rendererDialog = true }
         )
 
         AppProfileCard(onClick = onOpenAppProfile)
 
-        ExpandablePair(
-            expandedKey = expandedCard,
-            leftKey = "network",
-            rightKey = "memory",
-            left = { modifier, expanded ->
-                NetworkCard(
-                    modifier = modifier,
-                    expanded = expanded,
-                    active = dnsProvider != "Off" || networkStable || tcpEnabled || tweaks.tcpBbr,
-                    dnsProvider = dnsProvider,
-                    networkStable = networkStable,
-                    tcpEnabled = tcpEnabled || tweaks.tcpBbr,
-                    onClick = { toggleExpand("network") },
-                    onDnsSelect = { provider ->
-                        dnsProvider = provider
-                        vm.setTweakStr("dnsProvider", provider)
-                    },
-                    onNetworkStableToggle = {
-                        networkStable = !networkStable
-                        setTweakNow("networkStable", networkStable)
-                    },
-                    onTcpToggle = {
-                        tcpEnabled = !(tcpEnabled || tweaks.tcpBbr)
-                        setTweakNow("tcpBbr", tcpEnabled)
-                    }
-                )
+        NetworkCard(
+            modifier = Modifier.fillMaxWidth(),
+            expanded = expandedCard == "network",
+            active = dnsProvider != "Off" || networkStable || tcpEnabled || tweaks.tcpBbr,
+            dnsProvider = dnsProvider,
+            networkStable = networkStable,
+            tcpEnabled = tcpEnabled || tweaks.tcpBbr,
+            onClick = { toggleExpand("network") },
+            onDnsSelect = { provider ->
+                dnsProvider = provider
+                vm.setTweakStr("dnsProvider", provider)
             },
-            right = { modifier, expanded ->
-                MemoryCard(
-                    modifier = modifier,
-                    expanded = expanded,
-                    active = tweaks.zram || tweaks.lmkAggressive || swapEnabled || killBackgroundActive,
-                    zram = tweaks.zram,
-                    lmk = tweaks.lmkAggressive,
-                    swap = swapEnabled,
-                    killBackground = killBackgroundActive,
-                    onClick = { toggleExpand("memory") },
-                    onZramToggle = { setTweakNow("zram", !tweaks.zram) },
-                    onLmkToggle = { setTweakNow("lmkAggressive", !tweaks.lmkAggressive) },
-                    onSwapToggle = {
-                        swapEnabled = !swapEnabled
-                        setTweakNow("swap", swapEnabled)
-                    },
-                    onKillBackgroundClick = {
-                        killBackgroundActive = !killBackgroundActive
-                        setTweakNow("killBackground", true)
-                    }
-                )
+            onNetworkStableToggle = {
+                networkStable = !networkStable
+                setTweakNow("networkStable", networkStable)
+            },
+            onTcpToggle = {
+                tcpEnabled = !(tcpEnabled || tweaks.tcpBbr)
+                setTweakNow("tcpBbr", tcpEnabled)
             }
         )
 
-        ExpandablePair(
-            expandedKey = expandedCard,
-            leftKey = "io",
-            rightKey = "sched",
-            left = { modifier, expanded ->
-                IoSchedulerCard(
-                    modifier = modifier,
-                    expanded = expanded,
-                    selected = ioScheduler,
-                    onClick = { toggleExpand("io") },
-                    onSelect = {
-                        ioScheduler = it
-                        setTweakNow("ioScheduler", it != "Auto")
-                    }
-                )
+        MemoryCard(
+            modifier = Modifier.fillMaxWidth(),
+            expanded = expandedCard == "memory",
+            active = tweaks.zram || tweaks.lmkAggressive || swapEnabled || killBackgroundActive,
+            zram = tweaks.zram,
+            lmk = tweaks.lmkAggressive,
+            swap = swapEnabled,
+            killBackground = killBackgroundActive,
+            onClick = { toggleExpand("memory") },
+            onZramToggle = { setTweakNow("zram", !tweaks.zram) },
+            onLmkToggle = { setTweakNow("lmkAggressive", !tweaks.lmkAggressive) },
+            onSwapToggle = {
+                swapEnabled = !swapEnabled
+                setTweakNow("swap", swapEnabled)
             },
-            right = { modifier, expanded ->
-                SchedBoostCard(
-                    modifier = modifier,
-                    expanded = expanded,
-                    active = schedBoostMode != "Off" || tweaks.schedboost,
-                    mode = schedBoostMode,
-                    onClick = { toggleExpand("sched") },
-                    onSelect = {
-                        schedBoostMode = it
-                        setTweakNow("schedboost", it != "Off")
-                    }
-                )
+            onKillBackgroundClick = {
+                killBackgroundActive = !killBackgroundActive
+                setTweakNow("killBackground", true)
+            }
+        )
+
+        IoSchedulerCard(
+            modifier = Modifier.fillMaxWidth(),
+            expanded = expandedCard == "io",
+            selected = ioScheduler,
+            onClick = { toggleExpand("io") },
+            onSelect = {
+                ioScheduler = it
+                setTweakNow("ioScheduler", it != "Auto")
+            }
+        )
+
+        SchedBoostCard(
+            modifier = Modifier.fillMaxWidth(),
+            expanded = expandedCard == "sched",
+            active = schedBoostMode != "Off" || tweaks.schedboost,
+            mode = schedBoostMode,
+            onClick = { toggleExpand("sched") },
+            onSelect = {
+                schedBoostMode = it
+                setTweakNow("schedboost", it != "Off")
             }
         )
 
@@ -378,43 +349,6 @@ fun TweakScreen(
             onClick = { toggleExpand("thermal") },
             onSelect = { setThermalProfileNow(it) }
         )
-    }
-}
-
-@Composable
-private fun ExpandablePair(
-    expandedKey: String?,
-    leftKey: String,
-    rightKey: String,
-    left: @Composable (Modifier, Boolean) -> Unit,
-    right: @Composable (Modifier, Boolean) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(smoothSpring()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        when (expandedKey) {
-            leftKey -> {
-                left(Modifier.fillMaxWidth(), true)
-                right(Modifier.fillMaxWidth(), false)
-            }
-            rightKey -> {
-                right(Modifier.fillMaxWidth(), true)
-                left(Modifier.fillMaxWidth(), false)
-            }
-            else -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    left(Modifier.weight(1f), false)
-                    right(Modifier.weight(1f), false)
-                }
-            }
-        }
     }
 }
 
@@ -441,7 +375,6 @@ private fun CpuCard(
         badge = if (locked) "Locked" else governor,
         active = active,
         expanded = expanded,
-        side = ExpandSide.Left,
         onClick = onClick
     ) {
         DropdownAction(
@@ -509,7 +442,6 @@ private fun GpuCard(
         badge = if (locked) "Locked" else profile,
         active = active || locked,
         expanded = expanded,
-        side = ExpandSide.Right,
         onClick = onClick
     ) {
         DropdownAction(
@@ -581,7 +513,6 @@ private fun NetworkCard(
         badge = if (active) "Tuned" else "Off",
         active = active,
         expanded = expanded,
-        side = ExpandSide.Left,
         onClick = onClick
     ) {
         DropdownAction(
@@ -628,7 +559,6 @@ private fun MemoryCard(
         badge = if (active) "Boost" else "Off",
         active = active,
         expanded = expanded,
-        side = ExpandSide.Right,
         onClick = onClick
     ) {
         ToggleOption("ZRAM", "Kompresi RAM virtual", zram, onZramToggle)
@@ -654,7 +584,6 @@ private fun IoSchedulerCard(
         badge = selected,
         active = selected != "Auto",
         expanded = expanded,
-        side = ExpandSide.Left,
         onClick = onClick
     ) {
         DropdownAction(
@@ -683,7 +612,6 @@ private fun SchedBoostCard(
         badge = if (active) mode else "Off",
         active = active,
         expanded = expanded,
-        side = ExpandSide.Right,
         onClick = onClick
     ) {
         Speedometer(active = active, mode = mode)
@@ -711,7 +639,6 @@ private fun ThermalProfileCard(
         badge = thermalLabel(current),
         active = current != "default",
         expanded = expanded,
-        side = ExpandSide.Center,
         baseHeight = 92.dp,
         onClick = onClick
     ) {
@@ -728,44 +655,72 @@ private fun ExpandableTweakCard(
     badge: String,
     active: Boolean,
     expanded: Boolean,
-    side: ExpandSide,
     baseHeight: Dp = 132.dp,
     onClick: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val container by animateColorAsState(
-        targetValue = if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainerLow,
+        targetValue = if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh
+                      else MaterialTheme.colorScheme.surfaceContainerLow,
         animationSpec = tween(300),
         label = "card_container_$title"
     )
     val iconBg by animateColorAsState(
-        targetValue = if (active || expanded) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        targetValue = if (active || expanded) MaterialTheme.colorScheme.primaryContainer
+                      else MaterialTheme.colorScheme.surfaceContainerHighest,
         animationSpec = tween(260),
         label = "icon_bg_$title"
     )
     val iconTint by animateColorAsState(
-        targetValue = if (active || expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = if (active || expanded) MaterialTheme.colorScheme.primary
+                      else MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = tween(260),
         label = "icon_tint_$title"
     )
     val badgeBg by animateColorAsState(
-        targetValue = if (active || expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        targetValue = if (active || expanded) MaterialTheme.colorScheme.primary
+                      else MaterialTheme.colorScheme.surfaceContainerHighest,
         animationSpec = tween(260),
         label = "badge_bg_$title"
     )
     val badgeFg by animateColorAsState(
-        targetValue = if (active || expanded) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = if (active || expanded) MaterialTheme.colorScheme.onPrimary
+                      else MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = tween(260),
         label = "badge_fg_$title"
     )
+
+    // Subtle scale pop saat dibuka — 0.98 → 1.0 terasa natural, tidak terlalu dramatis
     val cardScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.9f,
+        targetValue = if (expanded) 1f else 0.98f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "card_scale_$title"
     )
+
+    // Corner radius dianimasikan supaya transisi mengembang/mengecil lebih smooth
+    val cornerRadius by animateDpAsState(
+        targetValue = if (expanded) 28.dp else 22.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "card_corner_$title"
+    )
+
+    // Elevation juga dianimasikan
+    val elevation by animateDpAsState(
+        targetValue = if (expanded) 4.dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "card_elev_$title"
+    )
+
+    // Animasi konten detail saat muncul/hilang
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
@@ -775,7 +730,7 @@ private fun ExpandableTweakCard(
         label = "detail_alpha_$title"
     )
     val detailScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.92f,
+        targetValue = if (expanded) 1f else 0.94f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
@@ -783,18 +738,19 @@ private fun ExpandableTweakCard(
         label = "detail_scale_$title"
     )
     val detailOffset by animateFloatAsState(
-        targetValue = if (expanded) 0f else 24f,
+        targetValue = if (expanded) 0f else 20f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
         ),
         label = "detail_offset_$title"
     )
+
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(if (expanded) 30.dp else 24.dp),
+        shape = RoundedCornerShape(cornerRadius),
         color = container,
-        tonalElevation = if (expanded) 4.dp else 0.dp,
+        tonalElevation = elevation,
         modifier = modifier
             .graphicsLayer {
                 scaleX = cardScale
@@ -806,7 +762,12 @@ private fun ExpandableTweakCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .animateContentSize(smoothSpring()),
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
@@ -847,10 +808,18 @@ private fun ExpandableTweakCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) +
-                        expandVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)),
-                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh)) +
-                        shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh))
+                enter = fadeIn(
+                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)
+                ) + expandVertically(
+                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+                    expandFrom = Alignment.Top
+                ),
+                exit = fadeOut(
+                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)
+                ) + shrinkVertically(
+                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+                    shrinkTowards = Alignment.Top
+                )
             ) {
                 Column(
                     modifier = Modifier
@@ -959,10 +928,16 @@ private fun DeviceInfoCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) +
-                        expandVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)),
-                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh)) +
-                        shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh))
+                enter = fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) +
+                        expandVertically(
+                            spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+                            expandFrom = Alignment.Top
+                        ),
+                exit  = fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium)) +
+                        shrinkVertically(
+                            spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+                            shrinkTowards = Alignment.Top
+                        )
             ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
@@ -1039,7 +1014,6 @@ private fun ActiveProfileCard(
         badge = "Active",
         active = true,
         expanded = expanded,
-        side = ExpandSide.Center,
         baseHeight = 96.dp,
         onClick = onClick
     ) {
@@ -1467,7 +1441,6 @@ private fun ProfileSelector(
                 modifier = Modifier.weight(1f),
                 key = "default",
                 label = "Stock",
-                // Use Sunny icon for the default/stock thermal profile to indicate a neutral state
                 icon = Icons.Outlined.WbSunny,
                 selected = current == "default" || current == "stock",
                 onSelect = onSelect
@@ -1476,7 +1449,6 @@ private fun ProfileSelector(
                 modifier = Modifier.weight(1f),
                 key = "cool",
                 label = "Cool",
-                // Use Snowing icon to represent a cooler thermal profile
                 icon = Icons.Outlined.AcUnit,
                 selected = current == "cool",
                 onSelect = onSelect
@@ -1711,10 +1683,8 @@ private fun activeProfileLabel(value: String): String {
 }
 
 private fun activeProfileIcon(value: String): ImageVector {
-    // Provide unique icons for each active profile state to avoid duplicates and reflect the mode semantics
     return when (value.lowercase()) {
         "performance" -> Icons.Outlined.Bolt
-        // Extreme uses the speed icon to indicate maximum performance
         "extreme" -> Icons.Outlined.Speed
         "battery", "powersave" -> Icons.Outlined.BatteryChargingFull
         else -> Icons.Outlined.Balance

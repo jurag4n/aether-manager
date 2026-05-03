@@ -47,6 +47,15 @@ object NativeAether {
     /** https://aether-app-weld.vercel.app/api */
     external fun nativeGetVercelApi(): String
 
+    /** https://aether-app-weld.vercel.app/api/activate */
+    external fun nativeGetActivateUrl(): String
+
+    /** https://aether-app-weld.vercel.app/api/payment/create-order */
+    external fun nativeGetCreateOrderUrl(): String
+
+    /** https://aether-app-weld.vercel.app/api/payment/poll-order */
+    external fun nativeGetPollOrderUrl(): String
+
     /** https://github.com/aetherdev01/aether-manager */
     external fun nativeGetGithubRepo(): String
 

@@ -1,6 +1,7 @@
 package dev.aether.manager.payment
 
 import android.content.Context
+import dev.aether.manager.NativeAether
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.license.LicensePrefs
 import kotlinx.coroutines.Dispatchers
@@ -13,9 +14,22 @@ import java.net.URL
 
 object PaymentManager {
 
-    private const val API_BASE         = "https://aether-app-weld.vercel.app/api"
     private const val POLL_INTERVAL_MS = 5_000L
     private const val POLL_TIMEOUT_MS  = 30 * 60 * 1_000L // 30 menit
+
+    // ── Endpoint URL getters (dari native layer, dengan hardcoded fallback) ───
+
+    private fun createOrderUrl(): String =
+        if (NativeAether.isLoaded)
+            runCatching { NativeAether.nativeGetCreateOrderUrl() }.getOrNull()
+                ?: "https://aether-app-weld.vercel.app/api/payment/create-order"
+        else "https://aether-app-weld.vercel.app/api/payment/create-order"
+
+    private fun pollOrderUrl(): String =
+        if (NativeAether.isLoaded)
+            runCatching { NativeAether.nativeGetPollOrderUrl() }.getOrNull()
+                ?: "https://aether-app-weld.vercel.app/api/payment/poll-order"
+        else "https://aether-app-weld.vercel.app/api/payment/poll-order"
 
     // ── Data classes ──────────────────────────────────────────────────────────
 
@@ -54,7 +68,7 @@ object PaymentManager {
     ): CreateOrderResult = withContext(Dispatchers.IO) {
         try {
             val deviceId = LicenseManager.getDeviceId(ctx)
-            val conn = openPost("$API_BASE/payment/create-order")
+            val conn = openPost(createOrderUrl())
 
             val body = JSONObject().apply {
                 put("name",     name.trim())
@@ -66,7 +80,7 @@ object PaymentManager {
 
             val code     = conn.responseCode
             val response = readResponse(conn, code)
-            val json     = JSONObject(response)
+            val json     = runCatching { JSONObject(response) }.getOrDefault(JSONObject())
 
             if (code == 200) {
                 // Parse paymentMethods jika ada, fallback ke gopay+dana lama
@@ -147,9 +161,9 @@ object PaymentManager {
     private suspend fun checkOrder(orderId: String, deviceId: String): PollResult =
         withContext(Dispatchers.IO) {
             try {
-                val oid = java.net.URLEncoder.encode(orderId, "UTF-8")
-                val did = java.net.URLEncoder.encode(deviceId, "UTF-8")
-                val conn = (URL("$API_BASE/payment/poll-order?orderId=$oid&deviceId=$did")
+                val oid  = java.net.URLEncoder.encode(orderId,  "UTF-8")
+                val did  = java.net.URLEncoder.encode(deviceId, "UTF-8")
+                val conn = (URL("${pollOrderUrl()}?orderId=$oid&deviceId=$did")
                     .openConnection() as HttpURLConnection).apply {
                     requestMethod  = "GET"
                     connectTimeout = 8_000
@@ -158,7 +172,7 @@ object PaymentManager {
 
                 val code     = conn.responseCode
                 val response = readResponse(conn, code)
-                val json     = JSONObject(response)
+                val json     = runCatching { JSONObject(response) }.getOrDefault(JSONObject())
 
                 when (json.optString("status", "pending")) {
                     "completed" -> PollResult.Completed(
@@ -186,5 +200,5 @@ object PaymentManager {
 
     private fun readResponse(conn: HttpURLConnection, code: Int): String =
         (if (code in 200..299) conn.inputStream else conn.errorStream)
-            .bufferedReader().readText()
+            ?.bufferedReader()?.readText() ?: "{}"
 }
