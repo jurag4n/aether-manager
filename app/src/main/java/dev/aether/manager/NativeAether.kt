@@ -61,7 +61,7 @@ object NativeAether {
 
     /** https://t.me/AetherDev22 */
     external fun nativeGetTelegram(): String
-
+ 
     external fun nativeGetAdblockDnsKeywords(): Array<String>
     external fun nativeGetHostsSignatures(): Array<String>
     external fun nativeGetPackageName(): String?
