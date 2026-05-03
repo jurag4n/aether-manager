@@ -496,38 +496,84 @@ private fun FreeStatusCard() {
 @Composable
 private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
     val s = LocalStrings.current
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(s.licenseUpgradeTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text(s.licenseUpgradeDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            listOf(
-                Icons.Outlined.Block        to s.licenseSuccessBenefits.getOrElse(0) { "" },
-                Icons.Outlined.Speed        to s.licenseSuccessBenefits.getOrElse(1) { "" },
-                Icons.Outlined.Devices      to s.licenseBenefitDeviceLocked,
-                Icons.Outlined.SupportAgent to s.licenseSuccessBenefits.getOrElse(2) { "" },
-                Icons.Outlined.NewReleases  to s.licenseSuccessBenefits.getOrElse(3) { "" },
-            ).forEach { (icon, text) ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(icon, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                    Text(text, style = MaterialTheme.typography.bodySmall)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Icon(Icons.Outlined.WorkspacePremium, null, modifier = Modifier.padding(12.dp).size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Aether Manager Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Lisensi resmi 1 bulan, diproses lewat invoice real dan konfirmasi admin.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            HorizontalDivider()
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text(s.licensePrice1Month, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(s.licensePrice, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+
+            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)) {
+                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(s.licensePrice1Month, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(s.licensePrice, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)) {
+                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Verified, null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                            Text("Official", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 }
             }
-            Button(onClick = onBuy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), enabled = !isLoading) {
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                CleanBenefitRow(Icons.Outlined.Block, s.licenseSuccessBenefits.getOrElse(0) { "Tanpa iklan" })
+                CleanBenefitRow(Icons.Outlined.Speed, s.licenseSuccessBenefits.getOrElse(1) { "Fitur tweak premium" })
+                CleanBenefitRow(Icons.Outlined.Devices, s.licenseBenefitDeviceLocked)
+                CleanBenefitRow(Icons.Outlined.SupportAgent, s.licenseSuccessBenefits.getOrElse(2) { "Support admin" })
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
+
+            Text("Metode pembayaran", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                PaymentPreviewChip("DANA", Icons.Outlined.AccountBalanceWallet, Modifier.weight(1f))
+                PaymentPreviewChip("GoPay", Icons.Outlined.Wallet, Modifier.weight(1f))
+                PaymentPreviewChip("PayPal", Icons.Outlined.Language, Modifier.weight(1f))
+            }
+            Text("PayPal hanya untuk pembeli internasional. Pembeli Indonesia disarankan memakai DANA atau GoPay.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            Button(onClick = onBuy, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp), enabled = !isLoading) {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                 } else {
                     Icon(Icons.Outlined.ShoppingCart, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(s.licenseBuyBtn)
+                    Text("Beli lisensi resmi", fontWeight = FontWeight.SemiBold)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CleanBenefitRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+            Icon(icon, null, modifier = Modifier.padding(7.dp).size(15.dp), tint = MaterialTheme.colorScheme.primary)
+        }
+        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+@Composable
+private fun PaymentPreviewChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }
@@ -538,78 +584,88 @@ private fun BuyFormContent(
     onNameChange: (String) -> Unit, onPhoneChange: (String) -> Unit,
     isLoading: Boolean, error: String?, onSubmit: () -> Unit,
 ) {
-    val s = LocalStrings.current
-    // Validasi nomor realtime — hanya tampil setelah user mulai mengetik
     val phoneError = remember(buyerPhone) {
-        if (buyerPhone.isBlank()) null // belum diisi, jangan tampil error dulu
-        else PaymentViewModel.validatePhone(buyerPhone)
+        if (buyerPhone.isBlank()) null else PaymentViewModel.validatePhone(buyerPhone)
     }
     val isPhoneValid = buyerPhone.isNotBlank() && phoneError == null
     val isFormValid  = buyerName.isNotBlank() && isPhoneValid
 
-    Column(modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                Icon(Icons.Outlined.ShoppingCart, null, modifier = Modifier.padding(8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+    Column(modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Icon(Icons.Outlined.ReceiptLong, null, modifier = Modifier.padding(12.dp).size(24.dp), tint = MaterialTheme.colorScheme.primary)
             }
-            Column {
-                Text(s.licenseBuySheetTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(s.licenseBuySheetSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Buat invoice lisensi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Isi data pembeli untuk membuat order real.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        HorizontalDivider()
-        Text(s.licenseBuySheetFormDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        // Field: Nama
+        Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Alur pembelian", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                StepRow(1, "Buat invoice dari aplikasi")
+                StepRow(2, "Transfer sesuai nominal ke DANA, GoPay, atau PayPal")
+                StepRow(3, "Tap Sudah Bayar dan tunggu admin mengaktifkan lisensi")
+            }
+        }
+
         OutlinedTextField(
-            value = buyerName, onValueChange = onNameChange,
-            label = { Text(s.licenseBuySheetNameLabel) },
+            value = buyerName,
+            onValueChange = onNameChange,
+            label = { Text("Nama pembeli") },
             leadingIcon = { Icon(Icons.Outlined.Person, null) },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true, shape = RoundedCornerShape(12.dp), enabled = !isLoading
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            enabled = !isLoading
         )
 
-        // Field: Nomor HP — wajib valid sebelum bisa submit
         OutlinedTextField(
-            value = buyerPhone, onValueChange = onPhoneChange,
-            label = { Text(s.licenseBuySheetPhoneLabel) },
+            value = buyerPhone,
+            onValueChange = onPhoneChange,
+            label = { Text("Nomor WhatsApp") },
             leadingIcon = { Icon(Icons.Outlined.Phone, null) },
             trailingIcon = {
                 when {
-                    buyerPhone.isNotBlank() && isPhoneValid ->
-                        Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                    phoneError != null ->
-                        Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
+                    buyerPhone.isNotBlank() && isPhoneValid -> Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                    phoneError != null -> Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true, shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             isError = phoneError != null,
             supportingText = when {
                 phoneError != null -> {{ Text(phoneError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }}
-                else               -> null
+                else -> {{ Text("Nomor dipakai untuk konfirmasi invoice dan aktivasi lisensi.", style = MaterialTheme.typography.bodySmall) }}
             },
             enabled = !isLoading
         )
 
-        // Info hint nomor HP
-        Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-            Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-                Icon(Icons.Outlined.Info, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(s.licenseBuySheetPhoneHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)) {
+            Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Outlined.Security, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Text("Pembayaran tidak dibuat palsu/instant. Lisensi aktif setelah pembayaran dicek dan disetujui admin.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
 
         if (error != null) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
 
         Button(
-            onClick = onSubmit, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+            onClick = onSubmit,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
             enabled = isFormValid && !isLoading
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-            } else { Text(s.licenseBuySheetCreateInvoiceBtn) }
+            } else {
+                Icon(Icons.Outlined.ReceiptLong, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Buat invoice", fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -619,160 +675,137 @@ private fun TransferInstructionContent(
     state: PaymentViewModel.UiState.WaitingTransfer,
     ctx: Context, onConfirm: (selected: PaymentManager.PaymentMethod?) -> Unit, onCancel: () -> Unit,
 ) {
-    val s   = LocalStrings.current
     val fmt = NumberFormat.getNumberInstance(Locale("id", "ID"))
-
-    // State untuk metode yang dipilih
-    var selectedMethodId by remember {
-        mutableStateOf(state.paymentMethods.firstOrNull()?.id ?: "")
+    val realMethods = remember(state.paymentMethods) {
+        state.paymentMethods
+            .filter { it.isRealPaymentMethod() }
+            .sortedBy { it.realPaymentSort() }
     }
-    val selectedMethod = state.paymentMethods.firstOrNull { it.id == selectedMethodId }
-        ?: state.paymentMethods.firstOrNull()
+    var selectedMethodId by remember(realMethods) { mutableStateOf(realMethods.firstOrNull()?.id ?: "") }
+    val selectedMethod = realMethods.firstOrNull { it.id == selectedMethodId } ?: realMethods.firstOrNull()
 
     Column(
         modifier = Modifier
             .padding(horizontal = 24.dp)
             .padding(bottom = 32.dp)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        // ── Header ──────────────────────────────────────────────────────────
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                Icon(Icons.Outlined.AccountBalance, null, modifier = Modifier.padding(8.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Icon(Icons.Outlined.Payments, null, modifier = Modifier.padding(12.dp).size(24.dp), tint = MaterialTheme.colorScheme.primary)
             }
-            Column {
-                Text(s.licensePayDetailTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(s.licensePayDetailSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Detail pembayaran", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Transfer manual, lalu admin mengaktifkan lisensi setelah pembayaran valid.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
-        // ── Langkah-langkah ──────────────────────────────────────────────────
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(s.licenseStepNoteOrderId, s.licenseStepTransferExact, s.licenseStepTapPaid, s.licenseStepWaitAdmin)
-                .forEachIndexed { i, label -> StepRow(step = i + 1, label = label) }
-        }
-
-        HorizontalDivider()
-
-        // ── Order ID ────────────────────────────────────────────────────────
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(s.licenseOrderIdLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable {
-                        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("Order ID", state.orderId))
-                        Toast.makeText(ctx, s.licenseOrderIdCopied, Toast.LENGTH_SHORT).show()
-                    }.padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Text(state.orderId, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text(s.licenseOrderIdWarning, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        // ── Total ────────────────────────────────────────────────────────────
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape  = RoundedCornerShape(14.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(s.licenseTotalLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Rp ${fmt.format(state.nominal)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f))) {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                        Text("Total bayar", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Rp ${fmt.format(state.nominal)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)) {
+                        Text("1 Bulan", modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    }
                 }
-                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.primary) {
-                    Text(s.licenseDuration1Month, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
+                HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+                CopyBox(ctx = ctx, label = "Order ID", value = state.orderId, toast = "Order ID disalin")
+            }
+        }
+
+        Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Proses real", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                StepRow(1, "Pilih metode pembayaran")
+                StepRow(2, "Transfer tepat sesuai nominal invoice")
+                StepRow(3, "Tap Konfirmasi Pembayaran")
+                StepRow(4, "Kirim screenshot bukti transfer ke Telegram")
+                StepRow(5, "Admin cek pembayaran dan lisensi aktif otomatis")
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Pilih metode pembayaran", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            if (realMethods.isEmpty()) {
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)) {
+                    Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Outlined.Warning, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
+                        Text("Metode pembayaran belum tersedia. Pastikan PaymentManager hanya mengirim DANA, GoPay, dan PayPal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                }
+            } else {
+                PaymentMethodGrid(methods = realMethods, selectedId = selectedMethodId, onSelect = { selectedMethodId = it })
+                AnimatedContent(
+                    targetState = selectedMethod,
+                    transitionSpec = { (fadeIn(tween(160)) + slideInVertically { it / 6 }).togetherWith(fadeOut(tween(120))) },
+                    label = "payment_detail"
+                ) { method ->
+                    if (method != null) SelectedMethodDetail(method = method, ctx = ctx)
                 }
             }
         }
 
-        // ── Pilih Metode Pembayaran ───────────────────────────────────────────
-        if (state.paymentMethods.isNotEmpty()) {
-            Text(
-                s.licenseSelectPayMethod,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            // Pisah e-wallet, bank, dan international
-            val ewallets      = state.paymentMethods.filter { it.type == "ewallet" }
-            val banks         = state.paymentMethods.filter { it.type == "bank" }
-            val international = state.paymentMethods.filter { it.type == "international" }
-
-            if (ewallets.isNotEmpty()) {
-                Text(s.licensePayTypeEwallet, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                PaymentMethodGrid(
-                    methods    = ewallets,
-                    selectedId = selectedMethodId,
-                    onSelect   = { selectedMethodId = it }
-                )
-            }
-
-            if (banks.isNotEmpty()) {
-                Text(s.licensePayTypeBank, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                PaymentMethodGrid(
-                    methods    = banks,
-                    selectedId = selectedMethodId,
-                    onSelect   = { selectedMethodId = it }
-                )
-            }
-
-            if (international.isNotEmpty()) {
-                Text(s.licensePayTypeInternational, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                PaymentMethodGrid(
-                    methods    = international,
-                    selectedId = selectedMethodId,
-                    onSelect   = { selectedMethodId = it }
-                )
-            }
-
-            // ── Detail metode terpilih ────────────────────────────────────────
-            AnimatedContent(
-                targetState = selectedMethod,
-                transitionSpec = {
-                    (fadeIn() + slideInVertically { it / 4 }).togetherWith(fadeOut())
-                },
-                label = "payment_detail"
-            ) { method ->
-                if (method != null) {
-                    SelectedMethodDetail(method = method, ctx = ctx)
-                }
-            }
-        }
-
-        // ── Peringatan jumlah tepat ───────────────────────────────────────────
-        Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)) {
+        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)) {
             Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Outlined.Warning, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(s.licenseImportantLabel, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                    Text(s.licenseImportantBody.format(fmt.format(state.nominal)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("Wajib transfer tepat", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("Transfer sebesar Rp ${fmt.format(state.nominal)}. Nominal berbeda bisa membuat proses verifikasi lebih lama.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
         }
 
-        Text(s.licenseAfterTransferLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ContactAdminRow(ctx)
+        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)) {
+            Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Outlined.Send, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Kirim bukti transfer", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("Setelah konfirmasi, Telegram admin akan dibuka. Paste pesan order lalu lampirkan screenshot bukti transfer.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+            }
+        }
 
-        Button(onClick = { onConfirm(selectedMethod) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+        Button(
+            onClick = { onConfirm(selectedMethod) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            enabled = selectedMethod != null
+        ) {
             Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text(s.licenseVerifyNowBtn, fontWeight = FontWeight.SemiBold)
+            Text("Konfirmasi pembayaran", fontWeight = FontWeight.SemiBold)
         }
 
         TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
-            Text(s.licenseCancelBtn, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Batalkan invoice", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun CopyBox(ctx: Context, label: String, value: String, toast: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                .clickable {
+                    val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText(label, value))
+                    Toast.makeText(ctx, toast, Toast.LENGTH_SHORT).show()
+                }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
+            Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -783,51 +816,32 @@ private fun PaymentMethodGrid(
     selectedId: String,
     onSelect: (String) -> Unit,
 ) {
-    // Chip grid 3 kolom
-    val rows = methods.chunked(3)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { method ->
-                    val isSelected = method.id == selectedId
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(
-                                width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .clickable { onSelect(method.id) },
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Column(
-                            modifier            = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            val icon = paymentIcon(method.id)
-                            Icon(
-                                icon, null,
-                                modifier = Modifier.size(20.dp),
-                                tint     = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                method.label,
-                                style    = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color    = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center,
-                                maxLines = 1
-                            )
-                        }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        methods.forEach { method ->
+            val isSelected = method.id == selectedId
+            val animatedBorder by animateDpAsState(if (isSelected) 2.dp else 1.dp, label = "payment_border")
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .border(
+                        width = animatedBorder,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    .clickable { onSelect(method.id) },
+                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f) else MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(shape = RoundedCornerShape(14.dp), color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
+                        Icon(paymentIcon(method.id), null, modifier = Modifier.padding(10.dp).size(20.dp), tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary)
                     }
-                }
-                // Isi sisa kolom kosong agar grid rapi
-                repeat(3 - row.size) {
-                    Spacer(Modifier.weight(1f))
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(realPaymentLabel(method), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(realPaymentDescription(method), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (isSelected) Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -836,79 +850,82 @@ private fun PaymentMethodGrid(
 
 @Composable
 private fun SelectedMethodDetail(method: PaymentManager.PaymentMethod, ctx: Context) {
-    val s = LocalStrings.current
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(14.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                verticalAlignment    = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                    Icon(
-                        paymentIcon(method.id), null,
-                        modifier = Modifier.padding(6.dp).size(16.dp),
-                        tint     = MaterialTheme.colorScheme.primary
-                    )
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Icon(paymentIcon(method.id), null, modifier = Modifier.padding(10.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
                 }
-                Text(method.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)) {
-                    Text(
-                        if (method.type == "ewallet") s.licensePayTypeEwallet
-                        else if (method.type == "international") s.licensePayTypeInternational
-                        else s.licensePayTypeBank,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.primary,
-                    )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(realPaymentLabel(method), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(if (method.isPayPalMethod()) "International only" else "Indonesia payment", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-            // Nomor rekening / dompet
-            Row(
-                modifier              = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .clickable {
-                        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText(method.label, method.number))
-                        Toast.makeText(ctx, s.licenseNumberCopied.format(method.label), Toast.LENGTH_SHORT).show()
-                    }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        method.number,
-                        style      = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        "${method.holderName}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+
+            CopyBox(ctx = ctx, label = if (method.isPayPalMethod()) "Akun PayPal" else "Nomor tujuan", value = method.number, toast = "Tujuan pembayaran disalin")
+
+            if (method.holderName.isNotBlank()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Person, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(method.holderName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                    Row(
-                        modifier  = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text(s.licenseCopyLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                    }
+            }
+
+            Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)) {
+                Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Outlined.Info, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text(realPaymentNote(method), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
     }
+}
+
+private fun PaymentManager.PaymentMethod.isDanaMethod(): Boolean {
+    val q = "${id} ${label}".lowercase(Locale.ROOT)
+    return "dana" in q
+}
+
+private fun PaymentManager.PaymentMethod.isGoPayMethod(): Boolean {
+    val q = "${id} ${label}".lowercase(Locale.ROOT)
+    return "gopay" in q || "go pay" in q
+}
+
+private fun PaymentManager.PaymentMethod.isPayPalMethod(): Boolean {
+    val q = "${id} ${label}".lowercase(Locale.ROOT)
+    return "paypal" in q || "pay pal" in q
+}
+
+private fun PaymentManager.PaymentMethod.isRealPaymentMethod(): Boolean = isDanaMethod() || isGoPayMethod() || isPayPalMethod()
+
+private fun PaymentManager.PaymentMethod.realPaymentSort(): Int = when {
+    isDanaMethod() -> 0
+    isGoPayMethod() -> 1
+    isPayPalMethod() -> 2
+    else -> 99
+}
+
+private fun realPaymentLabel(method: PaymentManager.PaymentMethod): String = when {
+    method.isDanaMethod() -> "DANA"
+    method.isGoPayMethod() -> "GoPay"
+    method.isPayPalMethod() -> "PayPal"
+    else -> method.label
+}
+
+private fun realPaymentDescription(method: PaymentManager.PaymentMethod): String = when {
+    method.isDanaMethod() -> "E-wallet Indonesia"
+    method.isGoPayMethod() -> "E-wallet Indonesia"
+    method.isPayPalMethod() -> "Khusus internasional"
+    else -> method.label
+}
+
+private fun realPaymentNote(method: PaymentManager.PaymentMethod): String = when {
+    method.isPayPalMethod() -> "Gunakan PayPal hanya untuk pembeli dari luar Indonesia. Sertakan Order ID pada catatan pembayaran jika tersedia."
+    else -> "Gunakan nama pembayaran yang sama dengan nama pembeli, lalu simpan bukti transfer sampai lisensi aktif."
 }
 
 private fun paymentIcon(id: String): androidx.compose.ui.graphics.vector.ImageVector = when (id) {
@@ -957,8 +974,8 @@ private fun sendPaymentNotification(
 }
 
 /**
- * Versi silent: hanya catat order, TIDAK membuka WA/Telegram.
- * WA/Telegram hanya dibuka manual oleh user jika perlu.
+ * Setelah user konfirmasi pembayaran, buka Telegram admin dan salin template pesan.
+ * User tinggal paste pesan lalu lampirkan screenshot bukti transfer.
  */
 private fun sendPaymentNotificationSilent(
     ctx: Context,
@@ -966,8 +983,33 @@ private fun sendPaymentNotificationSilent(
     orderId: String,
     paymentMethods: List<PaymentManager.PaymentMethod>,
 ) {
-    // No-op: konfirmasi dilakukan oleh admin via backend, tidak perlu buka WA/Telegram otomatis.
-    // Fungsi ini sengaja dikosongkan agar flow tidak mengganggu user.
+    val method = paymentMethods.firstOrNull()?.let { realPaymentLabel(it) } ?: "Belum dipilih"
+    val msg = buildString {
+        appendLine("Konfirmasi Pembayaran Aether Manager")
+        appendLine()
+        appendLine("Nama: $buyerName")
+        appendLine("Order ID: $orderId")
+        appendLine("Metode: $method")
+        appendLine()
+        appendLine("Saya sudah transfer. Berikut saya kirim screenshot bukti pembayaran.")
+    }.trim()
+
+    val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    cm.setPrimaryClip(ClipData.newPlainText("Aether Payment Confirmation", msg))
+    Toast.makeText(ctx, "Pesan konfirmasi disalin. Kirim screenshot bukti transfer ke Telegram admin.", Toast.LENGTH_LONG).show()
+
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AetherDev22"))
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(intent)
+    } catch (_: Exception) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, msg)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        ctx.startActivity(Intent.createChooser(intent, "Kirim bukti pembayaran").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
 }
 
 @Composable
