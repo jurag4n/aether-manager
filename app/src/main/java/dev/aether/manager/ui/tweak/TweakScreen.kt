@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -280,6 +281,8 @@ fun TweakScreen(
             )
         }
 
+        AppProfileCard(onClick = onOpenAppProfile)
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -355,8 +358,6 @@ fun TweakScreen(
                 }
             )
         }
-
-        AppProfileCard(onClick = onOpenAppProfile)
 
         ThermalProfileCard(
             expanded = expandedCard == "thermal",
@@ -705,16 +706,6 @@ private fun ExpandableTweakCard(
         label = "badge_fg_$title"
     )
 
-    // Subtle scale pop saat dibuka — 0.98 → 1.0 terasa natural, tidak terlalu dramatis
-    val cardScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.98f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "card_scale_$title"
-    )
-
     // Corner radius dianimasikan supaya transisi mengembang/mengecil lebih smooth
     val cornerRadius by animateDpAsState(
         targetValue = if (expanded) 28.dp else 22.dp,
@@ -735,30 +726,23 @@ private fun ExpandableTweakCard(
         label = "card_elev_$title"
     )
 
-    // Animasi konten detail saat muncul/hilang
+    // Alpha konten detail
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
+        animationSpec = tween(
+            durationMillis = if (expanded) 140 else 100,
+            easing = FastOutSlowInEasing
         ),
         label = "detail_alpha_$title"
     )
-    val detailScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.94f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
+    // Konten slide dari bawah saat muncul, ke bawah saat hilang
+    val detailSlide by animateFloatAsState(
+        targetValue = if (expanded) 0f else 18f,
+        animationSpec = tween(
+            durationMillis = if (expanded) 160 else 120,
+            easing = FastOutSlowInEasing
         ),
-        label = "detail_scale_$title"
-    )
-    val detailOffset by animateFloatAsState(
-        targetValue = if (expanded) 0f else 20f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "detail_offset_$title"
+        label = "detail_slide_$title"
     )
 
     Surface(
@@ -767,22 +751,20 @@ private fun ExpandableTweakCard(
         color = container,
         tonalElevation = elevation,
         modifier = modifier
-            .graphicsLayer {
-                scaleX = cardScale
-                scaleY = cardScale
-            }
+            // animateContentSize di modifier Surface langsung — ini yang bikin
+            // card "tumbuh" dari collapsed ke expanded secara keseluruhan
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
             .heightIn(min = baseHeight)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
-                ),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
@@ -821,29 +803,13 @@ private fun ExpandableTweakCard(
                 )
             }
 
-            AnimatedVisibility(
-                visible = expanded,
-                enter = fadeIn(
-                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)
-                ) + expandVertically(
-                    animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
-                    expandFrom = Alignment.Top
-                ),
-                exit = fadeOut(
-                    animationSpec = tween(durationMillis = 200)
-                ) + shrinkVertically(
-                    animationSpec = tween(durationMillis = 220),
-                    shrinkTowards = Alignment.Top
-                )
-            ) {
+            if (expanded) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .graphicsLayer {
                             alpha = detailAlpha
-                            translationY = detailOffset
-                            scaleX = detailScale
-                            scaleY = detailScale
+                            translationY = detailSlide
                         },
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     content = content

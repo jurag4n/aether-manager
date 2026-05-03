@@ -462,7 +462,7 @@ private fun FilterDropdown(
     var expanded by remember { mutableStateOf(false) }
     val arrowRotation by animateFloatAsState(
         if (expanded) 180f else 0f,
-        tween(180),
+        spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh),
         label = "filter_arrow"
     )
 
@@ -697,7 +697,7 @@ private fun AppListItem(
     )
     val arrowRotation by animateFloatAsState(
         if (expanded) 180f else 0f,
-        tween(180),
+        spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh),
         label = "app_card_arrow"
     )
 
@@ -711,7 +711,10 @@ private fun AppListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize(
-                    animationSpec = tween(220, easing = FastOutSlowInEasing)
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness    = Spring.StiffnessMediumHigh
+                    )
                 )
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(11.dp)
@@ -811,15 +814,18 @@ private fun AppListItem(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(tween(140, easing = LinearOutSlowInEasing)) + expandVertically(
+                enter = fadeIn(tween(80)) + expandVertically(
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
+                        stiffness    = Spring.StiffnessMediumHigh
                     ),
                     expandFrom = Alignment.Top
                 ),
-                exit = fadeOut(tween(110, easing = FastOutLinearInEasing)) + shrinkVertically(
-                    animationSpec = tween(190, easing = FastOutSlowInEasing),
+                exit = fadeOut(tween(70)) + shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness    = Spring.StiffnessMediumHigh
+                    ),
                     shrinkTowards = Alignment.Top
                 )
             ) {
@@ -961,7 +967,7 @@ private fun CompactProfileDropdown(
     var expanded by remember { mutableStateOf(false) }
     val arrowRotation by animateFloatAsState(
         if (expanded) 180f else 0f,
-        tween(180),
+        spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumHigh),
         label = "compact_dropdown_arrow"
     )
 
