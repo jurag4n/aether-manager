@@ -535,9 +535,9 @@ _end "gpu_freq"
         if (t["lmk_aggressive"] == "1") {
             append("write 18432,23040,27648,32256,55296,80640 /sys/module/lowmemorykiller/parameters/minfree\n")
             append("write 0,100,200,300,900,906 /sys/module/lowmemorykiller/parameters/adj\n")
-            append("setprop ro.lmk.low 1001 2>/dev/null; _A=\$((_A+1))\n")
-            append("setprop ro.lmk.medium 800 2>/dev/null; _A=\$((_A+1))\n")
-            append("setprop ro.lmk.critical 0 2>/dev/null; _A=\$((_A+1))\n")
+            append("setprop ro.lmk.low 1001 2>/dev/null; _A=\${'$'}((_A+1))\n")
+            append("setprop ro.lmk.medium 800 2>/dev/null; _A=\${'$'}((_A+1))\n")
+            append("setprop ro.lmk.critical 0 2>/dev/null; _A=\${'$'}((_A+1))\n")
         }
 
         if (t["zram"] == "1") {
@@ -609,20 +609,20 @@ done
         }
 
         if (t["kill_background"] == "1") {
-            append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
-            append("pm trim-caches 0 2>/dev/null && _A=\$((_A+1)) || _S=\$((_S+1))\n")
+            append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=\${'$'}((_A+1)) || _F=\${'$'}((_F+1))\n")
+            append("pm trim-caches 0 2>/dev/null && _A=\${'$'}((_A+1)) || _S=\${'$'}((_S+1))\n")
             // Actual kill background processes — ini yang utama, am kill-all matikan semua cached proses
-            append("am kill-all 2>/dev/null && _A=\$((_A+1)) || _S=\$((_S+1))\n")
+            append("am kill-all 2>/dev/null && _A=\${'$'}((_A+1)) || _S=\${'$'}((_S+1))\n")
             // Fallback: kill proses cached di /proc yang bukan system UID (>= 10000)
             append("""
 for _pid in /proc/[0-9]*; do
   [ -r "${'$'}_pid/status" ] || continue
-  _uid=$(awk '/^Uid:/{print $2}' "${'$'}_pid/status" 2>/dev/null)
+  _uid=${'$'}(awk '/^Uid:/{print $2}' "${'$'}_pid/status" 2>/dev/null)
   [ -z "${'$'}_uid" ] && continue
   [ "${'$'}_uid" -ge 10000 ] 2>/dev/null || continue
-  _oom=$(cat "${'$'}_pid/oom_score_adj" 2>/dev/null)
+  _oom=${'$'}(cat "${'$'}_pid/oom_score_adj" 2>/dev/null)
   # oom_score_adj >= 700 = cached/expendable background
-  [ -n "${'$'}_oom" ] && [ "${'$'}_oom" -ge 700 ] 2>/dev/null && kill -9 $(basename "${'$'}_pid") 2>/dev/null
+  [ -n "${'$'}_oom" ] && [ "${'$'}_oom" -ge 700 ] 2>/dev/null && kill -9 ${'$'}(basename "${'$'}_pid") 2>/dev/null
 done
 """.trimIndent() + "\n")
         }
@@ -698,8 +698,8 @@ write fq /proc/sys/net/core/default_qdisc
 """)
             }
             if (t["network_stable"] == "1") {
-                append("printf '4096 87380 16777216' > /proc/sys/net/ipv4/tcp_rmem 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
-                append("printf '4096 65536 16777216' > /proc/sys/net/ipv4/tcp_wmem 2>/dev/null && _A=\$((_A+1)) || _F=\$((_F+1))\n")
+                append("printf '4096 87380 16777216' > /proc/sys/net/ipv4/tcp_rmem 2>/dev/null && _A=\${'$'}((_A+1)) || _F=\${'$'}((_F+1))\n")
+                append("printf '4096 65536 16777216' > /proc/sys/net/ipv4/tcp_wmem 2>/dev/null && _A=\${'$'}((_A+1)) || _F=\${'$'}((_F+1))\n")
                 append("write 16777216 /proc/sys/net/core/rmem_max\n")
                 append("write 16777216 /proc/sys/net/core/wmem_max\n")
                 append("write 3 /proc/sys/net/ipv4/tcp_fastopen\n")
@@ -708,10 +708,10 @@ write fq /proc/sys/net/core/default_qdisc
                 append("write 1 /proc/sys/net/ipv4/tcp_sack\n")
             }
             if (dnsHost != null) {
-                append("settings put global private_dns_mode hostname 2>/dev/null && _A=\$((_A+1))\n")
-                append("settings put global private_dns_specifier $dnsHost 2>/dev/null && _A=\$((_A+1))\n")
+                append("settings put global private_dns_mode hostname 2>/dev/null && _A=\${'$'}((_A+1))\n")
+                append("settings put global private_dns_specifier $dnsHost 2>/dev/null && _A=\${'$'}((_A+1))\n")
             } else {
-                append("settings put global private_dns_mode off 2>/dev/null; _A=\$((_A+1))\n")
+                append("settings put global private_dns_mode off 2>/dev/null; _A=\${'$'}((_A+1))\n")
             }
             append("_end \"network\"\n")
         }
@@ -775,9 +775,9 @@ _end "ui_anim"
         append("""
 if [ -f /proc/sys/kernel/sched_rt_runtime_us ]; then
   if echo -1 > /proc/sys/kernel/sched_rt_runtime_us 2>/dev/null; then
-    _A=$((_A+1))
+    _A=${'$'}((_A+1))
   else
-    echo 950000 > /proc/sys/kernel/sched_rt_runtime_us 2>/dev/null && _A=$((_A+1)) || _F=$((_F+1))
+    echo 950000 > /proc/sys/kernel/sched_rt_runtime_us 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))
   fi
 fi
 """)
@@ -797,7 +797,7 @@ fi
         }
 
         if (t["doze"] == "1") {
-            append("dumpsys deviceidle enable deep 2>/dev/null; _A=\$((_A+1))\n")
+            append("dumpsys deviceidle enable deep 2>/dev/null; _A=\${'$'}((_A+1))\n")
         }
 
         append("_end \"misc\"\n")

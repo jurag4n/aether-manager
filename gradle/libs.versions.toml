@@ -81,7 +81,7 @@ timber                               = { group = "com.jakewharton.timber",      
 androidx-biometric                   = { group = "androidx.biometric",          name = "biometric",                      version.ref = "androidxBiometric" }
 leakcanary-android                   = { group = "com.squareup.leakcanary",     name = "leakcanary-android",              version.ref = "leakcanary" }
 retrofit-core                        = { group = "com.squareup.retrofit2",      name = "retrofit",                       version.ref = "retrofit" }
-retrofit-converter-gson              = { group = "com.squareup.retrofit2",      name = "converter-kotlinx-serialization", version.ref = "retrofit" }
+retrofit-converter-gson              = { group = "com.squareup.retrofit2",      name = "converter-gson", version.ref = "retrofit" }
 shimmer                              = { group = "com.facebook.shimmer",        name = "shimmer",                        version = "0.5.0" }
 compose-charts                       = { group = "io.github.ehsannarmani",      name = "compose-charts-android",         version.ref = "composeCharts" }
 androidx-lifecycle-process           = { group = "androidx.lifecycle",          name = "lifecycle-process",              version.ref = "lifecycleProcess" }

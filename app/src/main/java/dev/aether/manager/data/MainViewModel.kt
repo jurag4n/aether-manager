@@ -233,7 +233,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun ensureRootReady(requestIfNeeded: Boolean = true): Boolean {
-        val alreadyReady = RootManager.isRootGranted || RootEngine.hasRoot()
+        val alreadyReady = withContext(Dispatchers.IO) {
+            RootManager.isRootGranted || RootManager.ensureRootShellSync(requestIfNeeded = false)
+        }
         if (alreadyReady) {
             _rootGranted.value = true
             if (!monitorStarted) startMonitorLoop()

@@ -33,9 +33,9 @@ object BackupManager {
 
         val script = """
             mkdir -p $BACKUP_DIR
-            tweaks=$(cat ${RootEngine.TWEAKS_CONF} 2>/dev/null || echo "")
-            profile=$(cat ${RootEngine.PROFILE_FILE} 2>/dev/null || echo "balance")
-            safe=$([ -f ${RootEngine.SAFE_MODE_FILE} ] && echo true || echo false)
+            tweaks=${'$'}(cat ${RootEngine.TWEAKS_CONF} 2>/dev/null || echo "")
+            profile=${'$'}(cat ${RootEngine.PROFILE_FILE} 2>/dev/null || echo "balance")
+            safe=${'$'}([ -f ${RootEngine.SAFE_MODE_FILE} ] && echo true || echo false)
             # Encode tweaks.conf sebagai JSON object sederhana key=value → "key":"value"
             pairs=""
             while IFS='=' read -r k v; do
@@ -76,17 +76,17 @@ object BackupManager {
         val path = "$BACKUP_DIR/$filename"
         val script = """
             [ -f $path ] || exit 1
-            content=$(cat $path)
+            content=${'$'}(cat $path)
             # Ekstrak tweaks block: isi antara "tweaks":{ ... }
-            tweaks_block=$(echo "${'$'}content" | grep -o '"tweaks":{[^}]*}' | sed 's/"tweaks":{//;s/}$//')
+            tweaks_block=${'$'}(echo "${'$'}content" | grep -o '"tweaks":{[^}]*}' | sed 's/"tweaks":{//;s/}$//')
             # Tulis ulang tweaks.conf: konversi "key":"value" → key=value
             rm -f ${RootEngine.TWEAKS_CONF}
             echo "${'$'}tweaks_block" | tr ',' '\n' | sed 's/^[[:space:]]*"//;s/":[[:space:]]*"/=/;s/"[[:space:]]*$//' | grep '=' >> ${RootEngine.TWEAKS_CONF}
             # Profile
-            profile=$(echo "${'$'}content" | grep -o '"profile":"[^"]*"' | sed 's/"profile":"//;s/"//')
+            profile=${'$'}(echo "${'$'}content" | grep -o '"profile":"[^"]*"' | sed 's/"profile":"//;s/"//')
             [ -n "${'$'}profile" ] && echo "${'$'}profile" > ${RootEngine.PROFILE_FILE}
             # Safe mode
-            safe=$(echo "${'$'}content" | grep -o '"safe_mode":[a-z]*' | sed 's/"safe_mode"://')
+            safe=${'$'}(echo "${'$'}content" | grep -o '"safe_mode":[a-z]*' | sed 's/"safe_mode"://')
             if [ "${'$'}safe" = "true" ]; then touch ${RootEngine.SAFE_MODE_FILE}
             else rm -f ${RootEngine.SAFE_MODE_FILE}; fi
             echo ok

@@ -134,13 +134,13 @@ object RootEngine {
 
     suspend fun getDeviceInfo(): DeviceInfo {
         val script = """
-            model=$(getprop ro.product.model 2>/dev/null | head -c 40)
-            android=$(getprop ro.build.version.release 2>/dev/null)
-            platform=$(getprop ro.board.platform 2>/dev/null)
-            hardware=$(getprop ro.hardware 2>/dev/null)
-            soc_model=$(getprop ro.soc.model 2>/dev/null)
-            kernel=$(uname -r 2>/dev/null | head -c 50)
-            selinux=$(getenforce 2>/dev/null)
+            model=${'$'}(getprop ro.product.model 2>/dev/null | head -c 40)
+            android=${'$'}(getprop ro.build.version.release 2>/dev/null)
+            platform=${'$'}(getprop ro.board.platform 2>/dev/null)
+            hardware=${'$'}(getprop ro.hardware 2>/dev/null)
+            soc_model=${'$'}(getprop ro.soc.model 2>/dev/null)
+            kernel=${'$'}(uname -r 2>/dev/null | head -c 50)
+            selinux=${'$'}(getenforce 2>/dev/null)
             if [ -d /data/adb/ksu ]; then
               root=KernelSU
             elif [ -d /data/adb/ap ]; then
@@ -150,9 +150,9 @@ object RootEngine {
             else
               root=Unknown
             fi
-            profile=$(cat '/data/local/tmp/aether/profile' 2>/dev/null || echo balance)
-            safe=$([ -f '/data/local/tmp/aether/safe_mode' ] && echo 1 || echo 0)
-            boot=$(cat '/data/local/tmp/aether/boot_count' 2>/dev/null || echo 0)
+            profile=${'$'}(cat '/data/local/tmp/aether/profile' 2>/dev/null || echo balance)
+            safe=${'$'}([ -f '/data/local/tmp/aether/safe_mode' ] && echo 1 || echo 0)
+            boot=${'$'}(cat '/data/local/tmp/aether/boot_count' 2>/dev/null || echo 0)
             echo model=${'$'}model
             echo android=${'$'}android
             echo platform=${'$'}platform

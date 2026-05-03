@@ -143,10 +143,10 @@ object AppProfileRepository {
         RootEngine.sh(
             // ── CPU governor → schedutil / ondemand (fallback) ──────────────
             """
-            _AVAIL=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors \
+            _AVAIL=${'$'}(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors \
                          /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors \
                          2>/dev/null | head -1)
-            _DEF=$(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'schedutil|ondemand|interactive' || echo "schedutil")
+            _DEF=${'$'}(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'schedutil|ondemand|interactive' || echo "schedutil")
             for _pol in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
               [ -f "${'$'}_pol" ] && echo "${'$'}_DEF" > "${'$'}_pol" 2>/dev/null || true
             done
@@ -206,7 +206,7 @@ object AppProfileRepository {
             echo simple_ondemand > /sys/devices/platform/mali/power_policy 2>/dev/null || true
             echo simple_ondemand > /sys/devices/platform/*.mali/power_policy 2>/dev/null || true
             for _dev in /sys/class/devfreq/*/governor; do
-              _name=$(basename $(dirname "${'$'}_dev"))
+              _name=${'$'}(basename $(dirname "${'$'}_dev"))
               case "${'$'}_name" in *gpu*|*mali*|*kgsl*|*adreno*)
                 echo simple_ondemand > "${'$'}_dev" 2>/dev/null || \
                 echo msm-adreno-tz   > "${'$'}_dev" 2>/dev/null || true ;;
@@ -279,8 +279,8 @@ object AppProfileRepository {
                     if (tweaks.optBoolean("lock_cpu_min", false)) {
                         appendLine("      for _f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_min_freq /sys/devices/system/cpu/cpufreq/policy*/scaling_min_freq; do")
                         appendLine("        [ -f \"\$_f\" ] || continue")
-                        appendLine("        _MAX=\$(cat \"\${_f%min*}max_freq\" 2>/dev/null || cat \"\${_f/min/max}\" 2>/dev/null)")
-                        appendLine("        [ -n \"\$_MAX\" ] && echo \$((_MAX/2)) > \"\$_f\" 2>/dev/null || true")
+                        appendLine("        _MAX=\${'$'}(cat \"\${_f%min*}max_freq\" 2>/dev/null || cat \"\${_f/min/max}\" 2>/dev/null)")
+                        appendLine("        [ -n \"\$_MAX\" ] && echo \${'$'}((_MAX/2)) > \"\$_f\" 2>/dev/null || true")
                         appendLine("      done")
                     }
                     if (tweaks.optBoolean("kill_background", false)) {
@@ -298,7 +298,7 @@ object AppProfileRepository {
                         appendLine("      echo performance > /sys/devices/platform/mali/power_policy 2>/dev/null || true")
                         appendLine("      echo performance > /sys/devices/platform/*.mali/power_policy 2>/dev/null || true")
                         appendLine("      for _dev in /sys/class/devfreq/*/governor; do")
-                        appendLine("        _name=\$(basename \$(dirname \"\$_dev\"))")
+                        appendLine("        _name=\${'$'}(basename \$(dirname \"\$_dev\"))")
                         appendLine("        case \"\$_name\" in *gpu*|*mali*|*kgsl*|*adreno*) echo performance > \"\$_dev\" 2>/dev/null || true ;; esac")
                         appendLine("      done")
                     }
@@ -349,34 +349,34 @@ _apply_governor() {
   local _REQ="${'$'}1"
 
   local _AVAIL
-  _AVAIL=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors \
+  _AVAIL=${'$'}(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors \
                /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors \
                2>/dev/null | head -1)
 
   local _GOV
   if echo " ${'$'}_AVAIL " | grep -qiw "${'$'}_REQ"; then
-    _GOV=$(echo " ${'$'}_AVAIL " | tr ' ' '\n' | grep -im1 "^${'$'}_REQ${'$'}" | head -1)
+    _GOV=${'$'}(echo " ${'$'}_AVAIL " | tr ' ' '\n' | grep -im1 "^${'$'}_REQ${'$'}" | head -1)
     _GOV=${'$'}{_GOV:-${'$'}_REQ}
   else
     case "${'$'}_REQ" in
       ondemand)
-        _GOV=$(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'schedutil|interactive|ondemand|conservative' \
+        _GOV=${'$'}(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'schedutil|interactive|ondemand|conservative' \
                || echo "${'$'}_AVAIL" | awk '{print ${'$'}1}')
         ;;
       conservative)
-        _GOV=$(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'schedutil|conservative|ondemand|interactive' \
+        _GOV=${'$'}(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'schedutil|conservative|ondemand|interactive' \
                || echo "${'$'}_AVAIL" | awk '{print ${'$'}1}')
         ;;
       performance)
-        _GOV=$(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'performance|schedutil' \
+        _GOV=${'$'}(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'performance|schedutil' \
                || echo "${'$'}_AVAIL" | awk '{print ${'$'}1}')
         ;;
       powersave)
-        _GOV=$(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'powersave|schedutil' \
+        _GOV=${'$'}(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'powersave|schedutil' \
                || echo "${'$'}_AVAIL" | awk '{print ${'$'}1}')
         ;;
       *)
-        _GOV=$(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'schedutil|ondemand|interactive' \
+        _GOV=${'$'}(echo "${'$'}_AVAIL" | tr ' ' '\n' | grep -im1 -xE 'schedutil|ondemand|interactive' \
                || echo "${'$'}_AVAIL" | awk '{print ${'$'}1}')
         ;;
     esac
@@ -398,7 +398,7 @@ _apply_governor() {
 # ── Default restore helper ────────────────────────────────────────────────────
 _restore_default() {
   local _DEF
-  _DEF=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors \
+  _DEF=${'$'}(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors \
              /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors \
              2>/dev/null | head -1 \
          | tr ' ' '\n' | grep -im1 -xE 'schedutil|ondemand|interactive' \
