@@ -232,141 +232,150 @@ fun TweakScreen(
             onSelect = { setActiveProfileNow(it) }
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            CpuCard(
-                modifier = Modifier.weight(1f),
-                expanded = expandedCard == "cpu",
-                active = tweaks.cpuBoost || cpuFreqLocked,
-                governor = cpuGovernor,
-                minFreq = minCpuFreq,
-                maxFreq = maxCpuFreq,
-                locked = cpuFreqLocked,
-                onClick = { toggleExpand("cpu") },
-                onGovernorChange = {
-                    cpuGovernor = it
-                    setTweakNow("cpuBoost", it != "Battery")
-                },
-                onMinFreqChange = { minCpuFreq = it },
-                onMaxFreqChange = { maxCpuFreq = it },
-                onLockClick = {
-                    cpuFreqLocked = !cpuFreqLocked
-                    setTweakNow("cpuFreqLock", cpuFreqLocked)
-                }
-            )
-
-            GpuCard(
-                modifier = Modifier.weight(1f),
-                expanded = expandedCard == "gpu",
-                active = tweaks.gpuThrottleOff || gpuLocked,
-                profile = gpuProfile,
-                minFreq = minGpuFreq,
-                maxFreq = maxGpuFreq,
-                locked = gpuLocked,
-                renderer = renderer,
-                onClick = { toggleExpand("gpu") },
-                onProfileChange = {
-                    gpuProfile = it
-                    setTweakNow("gpuThrottleOff", it == "Performance")
-                },
-                onMinFreqChange = { minGpuFreq = it },
-                onMaxFreqChange = { maxGpuFreq = it },
-                onLockClick = {
-                    gpuLocked = !gpuLocked
-                    setTweakNow("gpuThrottleOff", gpuLocked)
-                },
-                onRendererClick = { rendererDialog = true }
-            )
-        }
+        AdaptiveTweakGridRow(
+            expandedKey = expandedCard,
+            leftKey = "cpu",
+            rightKey = "gpu",
+            left = { itemModifier ->
+                CpuCard(
+                    modifier = itemModifier,
+                    expanded = expandedCard == "cpu",
+                    active = tweaks.cpuBoost || cpuFreqLocked,
+                    governor = cpuGovernor,
+                    minFreq = minCpuFreq,
+                    maxFreq = maxCpuFreq,
+                    locked = cpuFreqLocked,
+                    onClick = { toggleExpand("cpu") },
+                    onGovernorChange = {
+                        cpuGovernor = it
+                        setTweakNow("cpuBoost", it != "Battery")
+                    },
+                    onMinFreqChange = { minCpuFreq = it },
+                    onMaxFreqChange = { maxCpuFreq = it },
+                    onLockClick = {
+                        cpuFreqLocked = !cpuFreqLocked
+                        setTweakNow("cpuFreqLock", cpuFreqLocked)
+                    }
+                )
+            },
+            right = { itemModifier ->
+                GpuCard(
+                    modifier = itemModifier,
+                    expanded = expandedCard == "gpu",
+                    active = tweaks.gpuThrottleOff || gpuLocked,
+                    profile = gpuProfile,
+                    minFreq = minGpuFreq,
+                    maxFreq = maxGpuFreq,
+                    locked = gpuLocked,
+                    renderer = renderer,
+                    onClick = { toggleExpand("gpu") },
+                    onProfileChange = {
+                        gpuProfile = it
+                        setTweakNow("gpuThrottleOff", it == "Performance")
+                    },
+                    onMinFreqChange = { minGpuFreq = it },
+                    onMaxFreqChange = { maxGpuFreq = it },
+                    onLockClick = {
+                        gpuLocked = !gpuLocked
+                        setTweakNow("gpuThrottleOff", gpuLocked)
+                    },
+                    onRendererClick = { rendererDialog = true }
+                )
+            }
+        )
 
         AppProfileCard(onClick = onOpenAppProfile)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            NetworkCard(
-                modifier = Modifier.weight(1f),
-                expanded = expandedCard == "network",
-                active = dnsProvider != "Off" || networkStable || tcpEnabled || tweaks.tcpBbr,
-                dnsProvider = dnsProvider,
-                networkStable = networkStable,
-                tcpEnabled = tcpEnabled || tweaks.tcpBbr,
-                onClick = { toggleExpand("network") },
-                onDnsSelect = { provider ->
-                    dnsProvider = provider
-                    vm.setTweakStr("dnsProvider", provider)
-                },
-                onNetworkStableToggle = {
-                    networkStable = !networkStable
-                    setTweakNow("networkStable", networkStable)
-                },
-                onTcpToggle = {
-                    tcpEnabled = !(tcpEnabled || tweaks.tcpBbr)
-                    setTweakNow("tcpBbr", tcpEnabled)
-                }
-            )
-
-            MemoryCard(
-                modifier = Modifier.weight(1f),
-                expanded = expandedCard == "memory",
-                active = tweaks.zram || tweaks.lmkAggressive || swapEnabled || killBackgroundActive,
-                zram = tweaks.zram,
-                lmk = tweaks.lmkAggressive,
-                swap = swapEnabled,
-                killBackground = killBackgroundActive,
-                onClick = { toggleExpand("memory") },
-                onZramToggle = { setTweakNow("zram", !tweaks.zram) },
-                onLmkToggle = { setTweakNow("lmkAggressive", !tweaks.lmkAggressive) },
-                onSwapToggle = {
-                    swapEnabled = !swapEnabled
-                    setTweakNow("swap", swapEnabled)
-                },
-                onKillBackgroundClick = {
-                    killBackgroundActive = !killBackgroundActive
-                    setTweakNow("killBackground", true)
-                }
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            IoSchedulerCard(
-                modifier = Modifier.weight(1f),
-                expanded = expandedCard == "io",
-                selected = ioScheduler,
-                onClick = { toggleExpand("io") },
-                onSelect = {
-                    ioScheduler = it
-                    val schedulerValue = when (it) {
-                        "CFQ" -> "cfq"
-                        "Deadline" -> "deadline"
-                        "Noop" -> "noop"
-                        "BFQ" -> "bfq"
-                        "Maple" -> "maple"
-                        else -> ""
+        AdaptiveTweakGridRow(
+            expandedKey = expandedCard,
+            leftKey = "network",
+            rightKey = "memory",
+            left = { itemModifier ->
+                NetworkCard(
+                    modifier = itemModifier,
+                    expanded = expandedCard == "network",
+                    active = dnsProvider != "Off" || networkStable || tcpEnabled || tweaks.tcpBbr,
+                    dnsProvider = dnsProvider,
+                    networkStable = networkStable,
+                    tcpEnabled = tcpEnabled || tweaks.tcpBbr,
+                    onClick = { toggleExpand("network") },
+                    onDnsSelect = { provider ->
+                        dnsProvider = provider
+                        vm.setTweakStr("dnsProvider", provider)
+                    },
+                    onNetworkStableToggle = {
+                        networkStable = !networkStable
+                        setTweakNow("networkStable", networkStable)
+                    },
+                    onTcpToggle = {
+                        tcpEnabled = !(tcpEnabled || tweaks.tcpBbr)
+                        setTweakNow("tcpBbr", tcpEnabled)
                     }
-                    vm.setTweakStr("io_scheduler", schedulerValue)
-                    vm.setTweak("io_latency_opt", it != "Auto")
-                }
-            )
+                )
+            },
+            right = { itemModifier ->
+                MemoryCard(
+                    modifier = itemModifier,
+                    expanded = expandedCard == "memory",
+                    active = tweaks.zram || tweaks.lmkAggressive || swapEnabled || killBackgroundActive,
+                    zram = tweaks.zram,
+                    lmk = tweaks.lmkAggressive,
+                    swap = swapEnabled,
+                    killBackground = killBackgroundActive,
+                    onClick = { toggleExpand("memory") },
+                    onZramToggle = { setTweakNow("zram", !tweaks.zram) },
+                    onLmkToggle = { setTweakNow("lmkAggressive", !tweaks.lmkAggressive) },
+                    onSwapToggle = {
+                        swapEnabled = !swapEnabled
+                        setTweakNow("swap", swapEnabled)
+                    },
+                    onKillBackgroundClick = {
+                        killBackgroundActive = !killBackgroundActive
+                        setTweakNow("killBackground", true)
+                    }
+                )
+            }
+        )
 
-            SchedBoostCard(
-                modifier = Modifier.weight(1f),
-                expanded = expandedCard == "sched",
-                active = schedBoostMode != "Off" || tweaks.schedboost,
-                mode = schedBoostMode,
-                onClick = { toggleExpand("sched") },
-                onSelect = {
-                    schedBoostMode = it
-                    setTweakNow("schedboost", it != "Off")
-                }
-            )
-        }
+        AdaptiveTweakGridRow(
+            expandedKey = expandedCard,
+            leftKey = "io",
+            rightKey = "sched",
+            left = { itemModifier ->
+                IoSchedulerCard(
+                    modifier = itemModifier,
+                    expanded = expandedCard == "io",
+                    selected = ioScheduler,
+                    onClick = { toggleExpand("io") },
+                    onSelect = {
+                        ioScheduler = it
+                        val schedulerValue = when (it) {
+                            "CFQ" -> "cfq"
+                            "Deadline" -> "deadline"
+                            "Noop" -> "noop"
+                            "BFQ" -> "bfq"
+                            "Maple" -> "maple"
+                            else -> ""
+                        }
+                        vm.setTweakStr("io_scheduler", schedulerValue)
+                        vm.setTweak("io_latency_opt", it != "Auto")
+                    }
+                )
+            },
+            right = { itemModifier ->
+                SchedBoostCard(
+                    modifier = itemModifier,
+                    expanded = expandedCard == "sched",
+                    active = schedBoostMode != "Off" || tweaks.schedboost,
+                    mode = schedBoostMode,
+                    onClick = { toggleExpand("sched") },
+                    onSelect = {
+                        schedBoostMode = it
+                        setTweakNow("schedboost", it != "Off")
+                    }
+                )
+            }
+        )
 
         ThermalProfileCard(
             expanded = expandedCard == "thermal",
@@ -374,6 +383,59 @@ fun TweakScreen(
             onClick = { toggleExpand("thermal") },
             onSelect = { setThermalProfileNow(it) }
         )
+    }
+}
+
+
+@Composable
+private fun AdaptiveTweakGridRow(
+    expandedKey: String?,
+    leftKey: String,
+    rightKey: String,
+    left: @Composable (Modifier) -> Unit,
+    right: @Composable (Modifier) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        when (expandedKey) {
+            leftKey -> {
+                left(Modifier.fillMaxWidth())
+                CompactGridSingleCell { right(Modifier.fillMaxWidth()) }
+            }
+            rightKey -> {
+                right(Modifier.fillMaxWidth())
+                CompactGridSingleCell { left(Modifier.fillMaxWidth()) }
+            }
+            else -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    left(Modifier.weight(1f))
+                    right(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactGridSingleCell(content: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(modifier = Modifier.weight(1f)) { content() }
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -546,18 +608,25 @@ private fun NetworkCard(
             options = listOf("Off", "Cloudflare", "Google", "Quad9", "CleanBrowsing", "Control D", "NextDNS"),
             onSelect = onDnsSelect
         )
-        ToggleOption(
-            title = "Stabilkan Network",
-            subtitle = "Prioritas koneksi stabil dan latency rendah",
-            checked = networkStable,
-            onClick = onNetworkStableToggle
-        )
-        ToggleOption(
-            title = "TCP",
-            subtitle = "Optimasi TCP stack",
-            checked = tcpEnabled,
-            onClick = onTcpToggle
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Stabilkan Network",
+                subtitle = "Prioritas koneksi stabil dan latency rendah",
+                checked = networkStable,
+                onClick = onNetworkStableToggle
+            )
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "TCP",
+                subtitle = "Optimasi TCP stack",
+                checked = tcpEnabled,
+                onClick = onTcpToggle
+            )
+        }
     }
 }
 
@@ -586,10 +655,44 @@ private fun MemoryCard(
         expanded = expanded,
         onClick = onClick
     ) {
-        ToggleOption("ZRAM", "Kompresi RAM virtual", zram, onZramToggle)
-        ToggleOption("LMK", "Low memory killer agresif", lmk, onLmkToggle)
-        ToggleOption("Swap", "Bantu paging saat RAM penuh", swap, onSwapToggle)
-        ToggleOption("Kill Background All", "Bersihkan proses latar belakang", killBackground, onKillBackgroundClick)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "ZRAM",
+                subtitle = "Kompresi RAM virtual",
+                checked = zram,
+                onClick = onZramToggle
+            )
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "LMK",
+                subtitle = "Low memory killer agresif",
+                checked = lmk,
+                onClick = onLmkToggle
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Swap",
+                subtitle = "Bantu paging saat RAM penuh",
+                checked = swap,
+                onClick = onSwapToggle
+            )
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Kill Background",
+                subtitle = "Bersihkan proses latar",
+                checked = killBackground,
+                onClick = onKillBackgroundClick
+            )
+        }
     }
 }
 
@@ -812,7 +915,22 @@ private fun ExpandableTweakCard(
                 )
             }
 
-            if (expanded) {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(tween(durationMillis = 130, easing = FastOutSlowInEasing)) +
+                        expandVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            expandFrom = Alignment.Top
+                        ),
+                exit = fadeOut(tween(durationMillis = 90, easing = FastOutSlowInEasing)) +
+                       shrinkVertically(
+                           animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing),
+                           shrinkTowards = Alignment.Top
+                       )
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1315,6 +1433,7 @@ private fun ModernDropdownItem(
 
 @Composable
 private fun ToggleOption(
+    modifier: Modifier = Modifier,
     title: String,
     subtitle: String,
     checked: Boolean,
@@ -1335,7 +1454,7 @@ private fun ToggleOption(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         color = bg,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
