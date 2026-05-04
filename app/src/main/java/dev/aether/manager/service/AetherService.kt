@@ -14,6 +14,7 @@ import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.getStringsForLanguage
 import dev.aether.manager.i18n.loadSavedLanguage
 import dev.aether.manager.util.RootEngine
+import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -133,6 +134,7 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private suspend fun applyOnBoot(context: Context) {
+        if (!SettingsPrefs.getApplyOnBoot(context)) return
 
         // ── Bootloop detection ────────────────────────────────────────────────
         // Simpan timestamp boot terakhir. Jika 3 boot berturut-turut dalam < 5 menit

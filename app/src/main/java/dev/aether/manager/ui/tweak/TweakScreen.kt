@@ -145,8 +145,9 @@ fun TweakScreen(
     }
 
     fun setTweakNow(key: String, value: Boolean) {
+        // vm.setTweak sudah masuk apply worker conflated. Jangan panggil applyAll lagi
+        // karena double-apply bikin root shell rebutan dan fitur terasa tidak stabil.
         vm.setTweak(key, value)
-        vm.applyAll()
     }
 
     fun setActiveProfileNow(profile: String) {
@@ -191,13 +192,12 @@ fun TweakScreen(
             }
         }
 
-        vm.applyAll()
+        vm.setProfile(profile)
     }
 
     fun setThermalProfileNow(profile: String) {
         thermalProfile = profile
-        vm.setProfile(profile)
-        vm.applyAll()
+        vm.setTweakStr("thermal_profile", profile)
     }
 
     if (rendererDialog) {
@@ -342,7 +342,16 @@ fun TweakScreen(
                 onClick = { toggleExpand("io") },
                 onSelect = {
                     ioScheduler = it
-                    setTweakNow("ioScheduler", it != "Auto")
+                    val schedulerValue = when (it) {
+                        "CFQ" -> "cfq"
+                        "Deadline" -> "deadline"
+                        "Noop" -> "noop"
+                        "BFQ" -> "bfq"
+                        "Maple" -> "maple"
+                        else -> ""
+                    }
+                    vm.setTweakStr("io_scheduler", schedulerValue)
+                    vm.setTweak("io_latency_opt", it != "Auto")
                 }
             )
 

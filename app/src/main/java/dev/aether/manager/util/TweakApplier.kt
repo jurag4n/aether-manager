@@ -535,24 +535,17 @@ _end "gpu_freq"
         if (t["lmk_aggressive"] == "1") {
             append("write 18432,23040,27648,32256,55296,80640 /sys/module/lowmemorykiller/parameters/minfree\n")
             append("write 0,100,200,300,900,906 /sys/module/lowmemorykiller/parameters/adj\n")
-            append("setprop ro.lmk.low 1001 2>/dev/null; _A=\${'$'}((_A+1))\n")
-            append("setprop ro.lmk.medium 800 2>/dev/null; _A=\${'$'}((_A+1))\n")
-            append("setprop ro.lmk.critical 0 2>/dev/null; _A=\${'$'}((_A+1))\n")
+            append("setprop ro.lmk.low 1001 2>/dev/null; _A=${'$'}((_A+1))\n")
+            append("setprop ro.lmk.medium 800 2>/dev/null; _A=${'$'}((_A+1))\n")
+            append("setprop ro.lmk.critical 0 2>/dev/null; _A=${'$'}((_A+1))\n")
         }
 
         if (t["zram"] == "1") {
             val size = t["zram_size"] ?: "1073741824"
             val algo = t["zram_algo"] ?: "lz4"
             append("""
-# zram setup — TIDAK pakai write() helper karena [ -f ] gagal pada sysfs special nodes
-# Urutan wajib: swapoff → reset (disksize=0) → comp_algorithm → disksize → mkswap → swapon
-# Perbaikan: Tambahkan pengecekan error di setiap langkah untuk mencegah bootloop
-swapoff /dev/block/zram0 2>/dev/null || true
-write 0 /sys/block/zram0/disksize 2>/dev/null || true
-write $algo /sys/block/zram0/comp_algorithm 2>/dev/null || true
-write $size /sys/block/zram0/disksize 2>/dev/null || true
-mkswap /dev/block/zram0 2>/dev/null || true
-swapon /dev/block/zram0 2>/dev/null || true
+# zram setup — aman: swapoff → reset → comp_algorithm → disksize → mkswap → swapon
+# Tidak memakai write() helper untuk sysfs special nodes, dan tidak melakukan double-setup.
 _zram_ok=0
 for _zdev in /dev/zram0 /dev/zram1; do
   [ -b "${'$'}_zdev" ] || continue
@@ -609,10 +602,10 @@ done
         }
 
         if (t["kill_background"] == "1") {
-            append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=\${'$'}((_A+1)) || _F=\${'$'}((_F+1))\n")
-            append("pm trim-caches 0 2>/dev/null && _A=\${'$'}((_A+1)) || _S=\${'$'}((_S+1))\n")
+            append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))\n")
+            append("pm trim-caches 0 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
             // Actual kill background processes — ini yang utama, am kill-all matikan semua cached proses
-            append("am kill-all 2>/dev/null && _A=\${'$'}((_A+1)) || _S=\${'$'}((_S+1))\n")
+            append("am kill-all 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
             // Fallback: kill proses cached di /proc yang bukan system UID (>= 10000)
             append("""
 for _pid in /proc/[0-9]*; do
@@ -698,8 +691,8 @@ write fq /proc/sys/net/core/default_qdisc
 """)
             }
             if (t["network_stable"] == "1") {
-                append("printf '4096 87380 16777216' > /proc/sys/net/ipv4/tcp_rmem 2>/dev/null && _A=\${'$'}((_A+1)) || _F=\${'$'}((_F+1))\n")
-                append("printf '4096 65536 16777216' > /proc/sys/net/ipv4/tcp_wmem 2>/dev/null && _A=\${'$'}((_A+1)) || _F=\${'$'}((_F+1))\n")
+                append("printf '4096 87380 16777216' > /proc/sys/net/ipv4/tcp_rmem 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))\n")
+                append("printf '4096 65536 16777216' > /proc/sys/net/ipv4/tcp_wmem 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))\n")
                 append("write 16777216 /proc/sys/net/core/rmem_max\n")
                 append("write 16777216 /proc/sys/net/core/wmem_max\n")
                 append("write 3 /proc/sys/net/ipv4/tcp_fastopen\n")
@@ -708,10 +701,14 @@ write fq /proc/sys/net/core/default_qdisc
                 append("write 1 /proc/sys/net/ipv4/tcp_sack\n")
             }
             if (dnsHost != null) {
-                append("settings put global private_dns_mode hostname 2>/dev/null && _A=\${'$'}((_A+1))\n")
-                append("settings put global private_dns_specifier $dnsHost 2>/dev/null && _A=\${'$'}((_A+1))\n")
+                append("settings put global private_dns_mode hostname 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))\n")
+                append("settings put global private_dns_specifier $dnsHost 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))\n")
+            } else if (provider.equals("Off", ignoreCase = true)) {
+                append("settings put global private_dns_mode off 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))\n")
             } else {
-                append("settings put global private_dns_mode off 2>/dev/null; _A=\${'$'}((_A+1))\n")
+                // Provider kosong = jangan ganggu Private DNS user. Ini mencegah koneksi berubah
+                // setiap apply tweak ketika user tidak memilih DNS.
+                append("_S=${'$'}((_S+1))\n")
             }
             append("_end \"network\"\n")
         }
@@ -797,7 +794,7 @@ fi
         }
 
         if (t["doze"] == "1") {
-            append("dumpsys deviceidle enable deep 2>/dev/null; _A=\${'$'}((_A+1))\n")
+            append("dumpsys deviceidle enable deep 2>/dev/null; _A=${'$'}((_A+1))\n")
         }
 
         append("_end \"misc\"\n")

@@ -274,7 +274,7 @@ object RootEngine {
     suspend fun getMonitorState(): dev.aether.manager.data.MonitorState =
         withContext(Dispatchers.IO) {
             // ── CPU ──────────────────────────────────────────────────────────
-            val cpuR = sh("""
+            val cpuR = shLocal("""
                 line1=${'$'}(grep -m1 "^cpu " /proc/stat); sleep 0.5; line2=${'$'}(grep -m1 "^cpu " /proc/stat)
                 set -- ${'$'}line1; u1=${'$'}2;n1=${'$'}3;s1=${'$'}4;i1=${'$'}5;w1=${'$'}6;hi1=${'$'}7;si1=${'$'}8
                 total1=${'$'}((u1+n1+s1+i1+w1+hi1+si1)); idle1=${'$'}((i1+w1))
@@ -307,7 +307,7 @@ object RootEngine {
             val cpuTempC  = normRaw(cpuM["cpu_temp"]?.toLongOrNull() ?: 0L)
 
             // ── GPU ──────────────────────────────────────────────────────────
-            val gpuR = sh("""
+            val gpuR = shLocal("""
                 gpu_usage=0
                 if [ -f /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage ]; then
                   val=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null | tr -cd '0-9' | cut -c1-3)
@@ -374,7 +374,7 @@ object RootEngine {
             val gpuName   = gpuM["gpu_name"] ?: ""
 
             // ── Memory ───────────────────────────────────────────────────────
-            val memR = sh("""
+            val memR = shLocal("""
                 mt=${'$'}(awk '/^MemTotal:/{print ${'$'}2}' /proc/meminfo)
                 ma=${'$'}(awk '/^MemAvailable:/{print ${'$'}2}' /proc/meminfo)
                 st=${'$'}(awk '/^SwapTotal:/{print ${'$'}2}' /proc/meminfo)
@@ -391,7 +391,7 @@ object RootEngine {
             val swapUsedMb  = memM["swap_used_mb"]?.toLongOrNull()  ?: 0L
 
             // ── Battery ──────────────────────────────────────────────────────
-            val batR = sh("""
+            val batR = shLocal("""
                 echo bat_level=${'$'}(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 0)
                 echo bat_temp=${'$'}(cat /sys/class/power_supply/battery/temp 2>/dev/null || cat /sys/class/power_supply/Battery/temp 2>/dev/null || echo 0)
                 bat_ua=0
@@ -416,7 +416,7 @@ object RootEngine {
             val batStatus  = batM["bat_status"] ?: "Unknown"
 
             // ── Thermal ──────────────────────────────────────────────────────
-            val thermalR = sh("""
+            val thermalR = shLocal("""
                 for _z in /sys/class/thermal/thermal_zone*; do
                   [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
                   _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
@@ -454,7 +454,7 @@ object RootEngine {
             }
 
             // ── Uptime ────────────────────────────────────────────────────────
-            val uptimeR = sh("""
+            val uptimeR = shLocal("""
                 up=${'$'}(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)
                 echo uptime=${'$'}(printf "%dd_%dh_%dm" ${'$'}((up/86400)) ${'$'}(((up%86400)/3600)) ${'$'}(((up%3600)/60)))
             """.trimIndent())

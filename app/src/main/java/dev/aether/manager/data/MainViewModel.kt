@@ -148,6 +148,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 loadAll()
             } else {
                 _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
+                // Monitor Home tidak boleh bergantung root. Tetap start loop agar CPU/RAM/Battery
+                // terbaca via local shell/fallback meskipun user belum grant root.
+                startMonitorLoop()
             }
             startApplyWorker()
         }
@@ -215,6 +218,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun startApplyWorker() {
         applyWorkerJob = viewModelScope.launch(Dispatchers.IO) {
             for (signal in applyChannel) {
+                // Coalesce cepat beberapa toggle/dropdown agar apply tidak dobel dan root shell tidak rebutan.
+                delay(180)
+                while (applyChannel.tryReceive().isSuccess) { }
                 val current = _tweaks.value
                 val map = tweaksStateToMap(current)
                 executeApply(map)
@@ -278,6 +284,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (result.success) {
                 AdScheduler.tryShowAfterAction()
             }
+
+            // Refresh ringan setelah apply agar Home monitor langsung sinkron, bukan menunggu loop.
+            runCatching { _monitorState.value = RootEngine.getMonitorState() }
 
             viewModelScope.launch {
                 autoBackupIfEnabled()

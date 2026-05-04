@@ -66,7 +66,8 @@ object RootManager {
                     ok
                 }
                 else -> {
-                    _cachedRoot = false
+                    // Jangan cache false saat hanya quick-check. Kalau di-cache false,
+                    // monitor/apply berikutnya bisa gagal meminta root lagi sampai cache direset.
                     false
                 }
             }
