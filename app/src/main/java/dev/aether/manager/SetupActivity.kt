@@ -774,6 +774,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val s = LocalStrings.current
     val density = LocalDensity.current
 
+    // Track the current root permission state. Initially assume IDLE until checked.
     var rootState by remember { mutableStateOf(PermState.IDLE) }
     var notifState by remember { mutableStateOf(PermState.IDLE) }
     var writeState by remember { mutableStateOf(PermState.IDLE) }
@@ -781,6 +782,27 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     var batteryState by remember { mutableStateOf(PermState.IDLE) }
     var usageState by remember { mutableStateOf(PermState.IDLE) }
     var buttonRunning by remember { mutableStateOf(false) }
+
+    /**
+     * Immediately check whether the app already has root access when the
+     * setup screen is first composed. Without this check, the user needs to
+     * manually trigger the root permission card every time the screen is
+     * displayed even if root has already been granted (for example when
+     * returning to the app after granting root from a third‑party manager).
+     *
+     * We perform the potentially blocking shell checks on the IO dispatcher
+     * and update [rootState] on the main thread once the result is known.
+     */
+    LaunchedEffect(Unit) {
+        // Do not request root here; just check if we currently have it.
+        val hasRoot = withContext(Dispatchers.IO) {
+            // Check cached flag first and perform a quick shell check if necessary.
+            RootManager.isRootGranted || RootManager.ensureRootShellSync(requestIfNeeded = false)
+        }
+        if (hasRoot) {
+            rootState = PermState.GRANTED
+        }
+    }
 
     val includeStorage = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
 
