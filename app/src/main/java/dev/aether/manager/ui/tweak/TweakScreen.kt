@@ -425,7 +425,7 @@ private fun AdaptiveTweakGridRow(
             }
             else -> {
                 Row(
-                    modifier = modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     left(Modifier.weight(1f))
