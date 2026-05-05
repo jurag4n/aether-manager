@@ -62,6 +62,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -94,7 +95,7 @@ fun TweakScreen(
 
     var expandedCard by rememberSaveable { mutableStateOf<String?>(null) }
     var deviceInfoExpanded by rememberSaveable { mutableStateOf(false) }
-    var activeProfile by rememberSaveable { mutableStateOf("balance") }
+    var activeProfile by rememberSaveable { mutableStateOf(tweaks.profile) }
     var thermalProfile by rememberSaveable {
         mutableStateOf(if (tweaks.thermalProfile.isBlank()) "default" else tweaks.thermalProfile)
     }
@@ -104,14 +105,14 @@ fun TweakScreen(
     }
     var minCpuFreq by rememberSaveable { mutableStateOf("300") }
     var maxCpuFreq by rememberSaveable { mutableStateOf("2200") }
-    var cpuFreqLocked by rememberSaveable { mutableStateOf(false) }
+    var cpuFreqLocked by rememberSaveable { mutableStateOf(tweaks.cpuFreqLock) }
 
     var gpuProfile by rememberSaveable {
         mutableStateOf(if (tweaks.gpuThrottleOff) "Performance" else "Balanced")
     }
     var minGpuFreq by rememberSaveable { mutableStateOf("300") }
     var maxGpuFreq by rememberSaveable { mutableStateOf("850") }
-    var gpuLocked by rememberSaveable { mutableStateOf(false) }
+    var gpuLocked by rememberSaveable { mutableStateOf(tweaks.gpuFreqLock) }
     var renderer by rememberSaveable { mutableStateOf("OpenGL") }
     var rendererDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -120,7 +121,7 @@ fun TweakScreen(
             if (tweaks.dnsProvider.isBlank()) "Off" else tweaks.dnsProvider
         )
     }
-    var networkStable by rememberSaveable { mutableStateOf(false) }
+    var networkStable by rememberSaveable { mutableStateOf(tweaks.networkStable) }
     var tcpEnabled by rememberSaveable { mutableStateOf(tweaks.tcpBbr) }
 
     var swapEnabled by rememberSaveable { mutableStateOf(tweaks.swap) }
@@ -131,6 +132,26 @@ fun TweakScreen(
     }
     var schedBoostMode by rememberSaveable {
         mutableStateOf(if (tweaks.schedboost) "Game" else "Off")
+    }
+
+    LaunchedEffect(tweaks) {
+        activeProfile = tweaks.profile.ifBlank { "balance" }
+        thermalProfile = tweaks.thermalProfile.ifBlank { "default" }
+        cpuFreqLocked = tweaks.cpuFreqLock
+        gpuLocked = tweaks.gpuFreqLock
+        networkStable = tweaks.networkStable
+        tcpEnabled = tweaks.tcpBbr
+        swapEnabled = tweaks.swap
+        killBackgroundActive = tweaks.killBackground
+        dnsProvider = tweaks.dnsProvider.ifBlank { "Off" }
+        ioScheduler = if (tweaks.ioScheduler.isBlank()) "Auto" else normalizeLabel(tweaks.ioScheduler)
+        schedBoostMode = if (tweaks.schedboost) "Game" else "Off"
+        cpuGovernor = when {
+            tweaks.cpuGovernor.contains("performance", ignoreCase = true) -> "Performance"
+            tweaks.cpuGovernor.contains("powersave", ignoreCase = true) -> "Battery"
+            else -> "Schedutil"
+        }
+        gpuProfile = if (tweaks.gpuThrottleOff) "Performance" else "Balanced"
     }
 
     fun toggleExpand(key: String) {
@@ -425,7 +446,7 @@ private fun AdaptiveTweakGridRow(
             }
             else -> {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     left(Modifier.weight(1f))
@@ -613,7 +634,7 @@ private fun NetworkCard(
         DropdownAction(
             title = "DNS Private",
             value = dnsProvider,
-            options = listOf("Off", "Cloudflare", "Google", "Quad9", "CleanBrowsing", "Control D", "NextDNS"),
+            options = listOf("Off", "AdGuard", "Cloudflare", "Google", "CleanBrowsing"),
             onSelect = onDnsSelect
         )
         Row(
@@ -1302,6 +1323,12 @@ private fun AppProfileCard(onClick: () -> Unit) {
         tonalElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
             .height(96.dp)
     ) {
         Row(

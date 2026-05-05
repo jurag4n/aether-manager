@@ -670,12 +670,10 @@ done
         }
         val dnsHost = if (provider.isNotEmpty() && provider != "Off") {
             when (provider.lowercase()) {
+                "adguard"         -> "dns.adguard.com"
                 "cloudflare"      -> "one.one.one.one"
                 "google"          -> "dns.google"
-                "quad9"           -> "dns.quad9.net"
                 "cleanbrowsing"   -> "family-filter-dns.cleanbrowsing.org"
-                "control d", "controld" -> "p2.freedns.controld.com"
-                "nextdns"         -> "dns.nextdns.io"
                 else               -> provider
             }.filter { it.isLetterOrDigit() || it == '.' || it == '-' }
         } else null

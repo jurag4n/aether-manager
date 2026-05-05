@@ -9,7 +9,7 @@ import dev.aether.manager.util.RootManager
 // AdBlock detection — mendeteksi aplikasi atau tool yang benar-benar memblokir iklan.
 //
 // Yang TIDAK di-flag:
-//   - Private DNS ke provider seperti AdGuard DNS, NextDNS, Cloudflare, dll
+//   - Private DNS ke provider seperti AdGuard DNS / CleanBrowsing
 //     → Sekarang tetap di-flag jika hostname dikenal sebagai DNS pemblokir iklan
 //   - VPN biasa (WireGuard, OpenVPN, dsb) tanpa komponen adblock
 //
@@ -24,13 +24,9 @@ private val PRIVATE_DNS_ADBLOCK_HOSTS = setOf(
     "family.adguard-dns.com",
     "unfiltered.adguard-dns.com",
     "dns-family.adguard.com",
-    "dns.nextdns.io",
     "base.dns.mullvad.net",
     "adblock.dns.mullvad.net",
     "family.dns.mullvad.net",
-    "p2.freedns.controld.com",
-    "p2.freedns.controld.dev",
-    "freedns.controld.com",
     "doh.cleanbrowsing.org",
     "security-filter-dns.cleanbrowsing.org",
     "family-filter-dns.cleanbrowsing.org",
@@ -166,7 +162,7 @@ object AdBlockChecker {
 
         return PRIVATE_DNS_ADBLOCK_HOSTS.any { known ->
             host == known || host.endsWith(".$known") || known.endsWith(host)
-        } || host.contains("adguard") || host.contains("nextdns") || host.contains("controld") || host.contains("cleanbrowsing")
+        } || host.contains("adguard") || host.contains("cleanbrowsing")
     }
 
     /**

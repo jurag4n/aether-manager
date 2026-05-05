@@ -327,7 +327,7 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             ) { screen ->
                 when (screen) {
                     Screen.HOME -> HomeScreen(vm)
-                    Screen.TWEAK -> TweakScreen(vm)
+                    Screen.TWEAK -> TweakScreen(vm, onOpenAppProfile = { currentScreen = Screen.APPS })
                     Screen.APPS -> AppProfileScreen(apVm)
                 }
             }
@@ -396,23 +396,9 @@ private fun FloatingBottomCluster(
                 onSlidingChange = { isNavSliding = it }
             )
 
-            AnimatedVisibility(
-                visible = !isNavSliding,
-                enter = fadeIn(tween(120, easing = FastOutSlowInEasing)) + expandHorizontally(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    expandFrom = Alignment.Start
-                ),
-                exit = shrinkHorizontally(
-                    animationSpec = tween(110, easing = FastOutSlowInEasing),
-                    shrinkTowards = Alignment.Start
-                ) + fadeOut(tween(90, easing = FastOutSlowInEasing))
-            ) {
+            if (!isNavSliding) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(modifier = Modifier.width(10.dp))
-
                     FloatingUtilityBar(
                         onSettingsClick = onSettingsClick,
                         onPowerClick = onPowerClick
@@ -434,8 +420,8 @@ private fun FloatingUtilityBar(
     Surface(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        shadowElevation = 20.dp,
-        tonalElevation = 8.dp,
+        shadowElevation = 8.dp,
+        tonalElevation = 4.dp,
         modifier = modifier
     ) {
         Row(
@@ -496,8 +482,8 @@ private fun FloatingBottomBar(
     Surface(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        shadowElevation = 20.dp,
-        tonalElevation = 8.dp,
+        shadowElevation = 8.dp,
+        tonalElevation = 4.dp,
         modifier = modifier
             .scale(scaleX = 1f, scaleY = capsuleScale)
     ) {

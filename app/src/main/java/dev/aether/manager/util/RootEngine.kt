@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object RootEngine {
-    const val CONF_DIR        = "/data/local/tmp/aether"
+    const val CONF_DIR        = "/data/adb/aether"
     const val TWEAKS_CONF     = "$CONF_DIR/tweaks.conf"
     const val PROFILE_FILE    = "$CONF_DIR/profile"
     const val SAFE_MODE_FILE  = "$CONF_DIR/safe_mode"
@@ -88,7 +88,7 @@ object RootEngine {
     // ── File helpers (butuh root) ─────────────────────────────────────────────
 
     suspend fun ensureConfDir() {
-        sh("mkdir -p '$CONF_DIR' && chmod 700 '$CONF_DIR'")
+        sh("mkdir -p '$CONF_DIR' && chmod 700 '$CONF_DIR' && chown 0:0 '$CONF_DIR'")
     }
 
     suspend fun readFile(path: String): String =
@@ -96,7 +96,9 @@ object RootEngine {
 
     suspend fun writeFile(path: String, content: String): Boolean {
         val escaped = content.replace("'", "'\\''")
-        return sh("printf '%s' '$escaped' > $path").exitCode == 0
+        val dir = path.substringBeforeLast('/', "")
+        val mkdir = if (dir.isNotBlank()) "mkdir -p '$dir' && " else ""
+        return sh("${mkdir}printf '%s' '$escaped' > '$path'").exitCode == 0
     }
 
     suspend fun fileExists(path: String): Boolean =
@@ -397,10 +399,51 @@ object RootEngine {
                 echo gpu_name=${'$'}gpu_name
             """.trimIndent())
             val gpuM       = parseKv(gpuR.stdout)
-            val gpuUsage   = gpuM["gpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0
-            val gpuFreqMhz = gpuM["gpu_freq"]?.toLongOrNull() ?: 0L
-            val gpuTempC   = normRaw(gpuM["gpu_temp"]?.toLongOrNull() ?: 0L)
-            val gpuName    = gpuM["gpu_name"] ?: ""
+            var gpuUsage   = gpuM["gpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0
+            var gpuFreqMhz = gpuM["gpu_freq"]?.toLongOrNull() ?: 0L
+            var gpuTempC   = normRaw(gpuM["gpu_temp"]?.toLongOrNull() ?: 0L)
+            var gpuName    = gpuM["gpu_name"] ?: ""
+
+            // Banyak node GPU (KGSL/Mali/GED) butuh root read di beberapa ROM.
+            // Fallback ini tidak memunculkan prompt root; hanya dipakai kalau shell root sudah granted/cached.
+            if (gpuFreqMhz <= 0L || gpuName.isBlank()) {
+                val rootGpuR = shRootCached("""
+                    gpu_usage=0
+                    for _u in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/ged/hal/gpu_utilization /sys/kernel/gpu/gpu_utilization /sys/class/misc/mali0/device/utilisation /proc/gpufreq/gpufreq_power_dump; do
+                      [ -f "${'$'}_u" ] || continue
+                      val=${'$'}(cat "${'$'}_u" 2>/dev/null | tr -cd '0-9 ' | awk '{print ${'$'}1}' | cut -c1-3)
+                      [ -n "${'$'}val" ] && { gpu_usage=${'$'}val; break; }
+                    done
+                    [ "${'$'}gpu_usage" -gt 100 ] 2>/dev/null && gpu_usage=100
+                    echo gpu_usage=${'$'}gpu_usage
+                    gpu_freq=0
+                    for _f in /sys/class/kgsl/kgsl-3d0/gpuclk /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq /sys/kernel/ged/hal/current_freqency /sys/kernel/ged/hal/current_freq /proc/gpufreq/gpufreq_opp_freq /proc/gpufreqv2/gpu_working_opp_table /sys/class/devfreq/*gpu*/cur_freq /sys/class/devfreq/*mali*/cur_freq /sys/class/devfreq/*g3d*/cur_freq; do
+                      [ -f "${'$'}_f" ] || continue
+                      val=${'$'}(cat "${'$'}_f" 2>/dev/null | tr -cd '0-9' | head -c 12)
+                      [ -n "${'$'}val" ] || continue
+                      if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
+                      [ "${'$'}gpu_freq" -gt 0 ] 2>/dev/null && break
+                    done
+                    echo gpu_freq=${'$'}gpu_freq
+                    gpu_temp_raw=0
+                    for _z in /sys/class/thermal/thermal_zone*; do
+                      [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
+                      _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                      case "${'$'}_n" in *gpu*|*adreno*|*mali*|*g3d*|*mfg*|*ged*) _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null); [ -n "${'$'}_v" ] && { gpu_temp_raw=${'$'}_v; break; };; esac
+                    done
+                    echo gpu_temp=${'$'}gpu_temp_raw
+                    gpu_name=""
+                    [ -f /sys/class/kgsl/kgsl-3d0/gpu_model ] && gpu_name=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpu_model 2>/dev/null | tr -d '\n')
+                    [ -z "${'$'}gpu_name" ] && [ -d /sys/class/kgsl/kgsl-3d0 ] && gpu_name="Adreno GPU"
+                    [ -z "${'$'}gpu_name" ] && { [ -d /sys/class/misc/mali0 ] || ls /sys/class/devfreq/*mali* >/dev/null 2>&1; } && gpu_name="Mali GPU"
+                    echo gpu_name=${'$'}gpu_name
+                """.trimIndent())
+                val rootGpuM = parseKv(rootGpuR.stdout)
+                gpuUsage = maxOf(gpuUsage, rootGpuM["gpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0)
+                if (gpuFreqMhz <= 0L) gpuFreqMhz = rootGpuM["gpu_freq"]?.toLongOrNull() ?: 0L
+                if (!validTemp(gpuTempC)) gpuTempC = normRaw(rootGpuM["gpu_temp"]?.toLongOrNull() ?: 0L)
+                if (gpuName.isBlank()) gpuName = rootGpuM["gpu_name"] ?: ""
+            }
 
             // ── Memory ───────────────────────────────────────────────────────
             val memR = shLocal("""

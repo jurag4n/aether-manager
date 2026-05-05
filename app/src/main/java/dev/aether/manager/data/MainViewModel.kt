@@ -63,6 +63,7 @@ data class TweaksState(
     val killBackground: Boolean = false,
     val dnsProvider: String = "",
     val cpuFreqLock: Boolean = false,
+    val profile: String = "balance",
 )
 
 data class MonitorState(
@@ -226,8 +227,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun loadTweaks() {
-        val map = RootEngine.readTweaksConf()
-        _tweaks.value = mapToTweaksState(map)
+        val rootMap = RootEngine.readTweaksConf()
+        val localMap = readLocalTweaks()
+        val merged = if (rootMap.isEmpty()) localMap else localMap + rootMap
+        if (rootMap.isEmpty() && merged.isNotEmpty() && RootManager.isRootGranted) {
+            TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, merged)
+        }
+        _tweaks.value = mapToTweaksState(merged)
+    }
+
+    private fun localPrefs() = getApplication<Application>()
+        .getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
+
+    private fun readLocalTweaks(): Map<String, String> =
+        localPrefs().getString("saved_tweaks_conf", "").orEmpty()
+            .lineSequence()
+            .mapNotNull { line ->
+                val idx = line.indexOf('=')
+                if (idx <= 0) null else line.substring(0, idx) to line.substring(idx + 1)
+            }
+            .toMap()
+
+    private fun saveLocalTweaks(map: Map<String, String>) {
+        val text = map.entries.joinToString("\n") { (k, v) ->
+            "${k}=${v.replace("\n", " ").replace("\r", " ")}"
+        }
+        localPrefs().edit().putString("saved_tweaks_conf", text).apply()
     }
 
     private fun startApplyWorker() {
@@ -245,11 +270,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setTweak(key: String, value: Boolean) {
         _tweaks.value = applyTweakToState(_tweaks.value, key, value)
+        saveLocalTweaks(tweaksStateToMap(_tweaks.value))
         applyChannel.trySend(Unit)
     }
 
     fun setTweakStr(key: String, value: String) {
         _tweaks.value = applyTweakStrToState(_tweaks.value, key, value)
+        saveLocalTweaks(tweaksStateToMap(_tweaks.value))
         applyChannel.trySend(Unit)
     }
 
@@ -295,6 +322,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return
             }
 
+            saveLocalTweaks(map)
             val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
 
             _applyingTweak.value = false
@@ -336,13 +364,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             RootEngine.writeFile(RootEngine.PROFILE_FILE, profile)
 
-            val newState = _tweaks.value.copy()
+            val newState = _tweaks.value.copy(profile = profile)
             val map = tweaksStateToMap(newState).toMutableMap()
             map["profile"] = profile
-
+            saveLocalTweaks(map)
             val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
 
             _tweaks.value = mapToTweaksState(map)
+            saveLocalTweaks(map)
 
             _applyingTweak.value = false
             _applyStatus.value = ApplyStatus(
@@ -408,7 +437,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         put("kill_background",   if (s.killBackground)   "1" else "0")
         put("dns_provider",      s.dnsProvider)
         put("cpu_freq_lock",     if (s.cpuFreqLock)      "1" else "0")
-        put("profile", RootEngine.readProfileSync())
+        put("profile", s.profile)
     }
 
     private fun mapToTweaksState(map: Map<String, String>) = TweaksState(
@@ -451,6 +480,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         killBackground   = map["kill_background"]   == "1",
         dnsProvider      = map["dns_provider"]      ?: "",
         cpuFreqLock      = map["cpu_freq_lock"]      == "1",
+        profile          = map["profile"]             ?: "balance",
     )
 
     private fun applyTweakToState(state: TweaksState, key: String, value: Boolean): TweaksState =
