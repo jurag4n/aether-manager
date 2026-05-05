@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.aether.manager.util.RootManager
+import dev.aether.manager.i18n.getStringsForContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,8 @@ sealed class AppsUiState {
 }
 
 class AppProfileViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val strings get() = getStringsForContext(getApplication())
 
     private val _state = MutableStateFlow<AppsUiState>(AppsUiState.Loading)
     val state: StateFlow<AppsUiState> = _state.asStateFlow()
@@ -56,9 +59,9 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
             _state.value = AppsUiState.Ready(apps, emptyMap(), false)
             syncProfilesIfRootReady()
         } catch (e: TimeoutCancellationException) {
-            _state.value = AppsUiState.Error("Timeout memuat daftar aplikasi")
+            _state.value = AppsUiState.Error(strings.appProfileLoadTimeout)
         } catch (e: Exception) {
-            _state.value = AppsUiState.Error(e.message ?: "Gagal memuat aplikasi")
+            _state.value = AppsUiState.Error(e.message ?: strings.appProfileLoadFailed)
         } finally {
             loading = false
         }
@@ -86,7 +89,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
 
     private suspend fun ensureRootReady(showSnack: Boolean = true): Boolean {
         val ready = RootManager.isRootGranted || RootManager.isRooted() || RootManager.requestRoot()
-        if (!ready && showSnack) snack("Root belum aktif — grant root dulu")
+        if (!ready && showSnack) snack(strings.rootGrantFirst)
         return ready
     }
 
@@ -126,7 +129,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
             }
             _editingProfile.value = null
         } catch (e: Exception) {
-            snack("Gagal simpan: ${e.message}")
+            snack(strings.appProfileSaveFailed.format(e.message ?: "-"))
         } finally {
             _savingPkg.value = null
         }
@@ -138,7 +141,7 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
         runCatching {
             if (enable) AppProfileRepository.startMonitor() else AppProfileRepository.stopMonitor()
         }.onFailure { e ->
-            snack("Gagal mengubah monitor: ${e.message}")
+            snack(strings.appProfileMonitorFailed.format(e.message ?: "-"))
             return@launch
         }
 

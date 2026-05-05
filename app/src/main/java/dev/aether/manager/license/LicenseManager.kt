@@ -6,6 +6,7 @@ import dev.aether.manager.NativeAether
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import dev.aether.manager.i18n.getStringsForContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -47,6 +48,7 @@ object LicenseManager {
 
     suspend fun activate(ctx: Context, key: String): ActivateResult =
         withContext(Dispatchers.IO) {
+            val strings = getStringsForContext(ctx)
             try {
                 val deviceId = getDeviceId(ctx)
                 val url  = URL(activateUrl())
@@ -75,12 +77,12 @@ object LicenseManager {
                     LicensePrefs.save(ctx, key.trim().uppercase(), expiresAt)
                     ActivateResult.Success(
                         licenseKey = key.trim().uppercase(),
-                        message    = json.optString("message", "License berhasil diaktifkan!"),
+                        message    = json.optString("message", strings.licenseActivationSuccessMessage),
                         expiresAt  = expiresAt
                     )
                 } else {
                     ActivateResult.Failure(
-                        json.optString("error", "License tidak valid atau sudah digunakan")
+                        json.optString("error", strings.licenseActivationInvalidMessage)
                     )
                 }
             } catch (e: Exception) {

@@ -58,6 +58,18 @@ fun saveLanguage(context: Context, language: AppLanguage) {
     getPrefs(context).edit().putString(KEY_LANGUAGE, language.code).apply()
 }
 
+
+fun getStringsForContext(context: Context): AppStrings =
+    getStringsForLanguage(
+        loadSavedLanguage(context)
+            ?: AppLanguage.fromSystemLocale(
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N)
+                    context.resources.configuration.locales[0]
+                else
+                    @Suppress("DEPRECATION") context.resources.configuration.locale
+            )
+    )
+
 // ── CompositionLocal ──────────────────────────────────────────────────────────
 
 /** Exposes the current AppLanguage so any composable can read or change it. */

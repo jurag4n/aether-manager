@@ -10,6 +10,7 @@ import dev.aether.manager.util.RootManager
 import dev.aether.manager.util.RootEngine
 import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
+import dev.aether.manager.i18n.getStringsForContext
 import dev.aether.manager.ads.AdScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -107,6 +108,8 @@ data class ApplyStatus(
 
 // ─────────────────────────────────────────────────────────────────────────────
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val strings get() = getStringsForContext(getApplication())
 
     // ── Device info ───────────────────────────────────────────────────────────
     private val _deviceInfo = MutableStateFlow<UiState<DeviceInfo>>(UiState.Loading)
@@ -317,8 +320,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         try {
             if (!ensureRootReady()) {
                 _applyingTweak.value = false
-                _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Root belum aktif")
-                snack("Root belum aktif — grant root dulu")
+                _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = strings.rootGrantFirst)
+                snack(strings.rootGrantFirst)
                 return
             }
 
@@ -357,8 +360,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         try {
             if (!ensureRootReady()) {
                 _applyingTweak.value = false
-                _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Root belum aktif")
-                snack("Root belum aktif — grant root dulu")
+                _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = strings.rootGrantFirst)
+                snack(strings.rootGrantFirst)
                 return@launch
             }
 
@@ -689,7 +692,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             getApplication<Application>().cacheDir?.deleteRecursively()
             getApplication<Application>().externalCacheDir?.deleteRecursively()
         } catch (e: Exception) {
-            snack("Gagal hapus cache: ${e.message}")
+            snack(strings.cacheClearFailed.format(e.message ?: "-"))
         }
     }
 

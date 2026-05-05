@@ -258,7 +258,7 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Daftar Aplikasi",
+                            text = s.appProfileListTitle,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -803,7 +803,7 @@ private fun AppListItem(
 
                     CompactProfileDropdown(
                         icon = Icons.Outlined.Speed,
-                        title = "Performance Profile",
+                        title = s.appProfilePerformanceProfile,
                         selectedLabel = profileModeLabel(currentProfile),
                         options = profileOptions.map { option ->
                             DropOption(
@@ -891,13 +891,13 @@ private fun ProfileSwitchRow(
                 verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 Text(
-                    text = "Enable Profile",
+                    text = s.appProfileEnableProfile,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = if (checked) "Aktif untuk aplikasi ini" else "Nonaktif untuk aplikasi ini",
+                    text = if (checked) s.appProfileEnabledForThisApp else s.appProfileDisabledForThisApp,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import dev.aether.manager.i18n.getStringsForContext
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
@@ -115,7 +116,7 @@ object PaymentManager {
                     )
                 )
             } else {
-                CreateOrderResult.Error(json.optString("error", "Gagal membuat order"))
+                CreateOrderResult.Error(json.optString("error", getStringsForContext(ctx).paymentCreateOrderFailed))
             }
         } catch (e: Exception) {
             CreateOrderResult.Error(e.message ?: "Network error")
@@ -134,7 +135,7 @@ object PaymentManager {
 
         while (true) {
             if (System.currentTimeMillis() - startTime > POLL_TIMEOUT_MS) {
-                val r = PollResult.Error("Timeout – belum ada konfirmasi dari admin dalam 30 menit")
+                val r = PollResult.Error(getStringsForContext(ctx).paymentPollTimeoutLong)
                 onPoll(r)
                 return@withContext r
             }
