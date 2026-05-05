@@ -143,17 +143,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ── Init ──────────────────────────────────────────────────────────────────
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            // Selalu start monitor & apply worker lebih dulu agar CPU/RAM/Battery
+            // terbaca bahkan sebelum status root diketahui.
+            startMonitorLoop()
+            startApplyWorker()
+
             if (ensureRootReady(requestIfNeeded = false)) {
                 _deviceInfo.value = UiState.Loading
                 loadAll()
             } else {
+                // Root belum ready — tampilkan fallback info dulu.
+                // onRootGranted() akan dipanggil dari luar setelah user grant.
                 _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
-                // Monitor Home tidak boleh bergantung root. Tetap start loop agar CPU/RAM/Battery
-                // terbaca via local shell/fallback meskipun user belum grant root.
-                startMonitorLoop()
             }
-            startApplyWorker()
         }
+    }
+
+    /**
+     * Dipanggil dari MainActivity setelah root berhasil di-grant
+     * (mis. setelah kembali dari SetupActivity atau user tap "Grant Root" di Settings).
+     */
+    fun onRootGranted() = viewModelScope.launch(Dispatchers.IO) {
+        RootManager.markGranted()
+        _rootGranted.value = true
+        if (!monitorStarted) startMonitorLoop()
+        _deviceInfo.value = UiState.Loading
+        loadAll()
     }
 
     // ── Public refresh ────────────────────────────────────────────────────────
@@ -239,8 +254,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun ensureRootReady(requestIfNeeded: Boolean = true): Boolean {
+        // Fast-path: cache sudah true
+        if (RootManager.isRootGranted) {
+            _rootGranted.value = true
+            if (!monitorStarted) startMonitorLoop()
+            return true
+        }
+
+        // Quick-check libsu tanpa membuka shell baru (tidak block UI)
         val alreadyReady = withContext(Dispatchers.IO) {
-            RootManager.isRootGranted || RootManager.ensureRootShellSync(requestIfNeeded = false)
+            RootManager.ensureRootShellSync(requestIfNeeded = false)
         }
         if (alreadyReady) {
             _rootGranted.value = true
@@ -249,11 +272,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         if (!requestIfNeeded) {
-            _rootGranted.value = false
+            // Jangan set _rootGranted false di sini — mungkin hanya cache belum terisi
             return false
         }
 
-        val granted = RootManager.requestRoot()
+        // Request root — ini trigger dialog SU manager, harus di IO thread
+        val granted = withContext(Dispatchers.IO) { RootManager.requestRoot() }
         _rootGranted.value = granted
         if (granted && !monitorStarted) startMonitorLoop()
         return granted

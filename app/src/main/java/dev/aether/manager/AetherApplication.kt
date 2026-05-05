@@ -112,12 +112,34 @@ class AetherApplication : Application() {
     }
 
     private fun initLibsu() {
-        Shell.enableVerboseLogging = false
+        Shell.enableVerboseLogging = BuildConfig.DEBUG
+
         Shell.setDefaultBuilder(
             Shell.Builder.create()
-                .setFlags(Shell.FLAG_REDIRECT_STDERR or Shell.FLAG_MOUNT_MASTER)
-                .setTimeout(10)
+                // FLAG_MOUNT_MASTER: akses /proc & /sys tanpa batasan mount namespace
+                // FLAG_REDIRECT_STDERR: stderr otomatis masuk ke result.err (tidak hilang)
+                // FLAG_NON_ROOT_SHELL: fallback ke non-root jika su tidak tersedia, bukan crash
+                .setFlags(
+                    Shell.FLAG_REDIRECT_STDERR or
+                    Shell.FLAG_MOUNT_MASTER or
+                    Shell.FLAG_NON_ROOT_SHELL
+                )
+                .setTimeout(15)
         )
+
+        // Restore root-granted state dari prefs agar tidak request ulang tiap launch.
+        // Jika setup_done=true maka user sudah pernah grant root di SetupActivity.
+        val prefs = getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean("setup_done", false)) {
+            // Verifikasi cepat di background — tidak block Application.onCreate()
+            java.util.concurrent.Executors.newSingleThreadExecutor().execute {
+                dev.aether.manager.util.RootManager.ensureRootShellSync(requestIfNeeded = false)
+                // Jika ternyata masih granted (shell sudah aktif), markGranted
+                if (Shell.isAppGrantedRoot() == true) {
+                    dev.aether.manager.util.RootManager.markGranted()
+                }
+            }
+        }
     }
 
     private fun initUnityAds() {

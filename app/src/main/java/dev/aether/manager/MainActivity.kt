@@ -49,7 +49,9 @@ import dev.aether.manager.ads.AdBlockChecker
 import dev.aether.manager.ads.AdBlockDetectedDialog
 import dev.aether.manager.ads.AdScheduler
 import dev.aether.manager.ads.InterstitialAdManager
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import dev.aether.manager.data.AppProfileViewModel
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.i18n.LocalStrings
@@ -97,6 +99,27 @@ class MainActivity : ComponentActivity() {
                 ProvideStrings {
                     AetherApp(vm, apVm, updateVm)
                 }
+            }
+        }
+    }
+
+    /**
+     * Saat MainActivity di-resume (termasuk kembali dari SetupActivity),
+     * cek apakah root sudah granted. Kalau iya dan ViewModel belum tahu,
+     * trigger loadAll() tanpa perlu re-request dialog.
+     */
+    override fun onResume() {
+        super.onResume()
+        if (dev.aether.manager.util.RootManager.isRootGranted) {
+            vm.refreshIfNeeded()
+        } else {
+            // Cek cepat tanpa dialog — kalau shell sudah granted (mis. baru dari Setup),
+            // langsung trigger onRootGranted
+            kotlinx.coroutines.MainScope().launch {
+                val ok = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    dev.aether.manager.util.RootManager.ensureRootShellSync(requestIfNeeded = false)
+                }
+                if (ok) vm.onRootGranted()
             }
         }
     }

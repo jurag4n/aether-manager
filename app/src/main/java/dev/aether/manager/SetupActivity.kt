@@ -200,12 +200,16 @@ private fun isUsageStatsGranted(ctx: Context): Boolean {
     }
 }
 
+/**
+ * Grant usage stats via libsu Shell.cmd — konsisten dengan root engine lainnya.
+ * Harus dipanggil dari IO thread (sudah di dalam scope.launch(Dispatchers.IO)).
+ */
 private fun grantUsageStatsViaRoot(pkg: String): Boolean {
     return try {
-        val proc = Runtime.getRuntime().exec(
-            arrayOf("su", "-c", "appops set $pkg GET_USAGE_STATS allow")
-        )
-        proc.waitFor() == 0
+        val result = com.topjohnwu.superuser.Shell.cmd(
+            "appops set $pkg GET_USAGE_STATS allow"
+        ).exec()
+        result.isSuccess
     } catch (_: Exception) {
         false
     }
@@ -774,7 +778,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     val s = LocalStrings.current
     val density = LocalDensity.current
 
-    // Track the current root permission state. Initially assume IDLE until checked.
     var rootState by remember { mutableStateOf(PermState.IDLE) }
     var notifState by remember { mutableStateOf(PermState.IDLE) }
     var writeState by remember { mutableStateOf(PermState.IDLE) }
@@ -782,27 +785,6 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
     var batteryState by remember { mutableStateOf(PermState.IDLE) }
     var usageState by remember { mutableStateOf(PermState.IDLE) }
     var buttonRunning by remember { mutableStateOf(false) }
-
-    /**
-     * Immediately check whether the app already has root access when the
-     * setup screen is first composed. Without this check, the user needs to
-     * manually trigger the root permission card every time the screen is
-     * displayed even if root has already been granted (for example when
-     * returning to the app after granting root from a third‑party manager).
-     *
-     * We perform the potentially blocking shell checks on the IO dispatcher
-     * and update [rootState] on the main thread once the result is known.
-     */
-    LaunchedEffect(Unit) {
-        // Do not request root here; just check if we currently have it.
-        val hasRoot = withContext(Dispatchers.IO) {
-            // Check cached flag first and perform a quick shell check if necessary.
-            RootManager.isRootGranted || RootManager.ensureRootShellSync(requestIfNeeded = false)
-        }
-        if (hasRoot) {
-            rootState = PermState.GRANTED
-        }
-    }
 
     val includeStorage = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
 
@@ -1096,8 +1078,15 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                     when (permType) {
                                         "ROOT" -> scope.launch {
                                             rootState = PermState.CHECKING
-                                            val ok = RootManager.requestRoot()
-                                            rootState = if (ok) PermState.GRANTED else PermState.DENIED
+                                            val ok = withContext(Dispatchers.IO) {
+                                                RootManager.requestRoot()
+                                            }
+                                            if (ok) {
+                                                RootManager.markGranted()
+                                                rootState = PermState.GRANTED
+                                            } else {
+                                                rootState = PermState.DENIED
+                                            }
                                         }
 
                                         "NOTIFICATION" -> {
@@ -1152,22 +1141,24 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                                 usageState = PermState.GRANTED
                                             } else {
                                                 usageState = PermState.CHECKING
-                                                scope.launch(Dispatchers.IO) {
-                                                    val granted = grantUsageStatsViaRoot(ctx.packageName)
-                                                    withContext(Dispatchers.Main) {
-                                                        if (granted && isUsageStatsGranted(ctx)) {
-                                                            usageState = PermState.GRANTED
-                                                        } else {
-                                                            usageState = PermState.IDLE
-                                                            usageLauncher.launch(
-                                                                Intent(
-                                                                    Settings.ACTION_USAGE_ACCESS_SETTINGS,
-                                                                    Uri.parse("package:${ctx.packageName}")
-                                                                ).apply {
-                                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                                }
-                                                            )
-                                                        }
+                                                scope.launch {
+                                                    // grantUsageStatsViaRoot butuh root shell → IO dispatcher
+                                                    val granted = withContext(Dispatchers.IO) {
+                                                        grantUsageStatsViaRoot(ctx.packageName)
+                                                    }
+                                                    // Hasil cek di Main thread (state update)
+                                                    if (granted && isUsageStatsGranted(ctx)) {
+                                                        usageState = PermState.GRANTED
+                                                    } else {
+                                                        usageState = PermState.IDLE
+                                                        usageLauncher.launch(
+                                                            Intent(
+                                                                Settings.ACTION_USAGE_ACCESS_SETTINGS,
+                                                                Uri.parse("package:${ctx.packageName}")
+                                                            ).apply {
+                                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                            }
+                                                        )
                                                     }
                                                 }
                                             }

@@ -77,6 +77,17 @@ class SplashActivity : ComponentActivity() {
         val prefs = getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
         val setupDone = prefs.getBoolean("setup_done", false)
 
+        // Jika setup sudah selesai, coba restore root state di background
+        // agar MainViewModel tidak perlu request dialog saat pertama buka.
+        if (setupDone) {
+            Thread {
+                dev.aether.manager.util.RootManager.ensureRootShellSync(requestIfNeeded = false)
+                if (com.topjohnwu.superuser.Shell.isAppGrantedRoot() == true) {
+                    dev.aether.manager.util.RootManager.markGranted()
+                }
+            }.also { it.isDaemon = true; it.name = "root-restore" }.start()
+        }
+
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
                 android.graphics.Color.TRANSPARENT,
