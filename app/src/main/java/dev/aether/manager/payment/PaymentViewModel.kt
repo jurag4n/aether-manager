@@ -37,19 +37,48 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
     private var activeOrderId: String? = null
 
     companion object {
-        /** Validasi nomor HP Indonesia */
+        /**
+         * Validasi nomor WhatsApp global.
+         * Support:
+         * - Indonesia: 08xxxxxxxxxx, 62xxxxxxxxxx, +62xxxxxxxxxx
+         * - International: +<country-code><number>, 8-15 digit sesuai gaya E.164
+         */
         fun validatePhone(phone: String): String? {
-            val digits = phone.trim().replace(Regex("[\\s\\-()]"), "")
-            if (digits.isBlank()) return "Nomor HP wajib diisi"
-            if (!digits.matches(Regex("^(\\+62|62|08)\\d+"))) return "Format nomor tidak valid (contoh: 08123456789)"
-            val normalized = when {
-                digits.startsWith("+62") -> "0" + digits.removePrefix("+62")
-                digits.startsWith("62")  -> "0" + digits.removePrefix("62")
-                else                     -> digits
+            val raw = phone.trim()
+            if (raw.isBlank()) return "Nomor WhatsApp wajib diisi"
+
+            val compact = raw.replace(Regex("[\\s\\-()]"), "")
+            if (!compact.matches(Regex("^\\+?\\d+$"))) {
+                return "Format nomor tidak valid. Contoh: 08123456789 atau +14155552671"
             }
-            if (normalized.length < 10) return "Nomor terlalu pendek (minimal 10 digit)"
-            if (normalized.length > 15) return "Nomor terlalu panjang (maksimal 15 digit)"
+
+            val internationalDigits = when {
+                compact.startsWith("+") -> compact.drop(1)
+                compact.startsWith("00") -> compact.drop(2)
+                compact.startsWith("08") -> "62" + compact.drop(1)
+                compact.startsWith("62") -> compact
+                else -> compact
+            }
+
+            if (internationalDigits.length < 8) return "Nomor terlalu pendek"
+            if (internationalDigits.length > 15) return "Nomor terlalu panjang"
             return null
+        }
+
+        fun normalizePhone(phone: String): String {
+            val compact = phone.trim().replace(Regex("[\\s\\-()]"), "")
+            return when {
+                compact.startsWith("+") -> compact
+                compact.startsWith("00") -> "+" + compact.drop(2)
+                compact.startsWith("08") -> "+62" + compact.drop(1)
+                compact.startsWith("62") -> "+" + compact
+                else -> "+" + compact
+            }
+        }
+
+        fun isInternationalBuyer(phone: String): Boolean {
+            val normalized = normalizePhone(phone)
+            return normalized.isNotBlank() && !normalized.startsWith("+62")
         }
     }
 
@@ -59,7 +88,7 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
         if (phoneError != null) { _uiState.value = UiState.Failure(phoneError); return }
         viewModelScope.launch {
             _uiState.value = UiState.CreatingOrder
-            when (val r = PaymentManager.createOrder(ctx, name, phone)) {
+            when (val r = PaymentManager.createOrder(ctx, name, normalizePhone(phone))) {
                 is PaymentManager.CreateOrderResult.Success -> {
                     activeOrderId  = r.order.orderId
                     _uiState.value = UiState.WaitingTransfer(

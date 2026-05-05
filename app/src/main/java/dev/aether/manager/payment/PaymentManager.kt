@@ -73,6 +73,8 @@ object PaymentManager {
             val body = JSONObject().apply {
                 put("name",     name.trim())
                 put("phone",    phone.trim())
+                put("isInternational", !phone.trim().startsWith("+62"))
+                put("language", if (phone.trim().startsWith("+62")) "id" else "en")
                 put("deviceId", deviceId)
             }.toString()
 
