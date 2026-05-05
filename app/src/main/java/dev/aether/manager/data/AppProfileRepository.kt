@@ -109,22 +109,29 @@ object AppProfileRepository {
     }
 
     suspend fun stopMonitor() = withContext(Dispatchers.IO) {
-        // FIX: restore semua tweak ke default sebelum matikan monitor,
-        // supaya governor, refresh rate, GPU governor, dll tidak nyangkut.
-        restoreDefaults()
-        RootEngine.sh("pkill -f app_monitor.sh 2>/dev/null || true")
+        // Jangan restore banyak node saat UI menekan toggle: di beberapa kernel ini bisa race
+        // dengan scheduler/thermal dan bikin freeze. Cukup matikan monitor + refresh-rate override.
+        RootEngine.sh(
+            "pkill -f app_monitor.sh 2>/dev/null || true",
+            "settings delete system peak_refresh_rate 2>/dev/null || true",
+            "settings delete system min_refresh_rate 2>/dev/null || true"
+        )
     }
 
     suspend fun resetMonitor() = withContext(Dispatchers.IO) {
-        restoreDefaults()
-        RootEngine.sh("pkill -f app_monitor.sh 2>/dev/null || true")
+        stopMonitor()
     }
 
     suspend fun resetAllProfiles() = withContext(Dispatchers.IO) {
-        restoreDefaults()
-        RootEngine.sh("pkill -f app_monitor.sh 2>/dev/null || true")
-        RootEngine.sh("rm -f $PROFILE_DIR/*.json 2>/dev/null || true")
-        RootEngine.sh("rm -f $MONITOR_SCRIPT $SERVICE_SCRIPT $PROFILE_DIR/.default_rr 2>/dev/null || true")
+        // Urutan aman: hentikan service dulu, lalu hapus file. Tidak menjalankan restoreDefaults()
+        // agar reset profile tidak memicu freeze/reboot paksa pada device sensitif.
+        RootEngine.sh(
+            "pkill -f app_monitor.sh 2>/dev/null || true",
+            "rm -f $PROFILE_DIR/*.json 2>/dev/null || true",
+            "rm -f $MONITOR_SCRIPT $SERVICE_SCRIPT $PROFILE_DIR/.default_rr 2>/dev/null || true",
+            "settings delete system peak_refresh_rate 2>/dev/null || true",
+            "settings delete system min_refresh_rate 2>/dev/null || true"
+        )
     }
 
     suspend fun isMonitorRunning(): Boolean {
@@ -284,7 +291,7 @@ object AppProfileRepository {
                         appendLine("      done")
                     }
                     if (tweaks.optBoolean("kill_background", false)) {
-                        appendLine("      am kill-all 2>/dev/null || true")
+                        appendLine("      # skip am kill-all di app-profile monitor: terlalu agresif dan bisa bikin freeze/reboot")
                     }
                     if (tweaks.optBoolean("gpu_boost", false)) {
                         appendLine("      echo performance > /sys/class/kgsl/kgsl-3d0/devfreq/governor 2>/dev/null || true")
@@ -508,9 +515,7 @@ get_foreground_pkg() {
   _pkg=${'$'}(echo "${'$'}_line" | sed 's/.*{ *[^ ]* [^ ]* //;s/[/ ].*//' | grep -E '^[a-zA-Z][a-zA-Z0-9_.]+\.[a-zA-Z]')
   [ -n "${'$'}_pkg" ] && { echo "${'$'}_pkg"; return 0; }
 
-  _pkg=${'$'}(dumpsys activity top 2>/dev/null | grep -E '^ {2}ACTIVITY ' | head -1 | awk '{print ${'$'}2}' | cut -d'/' -f1)
-  [ -n "${'$'}_pkg" ] && { echo "${'$'}_pkg"; return 0; }
-
+  # Hindari dumpsys activity top terlalu sering karena mahal di beberapa ROM.
   _pkg=${'$'}(cmd window get-focused-app 2>/dev/null | grep -oE '[a-zA-Z][a-zA-Z0-9_.]+\.[a-zA-Z][a-zA-Z0-9_]+' | head -1)
   [ -n "${'$'}_pkg" ] && { echo "${'$'}_pkg"; return 0; }
 
@@ -541,7 +546,7 @@ while true; do
       PROFILE_ACTIVE=0
     fi
   fi
-  sleep 2
+  sleep 4
 done
 """
         val escaped = script.replace("'", "'\\''")

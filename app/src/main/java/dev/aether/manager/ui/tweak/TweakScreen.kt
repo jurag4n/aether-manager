@@ -245,7 +245,13 @@ fun TweakScreen(
                     onClick = { toggleExpand("cpu") },
                     onGovernorChange = {
                         cpuGovernor = it
-                        setTweakNow("cpuBoost", it != "Battery")
+                        vm.setTweakStr("cpu_governor", when (it) {
+                            "Battery" -> "powersave"
+                            "Performance" -> "performance"
+                            "Ondemand" -> "ondemand"
+                            else -> "schedutil"
+                        })
+                        setTweakNow("cpuBoost", it == "Performance")
                     },
                     onMinFreqChange = { minCpuFreq = it },
                     onMaxFreqChange = { maxCpuFreq = it },
@@ -274,7 +280,8 @@ fun TweakScreen(
                     onMaxFreqChange = { maxGpuFreq = it },
                     onLockClick = {
                         gpuLocked = !gpuLocked
-                        setTweakNow("gpuThrottleOff", gpuLocked)
+                        vm.setTweakStr("gpu_freq_max", maxGpuFreq.filter { ch -> ch.isDigit() }.toLongOrNull()?.let { mhz -> (mhz * 1000000L).toString() } ?: "")
+                        setTweakNow("gpuFreqLock", gpuLocked)
                     },
                     onRendererClick = { rendererDialog = true }
                 )
@@ -316,11 +323,15 @@ fun TweakScreen(
                     expanded = expandedCard == "memory",
                     active = tweaks.zram || tweaks.lmkAggressive || swapEnabled || killBackgroundActive,
                     zram = tweaks.zram,
+                    zramSize = tweaks.zramSize,
+                    zramAlgo = tweaks.zramAlgo,
                     lmk = tweaks.lmkAggressive,
                     swap = swapEnabled,
                     killBackground = killBackgroundActive,
                     onClick = { toggleExpand("memory") },
                     onZramToggle = { setTweakNow("zram", !tweaks.zram) },
+                    onZramSizeSelect = { vm.setTweakStr("zram_size", it) },
+                    onZramAlgoSelect = { vm.setTweakStr("zram_algo", it) },
                     onLmkToggle = { setTweakNow("lmkAggressive", !tweaks.lmkAggressive) },
                     onSwapToggle = {
                         swapEnabled = !swapEnabled
@@ -414,7 +425,7 @@ private fun AdaptiveTweakGridRow(
             }
             else -> {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     left(Modifier.weight(1f))
@@ -633,11 +644,15 @@ private fun MemoryCard(
     expanded: Boolean,
     active: Boolean,
     zram: Boolean,
+    zramSize: String,
+    zramAlgo: String,
     lmk: Boolean,
     swap: Boolean,
     killBackground: Boolean,
     onClick: () -> Unit,
     onZramToggle: () -> Unit,
+    onZramSizeSelect: (String) -> Unit,
+    onZramAlgoSelect: (String) -> Unit,
     onLmkToggle: () -> Unit,
     onSwapToggle: () -> Unit,
     onKillBackgroundClick: () -> Unit
@@ -670,6 +685,47 @@ private fun MemoryCard(
                 checked = lmk,
                 onClick = onLmkToggle
             )
+        }
+        if (zram) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                DropdownAction(
+                    modifier = Modifier.weight(1f),
+                    title = "ZRAM Size",
+                    value = when (zramSize) {
+                        "536870912" -> "512 MB"
+                        "1073741824" -> "1 GB"
+                        "1610612736" -> "1.5 GB"
+                        "2147483648" -> "2 GB"
+                        "3221225472" -> "3 GB"
+                        "4294967296" -> "4 GB"
+                        else -> "1 GB"
+                    },
+                    options = listOf("512 MB", "1 GB", "1.5 GB", "2 GB", "3 GB", "4 GB"),
+                    onSelect = { label ->
+                        onZramSizeSelect(
+                            when (label) {
+                                "512 MB" -> "536870912"
+                                "1 GB" -> "1073741824"
+                                "1.5 GB" -> "1610612736"
+                                "2 GB" -> "2147483648"
+                                "3 GB" -> "3221225472"
+                                "4 GB" -> "4294967296"
+                                else -> "1073741824"
+                            }
+                        )
+                    }
+                )
+                DropdownAction(
+                    modifier = Modifier.weight(1f),
+                    title = "ZRAM Algo",
+                    value = zramAlgo.uppercase(),
+                    options = listOf("LZ4", "LZO", "ZSTD", "DEFLATE"),
+                    onSelect = { onZramAlgoSelect(it.lowercase()) }
+                )
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1299,6 +1355,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
 
 @Composable
 private fun DropdownAction(
+    modifier: Modifier = Modifier,
     title: String,
     value: String,
     options: List<String>,
@@ -1343,7 +1400,7 @@ private fun DropdownAction(
         onClick = { expanded = true },
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),

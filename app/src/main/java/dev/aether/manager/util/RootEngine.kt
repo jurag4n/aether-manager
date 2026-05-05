@@ -54,22 +54,35 @@ object RootEngine {
         withContext(Dispatchers.IO) {
             runCatching {
                 val proc = ProcessBuilder("/system/bin/sh", "-c", script)
-                    .redirectErrorStream(false)
+                    .redirectErrorStream(true)
                     .start()
-                // Baca stdout & stderr secara parallel agar tidak deadlock
-                val stdoutFuture = java.util.concurrent.Executors
-                    .newSingleThreadExecutor()
-                    .submit<String> { proc.inputStream.bufferedReader().readText() }
-                val stderr = proc.errorStream.bufferedReader().readText()
-                val finished = proc.waitFor(8, java.util.concurrent.TimeUnit.SECONDS)
-                val stdout = runCatching { stdoutFuture.get(1, java.util.concurrent.TimeUnit.SECONDS) }.getOrElse { "" }
+                val finished = proc.waitFor(4, java.util.concurrent.TimeUnit.SECONDS)
                 if (!finished) {
                     proc.destroyForcibly()
-                    ShellResult(124, stdout, "Local shell timeout")
-                } else {
-                    ShellResult(proc.exitValue(), stdout, stderr)
+                    return@runCatching ShellResult(124, "", "Local shell timeout")
                 }
+                ShellResult(
+                    proc.exitValue(),
+                    proc.inputStream.bufferedReader().readText(),
+                    ""
+                )
             }.getOrElse { e -> ShellResult(1, "", e.message ?: "Local shell error") }
+        }
+
+    /** Root fallback khusus monitor: tidak pernah memunculkan dialog root. */
+    private suspend fun shRootCached(script: String): ShellResult =
+        withContext(Dispatchers.IO) {
+            if (!RootManager.ensureRootShellSync(requestIfNeeded = false)) {
+                return@withContext ShellResult(1, "", "Root shell not cached")
+            }
+            runCatching {
+                val result = Shell.cmd(script).exec()
+                ShellResult(
+                    if (result.isSuccess) 0 else 1,
+                    result.out.joinToString("\n"),
+                    result.err.joinToString("\n")
+                )
+            }.getOrElse { e -> ShellResult(1, "", e.message ?: "Root monitor shell error") }
         }
 
     // ── File helpers (butuh root) ─────────────────────────────────────────────
@@ -295,10 +308,19 @@ object RootEngine {
                 for _z in /sys/class/thermal/thermal_zone*; do
                   [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
                   _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                  case "${'$'}_n" in *cpu*|*tsens*|*apc*|*cluster*)
+                  case "${'$'}_n" in *cpu*|*tsens*|*apc*|*cluster*|*big*|*little*|*silver*|*gold*)
                     _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null); [ -n "${'$'}_v" ] && { cpu_temp_raw=${'$'}_v; break; }
                   esac
                 done
+                if [ "${'$'}cpu_temp_raw" = "0" ]; then
+                  for _z in /sys/class/thermal/thermal_zone*; do
+                    [ -r "${'$'}_z/temp" ] || continue
+                    _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                    case "${'$'}_n" in *battery*|*batt*|*charger*|*usb*) continue;; esac
+                    _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null | tr -cd '0-9')
+                    [ -n "${'$'}_v" ] && [ "${'$'}_v" -gt "${'$'}cpu_temp_raw" ] 2>/dev/null && cpu_temp_raw=${'$'}_v
+                  done
+                fi
                 echo cpu_temp=${'$'}cpu_temp_raw
             """.trimIndent())
             val cpuM        = parseKv(cpuR.stdout)
@@ -325,19 +347,25 @@ object RootEngine {
                 elif [ -f /sys/kernel/gpu/gpu_busy ]; then
                   val=${'$'}(cat /sys/kernel/gpu/gpu_busy 2>/dev/null | tr -cd '0-9' | cut -c1-3)
                   [ -n "${'$'}val" ] && gpu_usage=${'$'}val
+                else
+                  for _u in /sys/class/devfreq/*gpu*/load /sys/class/devfreq/*mali*/load /sys/devices/platform/*mali*/utilization /sys/kernel/gpu/gpu_utilization; do
+                    [ -f "${'$'}_u" ] || continue
+                    val=${'$'}(cat "${'$'}_u" 2>/dev/null | tr -cd '0-9 ' | awk '{print ${'$'}1}' | cut -c1-3)
+                    [ -n "${'$'}val" ] && { gpu_usage=${'$'}val; break; }
+                  done
                 fi
                 [ "${'$'}gpu_usage" -gt 100 ] 2>/dev/null && gpu_usage=100
                 echo gpu_usage=${'$'}gpu_usage
                 gpu_freq=0
                 if [ -f /sys/class/kgsl/kgsl-3d0/gpuclk ]; then
                   val=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpuclk 2>/dev/null | tr -cd '0-9')
-                  [ "${'$'}val" -gt 0 ] 2>/dev/null && gpu_freq=${'$'}((val/1000000))
+                  if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
                 elif [ -f /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq ]; then
                   val=${'$'}(cat /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq 2>/dev/null | tr -cd '0-9')
-                  [ "${'$'}val" -gt 0 ] 2>/dev/null && gpu_freq=${'$'}((val/1000000))
+                  if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
                 elif [ -f /sys/kernel/ged/hal/current_freqency ]; then
                   val=${'$'}(cat /sys/kernel/ged/hal/current_freqency 2>/dev/null | tr -cd '0-9')
-                  [ "${'$'}val" -gt 0 ] 2>/dev/null && gpu_freq=${'$'}((val/1000000))
+                  if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
                 elif [ -f /sys/kernel/gpu/gpu_clock ]; then
                   gpu_freq=${'$'}(cat /sys/kernel/gpu/gpu_clock 2>/dev/null | tr -cd '0-9')
                 fi
@@ -394,7 +422,18 @@ object RootEngine {
             // ── Battery ──────────────────────────────────────────────────────
             val batR = shLocal("""
                 echo bat_level=${'$'}(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 0)
-                echo bat_temp=${'$'}(cat /sys/class/power_supply/battery/temp 2>/dev/null || cat /sys/class/power_supply/Battery/temp 2>/dev/null || echo 0)
+                bat_temp=0
+                for _p in /sys/class/power_supply/battery/temp /sys/class/power_supply/Battery/temp /sys/class/power_supply/bms/temp /sys/class/power_supply/usb/temp /sys/class/power_supply/battery/batt_temp; do
+                  [ -f "${'$'}_p" ] || continue; _v=${'$'}(cat "${'$'}_p" 2>/dev/null | tr -cd '0-9'); [ -n "${'$'}_v" ] && { bat_temp=${'$'}_v; break; }
+                done
+                if [ "${'$'}bat_temp" = "0" ]; then
+                  for _z in /sys/class/thermal/thermal_zone*; do
+                    [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
+                    _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                    case "${'$'}_n" in *battery*|*batt*) _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null | tr -cd '0-9'); [ -n "${'$'}_v" ] && { bat_temp=${'$'}_v; break; };; esac
+                  done
+                fi
+                echo bat_temp=${'$'}bat_temp
                 bat_ua=0
                 for _p in /sys/class/power_supply/battery/current_now /sys/class/power_supply/Battery/current_now /sys/class/power_supply/bms/current_now; do
                   [ -f "${'$'}_p" ] || continue; _v=${'$'}(cat "${'$'}_p" 2>/dev/null | tr -cd '\-0-9'); [ -n "${'$'}_v" ] && { bat_ua=${'$'}_v; break; }

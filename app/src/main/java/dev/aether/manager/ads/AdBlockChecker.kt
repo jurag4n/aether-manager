@@ -2,6 +2,7 @@ package dev.aether.manager.ads
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.provider.Settings
 import dev.aether.manager.util.RootManager
 
 //
@@ -9,7 +10,7 @@ import dev.aether.manager.util.RootManager
 //
 // Yang TIDAK di-flag:
 //   - Private DNS ke provider seperti AdGuard DNS, NextDNS, Cloudflare, dll
-//     → Itu hanya DNS privat/enkripsi, bukan pemblokir iklan
+//     → Sekarang tetap di-flag jika hostname dikenal sebagai DNS pemblokir iklan
 //   - VPN biasa (WireGuard, OpenVPN, dsb) tanpa komponen adblock
 //
 // Yang di-flag:
@@ -18,7 +19,24 @@ import dev.aether.manager.util.RootManager
 
 // ─── Package name aplikasi adblock yang dikenal ───────────────────────────────
 // Hanya aplikasi yang secara eksplisit memblokir iklan di level sistem/app.
-// DNS provider (AdGuard DNS, NextDNS, dll) TIDAK termasuk di sini.
+private val PRIVATE_DNS_ADBLOCK_HOSTS = setOf(
+    "dns.adguard.com",
+    "family.adguard-dns.com",
+    "unfiltered.adguard-dns.com",
+    "dns-family.adguard.com",
+    "dns.nextdns.io",
+    "base.dns.mullvad.net",
+    "adblock.dns.mullvad.net",
+    "family.dns.mullvad.net",
+    "p2.freedns.controld.com",
+    "p2.freedns.controld.dev",
+    "freedns.controld.com",
+    "doh.cleanbrowsing.org",
+    "security-filter-dns.cleanbrowsing.org",
+    "family-filter-dns.cleanbrowsing.org",
+)
+
+// DNS provider app / VPN adblock.
 private val ADBLOCK_PACKAGES = setOf(
     // AdAway — hosts-based adblock (root)
     "org.adaway",
@@ -131,11 +149,29 @@ object AdBlockChecker {
     }
 
     /**
-     * true jika adblock aktif — app terinstall ATAU hosts dimodifikasi.
-     *
-     * NOTE: Private DNS ke AdGuard DNS, NextDNS, Cloudflare, dll TIDAK dianggap adblock.
-     * VPN biasa juga TIDAK dianggap adblock.
+     * true jika Private DNS sedang diarahkan ke hostname DNS filter iklan.
+     * Android menyimpan mode di Global Settings: private_dns_mode dan private_dns_specifier.
+     */
+    fun isPrivateDnsAdblockActive(ctx: Context): Boolean {
+        val mode = runCatching {
+            Settings.Global.getString(ctx.contentResolver, "private_dns_mode")
+        }.getOrNull().orEmpty().lowercase()
+
+        val host = runCatching {
+            Settings.Global.getString(ctx.contentResolver, "private_dns_specifier")
+        }.getOrNull().orEmpty().trim().lowercase()
+
+        if (mode != "hostname" && mode != "strict") return false
+        if (host.isBlank() || host == "null") return false
+
+        return PRIVATE_DNS_ADBLOCK_HOSTS.any { known ->
+            host == known || host.endsWith(".$known") || known.endsWith(host)
+        } || host.contains("adguard") || host.contains("nextdns") || host.contains("controld") || host.contains("cleanbrowsing")
+    }
+
+    /**
+     * true jika adblock aktif — app adblock, hosts adblock, atau Private DNS filter iklan.
      */
     fun isAdblockActive(ctx: Context): Boolean =
-        isAdblockAppInstalled(ctx) || isHostsModified(ctx)
+        isPrivateDnsAdblockActive(ctx) || isAdblockAppInstalled(ctx) || isHostsModified(ctx)
 }

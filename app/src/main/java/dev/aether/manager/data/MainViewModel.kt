@@ -505,11 +505,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun applyTweakStrToState(state: TweaksState, key: String, value: String): TweaksState =
         when (key) {
-            "cpu_governor"       -> state.copy(cpuGovernor = value)
-            "io_scheduler"       -> state.copy(ioScheduler = value)
+            "cpu_governor"       -> state.copy(cpuGovernor = value.lowercase().replace("battery", "powersave"))
+            "io_scheduler"       -> state.copy(ioScheduler = value.lowercase())
             "zram_size"          -> state.copy(zramSize = value)
             "zram_algo"          -> state.copy(zramAlgo = value)
-            "thermal_profile"    -> state.copy(thermalProfile = value)
+            "thermal_profile"    -> state.copy(thermalProfile = value.lowercase())
             "gpu_freq_max"       -> state.copy(gpuFreqMax = value)
             "touch_sample_rate"  -> state.copy(touchSampleRate = value)
             "cpu_freq_prime_min" -> state.copy(cpuFreqPrimeMin = value)

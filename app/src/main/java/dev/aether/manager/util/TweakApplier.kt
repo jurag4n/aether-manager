@@ -109,7 +109,7 @@ apply() {
   local val="${'$'}1" node="${'$'}2"
   [ -f "${'$'}node" ] || { _S=${'$'}((_S+1)); return 1; }
   chmod 644 "${'$'}node" 2>/dev/null
-  if printf '%s' "${'$'}val" > "${'$'}node" 2>/dev/null; then
+  if printf '%s' "${'$'}val" > "${'$'}node" 2>/dev/null || printf '%s' "${'$'}val" | tee "${'$'}node" >/dev/null 2>&1; then
     _A=${'$'}((_A+1))
   else
     _F=${'$'}((_F+1))
@@ -121,7 +121,7 @@ write() {
   local val="${'$'}1" node="${'$'}2"
   [ -f "${'$'}node" ] || { _S=${'$'}((_S+1)); return 1; }
   chmod 644 "${'$'}node" 2>/dev/null
-  if printf '%s' "${'$'}val" > "${'$'}node" 2>/dev/null; then
+  if printf '%s' "${'$'}val" > "${'$'}node" 2>/dev/null || printf '%s' "${'$'}val" | tee "${'$'}node" >/dev/null 2>&1; then
     _A=${'$'}((_A+1))
   else
     _F=${'$'}((_F+1))
@@ -424,7 +424,7 @@ _end "sched"
     }
 
     private fun buildThermal(t: Map<String, String>): String {
-        return when (t["thermal_profile"] ?: "default") {
+        return when ((t["thermal_profile"] ?: "default").lowercase()) {
             "performance" -> """
 _begin
 # thermal — performance: raise limits
@@ -605,7 +605,7 @@ done
             append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))\n")
             append("pm trim-caches 0 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
             // Actual kill background processes — ini yang utama, am kill-all matikan semua cached proses
-            append("am kill-all 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
+            append("cmd activity idle-maintenance 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
             // Fallback: kill proses cached di /proc yang bukan system UID (>= 10000)
             append("""
 for _pid in /proc/[0-9]*; do
@@ -627,6 +627,8 @@ done
         append("_begin\n# io\n")
 
         val sched = t["io_scheduler"]?.takeIf { it.isNotBlank() }
+            ?.lowercase()
+            ?.let { if (it == "auto") "none" else it }
         if (sched != null) {
             append("""
 for dev in /sys/block/*/queue/scheduler; do
