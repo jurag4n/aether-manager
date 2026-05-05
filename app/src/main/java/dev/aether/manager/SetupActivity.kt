@@ -369,6 +369,7 @@ private fun PermissionCard(
     index: Int,
     onClick: () -> Unit,
 ) {
+    val s = LocalStrings.current
     val isGranted = state == PermState.GRANTED
     val isDenied = state == PermState.DENIED
     val isChecking = state == PermState.CHECKING
@@ -514,6 +515,7 @@ private fun PermissionCard(
 
 @Composable
 private fun PermissionSummaryCard(granted: Int, total: Int, rootOk: Boolean) {
+    val s = LocalStrings.current
     val progress by animateFloatAsState(
         targetValue = if (total == 0) 0f else granted.toFloat() / total.toFloat(),
         animationSpec = tween(360, easing = FastOutSlowInEasing),

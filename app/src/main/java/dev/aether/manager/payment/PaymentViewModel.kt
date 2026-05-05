@@ -117,6 +117,7 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun startPolling(orderId: String) {
+        val strings = getStringsForContext(ctx)
         _showTimeoutWarning.value = false
         viewModelScope.launch {
             // 2-minute warning timer

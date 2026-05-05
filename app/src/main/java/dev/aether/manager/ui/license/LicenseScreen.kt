@@ -572,8 +572,9 @@ private fun BuyFormContent(
     onNameChange: (String) -> Unit, onPhoneChange: (String) -> Unit,
     isLoading: Boolean, error: String?, onSubmit: () -> Unit,
 ) {
-    val phoneError = remember(buyerPhone) {
-        if (buyerPhone.isBlank()) null else PaymentViewModel.validatePhone(buyerPhone)
+    val s = LocalStrings.current
+    val phoneError = remember(buyerPhone, s) {
+        if (buyerPhone.isBlank()) null else PaymentViewModel.validatePhone(buyerPhone, s)
     }
     val isPhoneValid = buyerPhone.isNotBlank() && phoneError == null
     val isInternational = remember(buyerPhone) {
@@ -683,6 +684,7 @@ private fun TransferInstructionContent(
     ctx: Context, buyerPhone: String,
     onConfirm: (selected: PaymentManager.PaymentMethod?) -> Unit, onCancel: () -> Unit,
 ) {
+    val s = LocalStrings.current
     val isInternational = remember(buyerPhone) { buyerPhone.isNotBlank() && PaymentViewModel.isInternationalBuyer(buyerPhone) }
     val fmt = NumberFormat.getNumberInstance(Locale("id", "ID"))
     val realMethods = remember(state.paymentMethods, isInternational) {

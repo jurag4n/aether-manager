@@ -215,6 +215,7 @@ fun UpdateDialog(
                                     scope.launch {
                                         downloadAndInstall(
                                             context    = context,
+                                            s          = s,
                                             url        = info.downloadUrl,
                                             onProgress = { pct, dl, total ->
                                                 dlState = DownloadState.Progress(pct, dl, total)
@@ -576,6 +577,7 @@ private suspend fun fetchChangelogFromGitHub(releasePageUrl: String): String? =
 
 private suspend fun downloadAndInstall(
     context   : Context,
+    s         : AppStrings,
     url       : String,
     onProgress: (percent: Int, downloaded: Long, total: Long) -> Unit,
     onDone    : (File) -> Unit,
