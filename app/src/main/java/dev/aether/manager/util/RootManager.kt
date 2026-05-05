@@ -1,21 +1,21 @@
 package dev.aether.manager.util
 
+import android.content.Context
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
- * RootManager — single source of truth untuk status root.
+ * RootManager — satu pintu akses root untuk seluruh app.
  *
- * Aturan:
- *  - Hanya [markGranted]/[markDenied]/[clearCache] yang boleh mengubah _cachedRoot.
- *  - [ensureRootShell] adalah satu-satunya titik masuk async request root.
- *  - [ensureRootShellSync] hanya untuk konteks di mana coroutine tidak tersedia
- *    (mis. TweakApplier.runScript di thread IO). JANGAN panggil dari UI thread.
- *  - _cachedRoot == null  → belum diketahui (belum pernah dicek / setelah clearCache).
- *  - _cachedRoot == false → HANYA dicache setelah shell.isRoot == false (user tolak / SU tidak ada).
- *    Exception TIDAK cache false supaya retry berikutnya bisa berhasil.
+ * Prinsip penting:
+ *  - Jangan pakai FLAG_NON_ROOT_SHELL untuk builder utama aplikasi root.
+ *    Kalau shell non-root ter-cache lebih dulu, Shell.cmd() berikutnya akan ikut memakai shell non-root
+ *    dan prompt Magisk/KernelSU/APatch bisa tidak muncul.
+ *  - Request root hanya dilakukan saat user menekan aksi root / fitur tweak.
+ *  - Cek pasif tidak boleh membuat shell baru dan tidak boleh memunculkan dialog SU.
  */
 object RootManager {
 
@@ -24,113 +24,103 @@ object RootManager {
     val isRootGranted: Boolean get() = _cachedRoot == true
     val isRootUnknown: Boolean get() = _cachedRoot == null
 
-    // ── Root type detection ───────────────────────────────────────────────────
+    fun configureShell(context: Context? = null) {
+        val builder = Shell.Builder.create()
+            .setFlags(
+                Shell.FLAG_REDIRECT_STDERR or
+                Shell.FLAG_MOUNT_MASTER
+            )
+            .setTimeout(20)
+
+        if (context != null) builder.setContext(context.applicationContext)
+        Shell.setDefaultBuilder(builder)
+    }
 
     fun detectRootType(): String {
         return if (Shell.isAppGrantedRoot() == true || _cachedRoot == true) {
             detectRootTypeViaShell()
         } else {
-            // Fallback path check tanpa shell
-            when {
-                File("/data/adb/ksu").exists()    -> "KernelSU"
-                File("/data/adb/ap").exists()     -> "APatch"
-                File("/data/adb/magisk").exists() -> "Magisk"
-                File("/sbin/.magisk").exists()    -> "Magisk"
-                else                              -> "Unknown"
-            }
+            detectRootTypeByPath()
         }
     }
 
-    private fun detectRootTypeViaShell(): String {
-        return try {
-            val result = Shell.cmd(
-                """
-                if [ -d /data/adb/ksu ]; then echo KernelSU
-                elif [ -d /data/adb/ap ]; then echo APatch
-                elif [ -d /data/adb/magisk ]; then echo Magisk
-                else echo Unknown
-                fi
-                """.trimIndent()
-            ).exec()
-            result.out.joinToString("").trim().ifBlank { "Unknown" }
-        } catch (_: Exception) {
-            "Unknown"
-        }
+    private fun detectRootTypeByPath(): String = when {
+        File("/data/adb/ksu").exists()    -> "KernelSU"
+        File("/data/adb/ap").exists()     -> "APatch"
+        File("/data/adb/magisk").exists() -> "Magisk"
+        File("/sbin/.magisk").exists()    -> "Magisk"
+        else                              -> "Unknown"
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    private fun detectRootTypeViaShell(): String = runCatching {
+        val result = Shell.cmd(
+            """
+            if [ -d /data/adb/ksu ]; then echo KernelSU
+            elif [ -d /data/adb/ap ]; then echo APatch
+            elif [ -d /data/adb/magisk ]; then echo Magisk
+            elif [ -d /sbin/.magisk ]; then echo Magisk
+            else echo Unknown
+            fi
+            """.trimIndent()
+        ).exec()
+        result.out.joinToString("").trim().ifBlank { "Unknown" }
+    }.getOrDefault("Unknown")
 
-    /** Cek ketersediaan root tanpa meminta akses baru. Aman dari IO thread. */
     suspend fun isRooted(): Boolean = withContext(Dispatchers.IO) {
-        ensureRootShell(requestIfNeeded = false)
+        ensureRootShellSync(requestIfNeeded = false)
     }
 
-    /**
-     * Minta akses root (trigger dialog SU manager).
-     * Reset cache dulu agar bisa request ulang meskipun sebelumnya denied.
-     */
     suspend fun requestRoot(): Boolean = withContext(Dispatchers.IO) {
-        _cachedRoot = null          // izinkan re-request
-        ensureRootShell(requestIfNeeded = true)
+        _cachedRoot = null
+        ensureRootShellSync(requestIfNeeded = true)
     }
 
-    /** Versi suspend — selalu gunakan ini kecuali di konteks non-coroutine. */
     suspend fun ensureRootShell(requestIfNeeded: Boolean = true): Boolean =
-        withContext(Dispatchers.IO) {
-            ensureRootShellSync(requestIfNeeded)
-        }
+        withContext(Dispatchers.IO) { ensureRootShellSync(requestIfNeeded) }
 
     /**
-     * Versi sync — HANYA untuk TweakApplier / RootEngine.sh yang sudah di IO thread.
-     * JANGAN panggil dari main thread (Shell.getShell() blocking → ANR).
-     *
-     * Aturan cache:
-     *  - Cache true  → shell terbuka, uid == 0
-     *  - Cache false → shell.isRoot == false (user menolak / su tidak ada)
-     *  - Exception   → TIDAK cache apapun, return false (bisa retry)
+     * requestIfNeeded=false: hanya cek shell yang sudah ada / status yang sudah final.
+     * requestIfNeeded=true : benar-benar menjalankan su sehingga Magisk/KernelSU/APatch menampilkan prompt.
      */
     fun ensureRootShellSync(requestIfNeeded: Boolean = true): Boolean {
-        // Fast-path: sudah pernah granted
-        if (_cachedRoot == true) return true
+        if (_cachedRoot == true) return verifyUid0()
 
         return try {
-            val quick = Shell.isAppGrantedRoot()
-            when {
-                quick == true -> {
-                    // libsu konfirmasi granted → verifikasi uid
-                    val ok = Shell.cmd("id -u").exec().out.joinToString("").trim() == "0"
-                    if (ok) _cachedRoot = true
-                    ok
+            val cached = Shell.getCachedShell()
+            if (cached != null && cached.isAlive) {
+                if (cached.isRoot && verifyUid0()) {
+                    _cachedRoot = true
+                    return true
                 }
-                quick == false && !requestIfNeeded -> {
-                    // SU manager lapor denied tapi tidak request → jangan cache
-                    false
-                }
-                requestIfNeeded -> {
-                    // Ini yang trigger dialog SU manager
-                    val shell = Shell.getShell()
-                    val isRoot = shell.isRoot
-                    val uid0 = isRoot &&
-                        Shell.cmd("id -u").exec().out.joinToString("").trim() == "0"
 
-                    if (uid0) {
-                        _cachedRoot = true
-                        true
-                    } else {
-                        // Shell terbuka tapi tidak root → user menolak
-                        _cachedRoot = false
-                        false
-                    }
-                }
-                else -> false
+                if (!requestIfNeeded) return false
+
+                // Tutup shell non-root yang mungkin terlanjur dibuat sebelum request root.
+                runCatching { cached.waitAndClose(1, TimeUnit.SECONDS) }
             }
-        } catch (_: Exception) {
-            // Exception (mis. timeout, shell crash) → TIDAK cache false → retry bisa berhasil
+
+            val quick = Shell.isAppGrantedRoot()
+            if (quick == true && verifyUid0()) {
+                _cachedRoot = true
+                return true
+            }
+
+            if (!requestIfNeeded) return false
+
+            configureShell()
+            val shell = Shell.getShell()
+            val ok = shell.isAlive && shell.isRoot && verifyUid0()
+            _cachedRoot = ok
+            ok
+        } catch (_: Throwable) {
             false
         }
     }
 
-    // ── Cache control ─────────────────────────────────────────────────────────
+    private fun verifyUid0(): Boolean = runCatching {
+        val result = Shell.cmd("id -u").exec()
+        result.isSuccess && result.out.joinToString("").trim() == "0"
+    }.getOrDefault(false)
 
     fun clearCache()  { _cachedRoot = null  }
     fun markGranted() { _cachedRoot = true  }

@@ -2,6 +2,7 @@ package dev.aether.manager.ads
 
 import android.content.Context
 import android.content.pm.PackageManager
+import dev.aether.manager.util.RootManager
 
 //
 // AdBlock detection — mendeteksi aplikasi atau tool yang benar-benar memblokir iklan.
@@ -117,6 +118,8 @@ object AdBlockChecker {
             val content = java.io.File("/etc/hosts").readText()
             if (content.isNotBlank()) return content
         } catch (_: Exception) {}
+
+        if (!RootManager.ensureRootShellSync(requestIfNeeded = false)) return null
 
         return try {
             val result = com.topjohnwu.superuser.Shell.cmd("cat /etc/hosts").exec()

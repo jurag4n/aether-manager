@@ -138,16 +138,8 @@ class BootReceiver : BroadcastReceiver() {
         if (!SettingsPrefs.getApplyOnBoot(context)) return
 
         // BootReceiver berjalan dalam proses terpisah dari Application — libsu belum di-init.
-        // Inisialisasi Shell builder secara eksplisit sebelum operasi root apapun.
-        com.topjohnwu.superuser.Shell.setDefaultBuilder(
-            com.topjohnwu.superuser.Shell.Builder.create()
-                .setFlags(
-                    com.topjohnwu.superuser.Shell.FLAG_REDIRECT_STDERR or
-                    com.topjohnwu.superuser.Shell.FLAG_MOUNT_MASTER or
-                    com.topjohnwu.superuser.Shell.FLAG_NON_ROOT_SHELL
-                )
-                .setTimeout(15)
-        )
+        // Inisialisasi builder root-only supaya tidak ter-cache sebagai non-root shell.
+        dev.aether.manager.util.RootManager.configureShell(context)
 
         // Verifikasi root tersedia sebelum lanjut — jangan apply kalau su tidak ada
         val rootOk = withContext(kotlinx.coroutines.Dispatchers.IO) {
