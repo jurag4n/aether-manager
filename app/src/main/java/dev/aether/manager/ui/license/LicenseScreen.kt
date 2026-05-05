@@ -458,7 +458,7 @@ private fun PremiumActiveCard(expLabel: String, daysLeft: Long, currentKey: Stri
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
                         .clickable {
                             val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            cm.setPrimaryClip(ClipData.newPlainText("License", currentKey))
+                            cm.setPrimaryClip(ClipData.newPlainText(s.licenseKeyLabel, currentKey))
                             Toast.makeText(ctx, s.licenseKeyCopied, Toast.LENGTH_SHORT).show()
                         }.padding(10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -510,7 +510,7 @@ private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
                     Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)) {
                         Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Verified, null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
-                            Text("Official", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                            Text(s.licenseOfficialBadge, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -582,8 +582,8 @@ private fun BuyFormContent(
     val isFormValid = buyerName.isNotBlank() && isPhoneValid
 
     val title = if (isInternational) s.licenseBuyFormTitleIntl else s.licenseBuyFormTitleLocal
-    val subtitle = if (isInternational) "Enter your buyer details. International users can use WhatsApp numbers with country code." else s.licenseBuyFormDescLocal
-    val paymentHint = if (isInternational) "For international users, PayPal is recommended. Admin messages will use English." else s.licenseBuyFormDescIntl
+    val subtitle = if (isInternational) s.licenseInternationalBuyerDesc else s.licenseBuyFormDescLocal
+    val paymentHint = if (isInternational) s.licenseInternationalPaymentHint else s.licenseBuyFormDescIntl
 
     Column(modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -598,17 +598,17 @@ private fun BuyFormContent(
 
         Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
             Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(if (isInternational) "Purchase flow" else "Alur pembelian", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Text(if (isInternational) s.licensePurchaseFlow else s.licensePurchaseFlowLocal, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                 StepRow(1, if (isInternational) s.licenseInvoiceFromAppIntl else s.licenseInvoiceFromAppLocal)
-                StepRow(2, if (isInternational) "Pay using PayPal or available method" else "Transfer sesuai nominal ke DANA, GoPay, atau PayPal")
-                StepRow(3, if (isInternational) "Send payment proof to Telegram admin" else s.licenseInvoiceAdminWait)
+                StepRow(2, if (isInternational) s.licensePayUsingPayPal else s.licenseTransferLocalMethods)
+                StepRow(3, if (isInternational) s.licenseSendPaymentProofAdmin else s.licenseInvoiceAdminWait)
             }
         }
 
         OutlinedTextField(
             value = buyerName,
             onValueChange = onNameChange,
-            label = { Text(if (isInternational) "Buyer name" else s.licenseBuyerNameLabel) },
+            label = { Text(s.licenseBuyerNameLabel) },
             leadingIcon = { Icon(Icons.Outlined.Person, null) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -619,7 +619,7 @@ private fun BuyFormContent(
         OutlinedTextField(
             value = buyerPhone,
             onValueChange = onPhoneChange,
-            label = { Text(if (isInternational) "WhatsApp number, example +14155552671" else s.licenseBuyerPhoneHint) },
+            label = { Text(if (isInternational) s.licenseInternationalPhoneHint else s.licenseBuyerPhoneHint) },
             leadingIcon = { Icon(Icons.Outlined.Phone, null) },
             trailingIcon = {
                 when {
@@ -646,7 +646,7 @@ private fun BuyFormContent(
             Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f)) {
                 Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                     Icon(Icons.Outlined.Language, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.tertiary)
-                    Text("International mode active: payment instructions and admin confirmation template will be in English.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text(s.licenseInternationalModeActive, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
                 }
             }
         }
@@ -654,7 +654,7 @@ private fun BuyFormContent(
         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)) {
             Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Outlined.Security, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                Text(if (isInternational) "License is activated after your payment is checked and approved by admin." else s.licenseManualTransferDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(if (isInternational) s.licenseActivatedAfterAdminCheck else s.licenseManualTransferDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
 
@@ -686,9 +686,13 @@ private fun TransferInstructionContent(
     val isInternational = remember(buyerPhone) { buyerPhone.isNotBlank() && PaymentViewModel.isInternationalBuyer(buyerPhone) }
     val fmt = NumberFormat.getNumberInstance(Locale("id", "ID"))
     val realMethods = remember(state.paymentMethods, isInternational) {
-        state.paymentMethods
-            .filter { it.isRealPaymentMethod() }
-            .sortedBy { it.realPaymentSort() }
+        val available = state.paymentMethods.filter { it.isRealPaymentMethod() }
+        val regionFiltered = if (isInternational) {
+            available.filter { it.isPayPalMethod() }
+        } else {
+            available.filterNot { it.isPayPalMethod() }
+        }
+        regionFiltered.sortedBy { it.realPaymentSort(isInternational) }
     }
     var selectedMethodId by remember(realMethods, isInternational) { mutableStateOf((if (isInternational) realMethods.firstOrNull { it.isPayPalMethod() } else null)?.id ?: realMethods.firstOrNull()?.id ?: "") }
     val selectedMethod = realMethods.firstOrNull { it.id == selectedMethodId } ?: realMethods.firstOrNull()
@@ -714,7 +718,7 @@ private fun TransferInstructionContent(
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
-                        Text(if (isInternational) "Amount to pay" else "Total bayar", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (isInternational) s.licenseAmountToPay else s.licenseTotalPay, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Rp ${fmt.format(state.nominal)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                     Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)) {
@@ -913,10 +917,10 @@ private fun PaymentManager.PaymentMethod.isPayPalMethod(): Boolean {
 
 private fun PaymentManager.PaymentMethod.isRealPaymentMethod(): Boolean = isDanaMethod() || isGoPayMethod() || isPayPalMethod()
 
-private fun PaymentManager.PaymentMethod.realPaymentSort(): Int = when {
-    isDanaMethod() -> 0
+private fun PaymentManager.PaymentMethod.realPaymentSort(isInternational: Boolean = false): Int = when {
+    isPayPalMethod() -> if (isInternational) 0 else 2
+    isDanaMethod() -> if (isInternational) 2 else 0
     isGoPayMethod() -> 1
-    isPayPalMethod() -> 2
     else -> 99
 }
 
@@ -1168,7 +1172,7 @@ private fun PremiumSuccessDialog(licenseKey: String, expLabel: String, onDismiss
                         Row(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)).clickable {
                                 val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                cm.setPrimaryClip(ClipData.newPlainText("Aether License", licenseKey))
+                                cm.setPrimaryClip(ClipData.newPlainText(s.licenseSuccessKeyLabel, licenseKey))
                                 Toast.makeText(ctx, s.licenseKeyCopied, Toast.LENGTH_SHORT).show()
                             }.padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,

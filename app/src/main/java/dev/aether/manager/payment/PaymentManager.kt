@@ -73,9 +73,13 @@ object PaymentManager {
 
             val body = JSONObject().apply {
                 put("name",     name.trim())
-                put("phone",    phone.trim())
-                put("isInternational", !phone.trim().startsWith("+62"))
-                put("language", if (phone.trim().startsWith("+62")) "id" else "en")
+                val normalizedPhone = phone.trim()
+                val isInternational = !normalizedPhone.startsWith("+62")
+                put("phone", normalizedPhone)
+                put("isInternational", isInternational)
+                put("language", if (isInternational) "en" else "id")
+                put("preferredPayment", if (isInternational) "paypal" else "local")
+                put("paymentRegion", if (isInternational) "international" else "indonesia")
                 put("deviceId", deviceId)
             }.toString()
 
@@ -101,17 +105,32 @@ object PaymentManager {
                         )
                     }
                 } else {
-                    // backward-compat: server lama hanya kirim gopay & dana
+                    // backward-compat: server lama hanya kirim field per metode
+                    val paypal = json.optString("paypal", json.optString("paypalEmail", "-"))
                     val gopay = json.optString("gopay", "-")
                     val dana  = json.optString("dana", "-")
+                    if (paypal != "-") methods += PaymentMethod("paypal", "PayPal", "international", paypal, json.optString("paypalHolder", "Aether Manager"))
                     if (gopay != "-") methods += PaymentMethod("gopay", "GoPay", "ewallet", gopay, "Al** A**** Kh****")
                     if (dana  != "-") methods += PaymentMethod("dana",  "DANA",  "ewallet", dana,  "Al** A**** Kh****")
+                }
+
+                val normalizedPhone = phone.trim()
+                val finalMethods = if (!normalizedPhone.startsWith("+62")) {
+                    methods.filter { method ->
+                        val q = "${method.id} ${method.label}".lowercase()
+                        "paypal" in q || "pay pal" in q
+                    }
+                } else {
+                    methods.filterNot { method ->
+                        val q = "${method.id} ${method.label}".lowercase()
+                        "paypal" in q || "pay pal" in q
+                    }.ifEmpty { methods }
                 }
 
                 CreateOrderResult.Success(
                     OrderInfo(
                         orderId        = json.getString("orderId"),
-                        paymentMethods = methods,
+                        paymentMethods = finalMethods,
                         nominal        = json.optInt("nominal", 25000),
                     )
                 )
