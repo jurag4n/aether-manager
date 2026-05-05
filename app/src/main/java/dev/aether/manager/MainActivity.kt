@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -59,7 +58,6 @@ import dev.aether.manager.i18n.ProvideStrings
 import androidx.compose.foundation.isSystemInDarkTheme
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.notification.LicenseNotificationChecker
-import dev.aether.manager.notification.UpdateNotificationHelper
 import dev.aether.manager.ui.AetherTheme
 import dev.aether.manager.ui.appprofile.AppProfileScreen
 import dev.aether.manager.ui.components.RebootBottomSheet

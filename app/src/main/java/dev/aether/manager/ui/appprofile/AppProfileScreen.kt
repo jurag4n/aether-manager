@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -294,46 +293,6 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Monitor Pill
 // ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun MonitorPill(running: Boolean, onToggle: () -> Unit) {
-    val s = LocalStrings.current
-    val bg by animateColorAsState(
-        if (running) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.surfaceContainerHigh,
-        label = "monitor_bg"
-    )
-    val fg by animateColorAsState(
-        if (running) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.onSurfaceVariant,
-        label = "monitor_fg"
-    )
-
-    Surface(
-        onClick = onToggle,
-        shape   = RoundedCornerShape(50),
-        color   = bg
-    ) {
-        Row(
-            modifier              = Modifier.padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(fg)
-            )
-            Text(
-                if (running) s.appProfileMonitorOn else s.appProfileMonitorOff,
-                style      = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color      = fg
-            )
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Search Bar

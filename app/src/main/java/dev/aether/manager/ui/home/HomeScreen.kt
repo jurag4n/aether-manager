@@ -44,14 +44,11 @@ import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,7 +65,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.data.MonitorState
 import dev.aether.manager.data.UiState
@@ -76,6 +72,7 @@ import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
 import kotlin.math.PI
 import kotlin.math.sin
+import androidx.compose.runtime.getValue
 
 @Composable
 fun HomeScreen(vm: MainViewModel) {

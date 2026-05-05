@@ -38,7 +38,6 @@ import dev.aether.manager.license.LicenseViewModel
 import dev.aether.manager.payment.InvoicePrefs
 import dev.aether.manager.payment.PaymentViewModel
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
@@ -476,19 +475,6 @@ private fun PremiumActiveCard(expLabel: String, daysLeft: Long, currentKey: Stri
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun FreeStatusCard() {
-    val s = LocalStrings.current
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-        Column(modifier = Modifier.padding(20.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Outlined.LockOpen, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
-            Text(s.licenseFreeTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(s.licenseFreeDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
     }
 }
@@ -940,39 +926,6 @@ private fun paymentIcon(id: String): androidx.compose.ui.graphics.vector.ImageVe
  * Kirim notifikasi otomatis ke WA dan Telegram setelah user menekan "Sudah Bayar".
  * Pesan berisi: Nama, Order ID, dan metode pembayaran yang dipilih.
  */
-private fun sendPaymentNotification(
-    ctx: Context,
-    buyerName: String,
-    orderId: String,
-    paymentMethods: List<PaymentManager.PaymentMethod>,
-) {
-    val methodNames = paymentMethods.firstOrNull()?.label ?: "tidak diketahui"
-    val msg = buildString {
-        appendLine("🧾 *Konfirmasi Pembayaran - Aether Manager*")
-        appendLine()
-        appendLine("👤 *Nama:* $buyerName")
-        appendLine("🆔 *Order ID:* `$orderId`")
-        appendLine("💳 *Metode:* $methodNames")
-        appendLine()
-        appendLine("Saya sudah melakukan transfer. Mohon segera dikonfirmasi. Terima kasih!")
-    }.trim()
-
-    // Kirim ke WhatsApp
-    try {
-        val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/6285121390218?text=${Uri.encode(msg)}"))
-        waIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(waIntent)
-    } catch (_: Exception) { /* WA tidak tersedia, lanjut ke Telegram */ }
-
-    // Kirim ke Telegram (buka chat langsung)
-    try {
-        val tgMsg = msg.replace("*", "").replace("`", "")
-        val tgIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AetherDev22?text=${Uri.encode(tgMsg)}"))
-        tgIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(tgIntent)
-    } catch (_: Exception) { /* Telegram tidak tersedia */ }
-}
-
 /**
  * Setelah user konfirmasi pembayaran, buka Telegram admin dan salin template pesan.
  * User tinggal paste pesan lalu lampirkan screenshot bukti transfer.

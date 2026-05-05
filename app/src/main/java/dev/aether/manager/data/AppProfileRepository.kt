@@ -206,7 +206,7 @@ object AppProfileRepository {
             echo simple_ondemand > /sys/devices/platform/mali/power_policy 2>/dev/null || true
             echo simple_ondemand > /sys/devices/platform/*.mali/power_policy 2>/dev/null || true
             for _dev in /sys/class/devfreq/*/governor; do
-              _name=${'$'}(basename $(dirname "${'$'}_dev"))
+              _name=${'$'}(basename ${'$'}(dirname "${'$'}_dev"))
               case "${'$'}_name" in *gpu*|*mali*|*kgsl*|*adreno*)
                 echo simple_ondemand > "${'$'}_dev" 2>/dev/null || \
                 echo msm-adreno-tz   > "${'$'}_dev" 2>/dev/null || true ;;
