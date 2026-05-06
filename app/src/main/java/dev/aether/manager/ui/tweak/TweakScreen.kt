@@ -91,6 +91,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 
 @Composable
 fun TweakScreen(
@@ -431,8 +432,20 @@ private fun AdaptiveTweakGridRow(
     left: @Composable (Modifier) -> Unit,
     right: @Composable (Modifier) -> Unit
 ) {
-    val leftExpanded = expandedKey == leftKey
-    val rightExpanded = expandedKey == rightKey
+    var visualExpandedKey by remember(leftKey, rightKey) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(expandedKey, leftKey, rightKey) {
+        val targetInThisRow = expandedKey == leftKey || expandedKey == rightKey
+        if (targetInThisRow) {
+            visualExpandedKey = expandedKey
+        } else if (visualExpandedKey != null) {
+            delay(260)
+            visualExpandedKey = null
+        }
+    }
+
+    val leftExpanded = visualExpandedKey == leftKey
+    val rightExpanded = visualExpandedKey == rightKey
     val rowActive = leftExpanded || rightExpanded
 
     val rowGap by animateDpAsState(
@@ -462,8 +475,8 @@ private fun AdaptiveTweakGridRow(
             }
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
+                    dampingRatio = if (rowActive) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
+                    stiffness = if (rowActive) Spring.StiffnessLow else Spring.StiffnessMediumLow
                 )
             ),
         verticalArrangement = Arrangement.spacedBy(rowGap)
@@ -1063,7 +1076,7 @@ private fun ExpandableTweakCard(
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = tween(
-            durationMillis = if (expanded) 140 else 100,
+            durationMillis = if (expanded) 140 else 180,
             easing = FastOutSlowInEasing
         ),
         label = "detail_alpha_$title"
@@ -1072,7 +1085,7 @@ private fun ExpandableTweakCard(
     val detailSlide by animateFloatAsState(
         targetValue = if (expanded) 0f else 18f,
         animationSpec = tween(
-            durationMillis = if (expanded) 160 else 120,
+            durationMillis = if (expanded) 160 else 220,
             easing = FastOutSlowInEasing
         ),
         label = "detail_slide_$title"
@@ -1092,8 +1105,8 @@ private fun ExpandableTweakCard(
             }
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
+                    dampingRatio = if (expanded) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
+                    stiffness = if (expanded) Spring.StiffnessLow else Spring.StiffnessMediumLow
                 )
             )
             .heightIn(min = baseHeight)
@@ -1168,17 +1181,17 @@ private fun ExpandableTweakCard(
                             ),
                             expandFrom = Alignment.Top
                         ),
-                exit = fadeOut(tween(durationMillis = 90, easing = FastOutSlowInEasing)) +
+                exit = fadeOut(tween(durationMillis = 180, easing = FastOutSlowInEasing)) +
                        slideOutVertically(
-                           animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
-                           targetOffsetY = { it / 8 }
+                           animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                           targetOffsetY = { it / 10 }
                        ) +
                        scaleOut(
-                           targetScale = 0.96f,
-                           animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing)
+                           targetScale = 0.90f,
+                           animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
                        ) +
                        shrinkVertically(
-                           animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                           animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
                            shrinkTowards = Alignment.Top
                        )
             ) {
