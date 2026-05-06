@@ -820,7 +820,7 @@ fi
                 SubsystemResult(
                     name = "shell",
                     ok   = false,
-                    note = dev.aether.manager.i18n.StringsEn.rootNoOutput,
+                    note = "Tidak ada output — pastikan root aktif dan Shell.cmd() terhubung",
                 )
             )
         }

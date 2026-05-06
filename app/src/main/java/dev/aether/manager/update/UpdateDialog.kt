@@ -622,7 +622,7 @@ private suspend fun downloadAndInstall(
         }
         withContext(Dispatchers.Main) { onDone(outFile) }
     } catch (e: Exception) {
-        withContext(Dispatchers.Main) { onFailed(e.message ?: s.updateDownloadFailedShort) }
+        withContext(Dispatchers.Main) { onFailed(e.message ?: "Download gagal") }
     }
 }
 

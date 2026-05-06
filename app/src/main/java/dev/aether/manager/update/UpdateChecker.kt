@@ -2,7 +2,6 @@ package dev.aether.manager.update
 
 import android.util.Log
 import dev.aether.manager.NativeAether
-import dev.aether.manager.i18n.StringsEn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
@@ -92,7 +91,7 @@ object UpdateChecker {
     suspend fun check(installedVersionCode: Int): UpdateResult = withContext(Dispatchers.IO) {
         val release = fetchLatest()
         when {
-            release == null -> UpdateResult.Error(StringsEn.updateFetchFailed)
+            release == null -> UpdateResult.Error("Gagal fetch release")
             release.versionCode > installedVersionCode -> UpdateResult.UpdateAvailable(
                 UpdateInfo(
                     latestVersion = release.versionName,

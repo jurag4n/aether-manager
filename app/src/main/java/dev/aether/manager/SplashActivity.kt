@@ -60,7 +60,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.i18n.ProvideStrings
 import dev.aether.manager.ui.AetherTheme
 import kotlinx.coroutines.delay
@@ -116,7 +115,6 @@ class SplashActivity : ComponentActivity() {
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
-    val s = LocalStrings.current
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
     val tertiary = MaterialTheme.colorScheme.tertiary
@@ -338,7 +336,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = s.splashTagline,
+                text = "Smart Control • Clean Boost • Premium Tools",
                 modifier = Modifier.graphicsLayer {
                     alpha = subtitleAlpha.value
                     translationY = with(density) { subtitleOffset.value.dp.toPx() }

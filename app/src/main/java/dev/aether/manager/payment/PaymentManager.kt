@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import dev.aether.manager.i18n.getStringsForContext
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
@@ -73,13 +72,9 @@ object PaymentManager {
 
             val body = JSONObject().apply {
                 put("name",     name.trim())
-                val normalizedPhone = phone.trim()
-                val isInternational = !normalizedPhone.startsWith("+62")
-                put("phone", normalizedPhone)
-                put("isInternational", isInternational)
-                put("language", if (isInternational) "en" else "id")
-                put("preferredPayment", if (isInternational) "paypal" else "local")
-                put("paymentRegion", if (isInternational) "international" else "indonesia")
+                put("phone",    phone.trim())
+                put("isInternational", !phone.trim().startsWith("+62"))
+                put("language", if (phone.trim().startsWith("+62")) "id" else "en")
                 put("deviceId", deviceId)
             }.toString()
 
@@ -105,37 +100,22 @@ object PaymentManager {
                         )
                     }
                 } else {
-                    // backward-compat: server lama hanya kirim field per metode
-                    val paypal = json.optString("paypal", json.optString("paypalEmail", "-"))
+                    // backward-compat: server lama hanya kirim gopay & dana
                     val gopay = json.optString("gopay", "-")
                     val dana  = json.optString("dana", "-")
-                    if (paypal != "-") methods += PaymentMethod("paypal", "PayPal", "international", paypal, json.optString("paypalHolder", "Aether Manager"))
                     if (gopay != "-") methods += PaymentMethod("gopay", "GoPay", "ewallet", gopay, "Al** A**** Kh****")
                     if (dana  != "-") methods += PaymentMethod("dana",  "DANA",  "ewallet", dana,  "Al** A**** Kh****")
-                }
-
-                val normalizedPhone = phone.trim()
-                val finalMethods = if (!normalizedPhone.startsWith("+62")) {
-                    methods.filter { method ->
-                        val q = "${method.id} ${method.label}".lowercase()
-                        "paypal" in q || "pay pal" in q
-                    }
-                } else {
-                    methods.filterNot { method ->
-                        val q = "${method.id} ${method.label}".lowercase()
-                        "paypal" in q || "pay pal" in q
-                    }.ifEmpty { methods }
                 }
 
                 CreateOrderResult.Success(
                     OrderInfo(
                         orderId        = json.getString("orderId"),
-                        paymentMethods = finalMethods,
+                        paymentMethods = methods,
                         nominal        = json.optInt("nominal", 25000),
                     )
                 )
             } else {
-                CreateOrderResult.Error(json.optString("error", getStringsForContext(ctx).paymentCreateOrderFailed))
+                CreateOrderResult.Error(json.optString("error", "Gagal membuat order"))
             }
         } catch (e: Exception) {
             CreateOrderResult.Error(e.message ?: "Network error")
@@ -154,7 +134,7 @@ object PaymentManager {
 
         while (true) {
             if (System.currentTimeMillis() - startTime > POLL_TIMEOUT_MS) {
-                val r = PollResult.Error(getStringsForContext(ctx).paymentPollTimeoutLong)
+                val r = PollResult.Error("Timeout – belum ada konfirmasi dari admin dalam 30 menit")
                 onPoll(r)
                 return@withContext r
             }

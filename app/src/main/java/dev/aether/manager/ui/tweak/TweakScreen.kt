@@ -80,7 +80,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.aether.manager.data.MainViewModel
-import dev.aether.manager.i18n.LocalStrings
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -551,19 +550,18 @@ private fun GpuCard(
     onLockClick: () -> Unit,
     onRendererClick: () -> Unit
 ) {
-    val s = LocalStrings.current
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.Layers,
         title = "GPU",
-        subtitle = s.tweakGpuSummary,
+        subtitle = "Profile, frequency, renderer",
         badge = if (locked) "Locked" else profile,
         active = active || locked,
         expanded = expanded,
         onClick = onClick
     ) {
         DropdownAction(
-            title = s.tweakGpuGovernorProfile,
+            title = "Governor Profile GPU",
             value = profile,
             options = listOf("Battery", "Balanced", "Performance"),
             onSelect = onProfileChange
@@ -1027,7 +1025,6 @@ private fun DeviceInfoCard(
     expanded: Boolean,
     onClick: () -> Unit
 ) {
-    val s = LocalStrings.current
     val deviceName = rememberDeviceName()
     val codeName = Build.DEVICE ?: "Unknown"
     val androidVersion = "Android ${Build.VERSION.RELEASE}"
@@ -1145,7 +1142,7 @@ private fun DeviceInfoCard(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        DeviceInfoLine(label = s.tweakDeviceName, value = deviceName)
+                        DeviceInfoLine(label = "Nama Perangkat", value = deviceName)
                         DeviceInfoLine(label = "Android", value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
                         DeviceInfoLine(label = "CodeName", value = codeName)
                         DeviceInfoLine(label = "Kernel", value = kernel)
@@ -1194,14 +1191,13 @@ private fun ActiveProfileCard(
     onClick: () -> Unit,
     onSelect: (String) -> Unit
 ) {
-    val s = LocalStrings.current
     val label = activeProfileLabel(current)
 
     ExpandableTweakCard(
         modifier = Modifier.fillMaxWidth(),
         icon = activeProfileIcon(current),
         title = label,
-        subtitle = s.tweakActiveProfileCpuGpu,
+        subtitle = "Active Profile • CPU/GPU",
         badge = "Active",
         active = true,
         expanded = expanded,
@@ -1320,7 +1316,6 @@ private fun rememberDeviceName(): String {
 
 @Composable
 private fun AppProfileCard(onClick: () -> Unit) {
-    val s = LocalStrings.current
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
@@ -1360,7 +1355,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = s.tweakAppProfileTitle,
+                    text = "App Profile",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1368,7 +1363,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = s.tweakAppProfileDesc,
+                    text = "Kelola profil aplikasi",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                     maxLines = 2,
@@ -1422,7 +1417,7 @@ private fun DropdownAction(
             },
             confirmButton = {
                 TextButton(onClick = { expanded = false }) {
-                    Text(s.tweakClose)
+                    Text("Tutup")
                 }
             }
         )
@@ -1821,18 +1816,17 @@ private fun RendererDialog(
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit
 ) {
-    val s = LocalStrings.current
     val renderers = listOf("OpenGL", "Vulkan", "ANGLE", "SkiaVulkan", "SkiaGL")
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(s.tweakSelectGpuRenderer, fontWeight = FontWeight.Bold) },
+        title = { Text("Select GPU Renderer", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 renderers.forEach { item ->
                     ToggleOption(
                         title = item,
-                        subtitle = if (item == current) s.tweakSelectedNow else s.tweakTapToSelect,
+                        subtitle = if (item == current) "Sedang dipilih" else "Tap untuk memilih",
                         checked = item == current,
                         onClick = { onSelect(item) }
                     )
@@ -1840,7 +1834,7 @@ private fun RendererDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(s.tweakClose) }
+            TextButton(onClick = onDismiss) { Text("Tutup") }
         }
     )
 }

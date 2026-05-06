@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import dev.aether.manager.i18n.getStringsForContext
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State
@@ -28,7 +27,6 @@ sealed class UpdateState {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class UpdateViewModel(app: Application) : AndroidViewModel(app) {
-    private val strings get() = getStringsForContext(getApplication())
 
     private val _state     = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
@@ -73,7 +71,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val release = UpdateChecker.fetchLatest()
             _state.value = when {
-                release == null                             -> UpdateState.Error(strings.updateCheckFailed)
+                release == null                             -> UpdateState.Error("Gagal cek update")
                 release.versionCode > installedVersionCode -> UpdateState.Available(release)
                 else                                       -> UpdateState.UpToDate
             }

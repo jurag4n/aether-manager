@@ -158,7 +158,7 @@ fun SettingsScreen(
             SettingsSectionCard(
                 icon = Icons.Outlined.Palette,
                 title = s.settingsSectionAppearance,
-                subtitle = s.settingsAppearanceSubtitle,
+                subtitle = "Tema, warna, dan tampilan aplikasi",
                 expanded = appearanceExpanded,
                 onToggle = { appearanceExpanded = !appearanceExpanded }
             ) {
@@ -183,7 +183,7 @@ fun SettingsScreen(
             SettingsSectionCard(
                 icon = Icons.Outlined.Tune,
                 title = s.settingsSectionGeneral,
-                subtitle = s.settingsGeneralSubtitle,
+                subtitle = "Boot, notifikasi, dan bahasa",
                 expanded = generalExpanded,
                 onToggle = { generalExpanded = !generalExpanded }
             ) {
@@ -221,8 +221,8 @@ fun SettingsScreen(
 
             SettingsSectionCard(
                 icon = Icons.Outlined.Archive,
-                title = s.settingsBackupResetTitle,
-                subtitle = if (backupList.isEmpty()) s.settingsNoBackup else s.settingsBackupSavedCount.format(backupList.size),
+                title = "Backup & Reset",
+                subtitle = if (backupList.isEmpty()) s.settingsNoBackup else "${backupList.size} backup tersimpan",
                 expanded = backupExpanded,
                 onToggle = { backupExpanded = !backupExpanded }
             ) {
@@ -408,7 +408,7 @@ private fun LanguagePickerSheet(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = s.settingsLanguageDialogTitle,
+                text = "Pilih Bahasa / Select Language",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 4.dp)
@@ -531,12 +531,12 @@ private fun SettingsLicenseCard(
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
-                        text = if (isLicensed) s.settingsPremiumActiveBadge else "Aether Manager",
+                        text = if (isLicensed) "Premium Active" else "Aether Manager",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = if (isLicensed) s.settingsLicenseActiveDesc else s.settingsLicenseInactiveDesc,
+                        text = if (isLicensed) "License aktif dan fitur premium tersedia" else "Aktivasi lisensi untuk membuka fitur premium",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

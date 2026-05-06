@@ -227,7 +227,6 @@ private fun OnLifecycleResume(onResume: () -> Unit) {
 
 @Composable
 private fun SetupHeader() {
-    val s = LocalStrings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -250,7 +249,7 @@ private fun SetupHeader() {
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = s.setupHeaderSubtitle,
+                text = "Setup awal aplikasi",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -464,14 +463,14 @@ private fun PermissionCard(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    if (item.required) StatusChip(s.setupRequiredChip, MaterialTheme.colorScheme.error)
+                    if (item.required) StatusChip("Wajib", MaterialTheme.colorScheme.error)
                 }
 
                 AnimatedContent(
                     targetState = when (state) {
-                        PermState.CHECKING -> s.setupCheckingPermission
-                        PermState.GRANTED -> s.setupGrantedReady
-                        PermState.DENIED -> if (item.required) s.setupNotGrantedYet else s.setupDeniedOptional
+                        PermState.CHECKING -> "Memeriksa izin…"
+                        PermState.GRANTED -> "Aktif dan siap digunakan"
+                        PermState.DENIED -> if (item.required) "Belum diberikan" else "Dilewati / belum aktif"
                         PermState.IDLE -> item.desc
                     },
                     transitionSpec = {
@@ -555,8 +554,8 @@ private fun PermissionSummaryCard(granted: Int, total: Int, rootOk: Boolean) {
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = if (rootOk) s.setupRootActiveHint
-                        else s.setupRootRequiredHint,
+                        text = if (rootOk) "Root aktif. Lengkapi izin lain agar fitur berjalan stabil."
+                        else "Root wajib aktif sebelum masuk ke dashboard utama.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
@@ -834,8 +833,8 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
             add(
                 PermItem(
                     Icons.Outlined.AdminPanelSettings,
-                    s.setupPermRootTitle,
-                    s.setupPermRootDesc,
+                    "Akses Root",
+                    "Aktifkan kontrol performa tingkat sistem.",
                     "ROOT",
                     required = true
                 )
@@ -843,8 +842,8 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
             add(
                 PermItem(
                     Icons.Outlined.NotificationsActive,
-                    s.setupPermNotifTitle,
-                    s.setupPermNotifDesc,
+                    "Notifikasi",
+                    "Info status optimasi, peringatan, dan proses background.",
                     "NOTIFICATION"
                 )
             )
@@ -852,8 +851,8 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                 add(
                     PermItem(
                         Icons.Outlined.FolderOpen,
-                        s.setupPermStorageTitle,
-                        s.setupPermStorageDesc,
+                        "Penyimpanan",
+                        "Simpan konfigurasi, profil, dan log aplikasi.",
                         "STORAGE"
                     )
                 )
@@ -861,24 +860,24 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
             add(
                 PermItem(
                     Icons.Outlined.BatteryChargingFull,
-                    s.setupPermBatteryTitle,
-                    s.setupPermBatteryDesc,
+                    "Optimasi Baterai",
+                    "Cegah sistem membatasi proses Aether Manager.",
                     "BATTERY"
                 )
             )
             add(
                 PermItem(
                     Icons.Outlined.QueryStats,
-                    s.setupPermUsageTitle,
-                    s.setupPermUsageDesc,
+                    "Akses Penggunaan",
+                    "Baca statistik aplikasi untuk mode per-aplikasi.",
                     "USAGE_STATS"
                 )
             )
             add(
                 PermItem(
                     Icons.Outlined.Tune,
-                    s.setupPermWriteTitle,
-                    s.setupPermWriteDesc,
+                    "Pengaturan Sistem",
+                    "Terapkan tweak sistem, layar, dan performa.",
                     "WRITE_SETTINGS"
                 )
             )
@@ -1211,16 +1210,16 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             exit = fadeOut(tween(180, easing = FastOutSlowInEasing)) + slideOutVertically { it / 8 }
                         ) {
                             val pendingPerms = buildList {
-                                if (!rootOk) add(s.setupPermRootTitle)
-                                if (notifState == PermState.IDLE) add(s.setupPermNotifTitle)
-                                if (batteryState == PermState.IDLE) add(s.setupPermBatteryTitle)
-                                if (usageState == PermState.IDLE) add(s.setupPermUsageTitle)
-                                if (writeState == PermState.IDLE) add(s.setupPermWriteTitle)
-                                if (includeStorage && storState == PermState.IDLE) add(s.setupPermStorageTitle)
+                                if (!rootOk) add("Akses Root")
+                                if (notifState == PermState.IDLE) add("Notifikasi")
+                                if (batteryState == PermState.IDLE) add("Optimasi Baterai")
+                                if (usageState == PermState.IDLE) add("Akses Penggunaan")
+                                if (writeState == PermState.IDLE) add("Pengaturan Sistem")
+                                if (includeStorage && storState == PermState.IDLE) add("Penyimpanan")
                             }
                             Text(
                                 text = if (!rootOk) s.setupRootRequired
-                                else s.setupPendingPermissions.format(pendingPerms.joinToString(", ")),
+                                else "Selesaikan izin: ${pendingPerms.joinToString(", ")}",
                                 color = MaterialTheme.colorScheme.error.copy(alpha = 0.86f),
                                 fontSize = 12.sp,
                                 textAlign = TextAlign.Center,
@@ -1266,7 +1265,7 @@ private fun WelcomePage(s: AppStrings) {
         )
 
         Text(
-            text = s.setupFeatureTitle,
+            text = "Fitur Unggulan",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -1276,18 +1275,18 @@ private fun WelcomePage(s: AppStrings) {
         listOf(
             FeatureItem(
                 Icons.Outlined.Speed,
-                s.setupFeaturePerformanceTitle,
-                s.setupFeaturePerformanceDesc
+                "Performa Maksimal",
+                "Optimasi CPU, GPU, dan scheduler agar perangkat terasa lebih responsif."
             ),
             FeatureItem(
                 Icons.Outlined.BatteryChargingFull,
-                s.setupFeaturePowerTitle,
-                s.setupFeaturePowerDesc
+                "Manajemen Daya",
+                "Profil hemat baterai tetap menjaga kestabilan performa harian."
             ),
             FeatureItem(
                 Icons.Outlined.SportsEsports,
-                s.setupFeatureGamingTitle,
-                s.setupFeatureGamingDesc
+                "Mode Gaming",
+                "Prioritaskan resource untuk game dan kurangi gangguan proses latar belakang."
             )
         ).forEachIndexed { index, item ->
             FeatureCard(item = item, index = index)
@@ -1321,13 +1320,13 @@ private fun PermissionsPage(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = s.setupPermissionsTitle,
+            text = "Izin Aplikasi",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = s.setupPermissionsDesc,
+            text = "Aktifkan izin inti secara bertahap. Root wajib untuk mode performa, sedangkan izin tambahan membantu monitoring dan optimasi berjalan stabil.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
@@ -1426,7 +1425,7 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
         }
 
         Text(
-            text = if (allGranted) s.setupCompleteTitle else s.setupIncompleteTitle,
+            text = if (allGranted) "Setup Complete" else s.setupIncompleteTitle,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -1434,8 +1433,8 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
             lineHeight = 32.sp
         )
         Text(
-            text = if (allGranted) s.setupReadyLongDesc
-            else s.setupIncompleteLongDesc,
+            text = if (allGranted) "Aether Manager sudah siap digunakan. Root mode aktif, izin utama selesai, dan fitur monitoring siap berjalan di background."
+            else "Beberapa izin belum selesai. Kembali ke halaman izin lalu aktifkan kartu yang masih belum aktif.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1459,25 +1458,25 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = if (allGranted) s.setupPreparedTitle else s.setupIncompleteShortTitle,
+                    text = if (allGranted) "Yang sudah disiapkan" else "Setup belum lengkap",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 DetailRow(
                     icon = Icons.Outlined.AdminPanelSettings,
-                    title = s.setupRootModeTitle,
-                    desc = s.setupRootModeDesc
+                    title = "Root Mode",
+                    desc = "Kontrol performa dan tuning sistem siap dipakai dari dashboard."
                 )
                 DetailRow(
                     icon = Icons.Outlined.QueryStats,
-                    title = s.setupStableMonitorTitle,
-                    desc = s.setupStableMonitorDesc
+                    title = "Monitoring Stabil",
+                    desc = "Status perangkat, aplikasi, dan proses background dapat dipantau lebih rapi."
                 )
                 DetailRow(
                     icon = Icons.Outlined.Tune,
-                    title = s.setupOptimizationReadyTitle,
-                    desc = s.setupOptimizationReadyDesc
+                    title = "Optimasi Siap",
+                    desc = "Profil performa, baterai, dan gaming siap dijalankan sesuai kebutuhan."
                 )
             }
         }
