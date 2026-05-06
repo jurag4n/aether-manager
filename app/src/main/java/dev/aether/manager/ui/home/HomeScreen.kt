@@ -168,6 +168,8 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
     val cpuFreq = normalizeCpuFreq(state.cpuFreq)
+    // Display CPU usage gracefully: show dash if zero or negative
+    val cpuUsageLabel = if (state.cpuUsage > 0) "${state.cpuUsage}%" else "—%"
     val freqSize = when {
         cpuFreq.length >= 10 -> 23.sp
         cpuFreq.length >= 8 -> 25.sp
@@ -187,7 +189,7 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconBadge(Icons.Outlined.Memory, color)
-                PillText("${state.cpuUsage}%")
+                PillText(cpuUsageLabel)
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -324,7 +326,8 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                InfoTile(Icons.Outlined.Thermostat, "${state.gpuUsage}%", "Beban GPU", accent, Modifier.weight(1f))
+                val gpuUsageLabel = if (state.gpuUsage > 0) "${state.gpuUsage}%" else "—%"
+                InfoTile(Icons.Outlined.Thermostat, gpuUsageLabel, "Beban GPU", accent, Modifier.weight(1f))
                 InfoTile(Icons.Outlined.GridView, gpuShortName, "GPU", accent, Modifier.weight(1f))
             }
         }
@@ -570,7 +573,17 @@ private fun shortGpuName(value: String): String {
 }
 
 private fun fmtMb(mb: Long): String = if (mb >= 1024) "%.1f GB".format(mb / 1024f) else "$mb MB"
-private fun normalizeCpuFreq(value: String): String = value.replace("\n", " ").replace(Regex("""\s+"""), " ").trim().ifBlank { "— MHz" }
+// Normalize CPU frequency: collapse whitespace and return a clean string. If the numeric value is zero or missing,
+// return a dash placeholder instead of displaying 0 MHz.
+private fun normalizeCpuFreq(value: String): String {
+    val trimmed = value.replace("\n", " ").replace(Regex("""\s+"""), " ").trim()
+    if (trimmed.isBlank()) return "— MHz"
+    // Extract numeric value to detect zero or invalid readings
+    val numericString = trimmed.replace(Regex("[^0-9.]"), "")
+    val numericValue = numericString.toFloatOrNull()
+    if (numericValue == null || numericValue <= 0f) return "— MHz"
+    return trimmed
+}
 private fun normalizeGpuFreq(value: String): String {
     val trimmed = value.trim()
     if (trimmed.isBlank()) return "— MHz"

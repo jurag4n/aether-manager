@@ -64,7 +64,6 @@ import dev.aether.manager.ui.components.RebootBottomSheet
 import dev.aether.manager.ui.home.HomeScreen
 import dev.aether.manager.ui.settings.SettingsScreen
 import dev.aether.manager.ui.tweak.TweakScreen
-import dev.aether.manager.ui.tweak.DeviceInfoScreen
 import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
 import dev.aether.manager.util.RootEngine
@@ -144,7 +143,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     var showReboot             by remember { mutableStateOf(false) }
     var showSettings           by remember { mutableStateOf(false) }
     var showLicense            by remember { mutableStateOf(false) }
-    var showDeviceInfo         by remember { mutableStateOf(false) }
     var licenseFromSettings    by remember { mutableStateOf(false) }
 
     var premiumCheckTick by remember { mutableStateOf(0) }
@@ -216,6 +214,9 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                     vm.refreshIfNeeded()
                     // Reload app profiles jika belum siap (root mungkin baru granted)
                     apVm.loadIfNeeded()
+
+                    // Trigger update check on resume so users get update notifications without reopening the app
+                    updateVm.checkUpdate()
                 }
                 Lifecycle.Event.ON_PAUSE   -> { /* biarkan scheduler tetap jalan */ }
                 Lifecycle.Event.ON_STOP    -> AdScheduler.stop()
@@ -288,15 +289,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
         return
     }
 
-
-    if (showDeviceInfo) {
-        DeviceInfoScreen(
-            vm = vm,
-            onBack = { showDeviceInfo = false }
-        )
-        return
-    }
-
     if (showSettings) {
         key(showSettings) {
             SettingsScreen(
@@ -338,11 +330,7 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             ) { screen ->
                 when (screen) {
                     Screen.HOME -> HomeScreen(vm)
-                    Screen.TWEAK -> TweakScreen(
-                        vm = vm,
-                        onOpenAppProfile = { currentScreen = Screen.APPS },
-                        onOpenDeviceInfo = { showDeviceInfo = true }
-                    )
+                    Screen.TWEAK -> TweakScreen(vm, onOpenAppProfile = { currentScreen = Screen.APPS })
                     Screen.APPS -> AppProfileScreen(apVm)
                 }
             }

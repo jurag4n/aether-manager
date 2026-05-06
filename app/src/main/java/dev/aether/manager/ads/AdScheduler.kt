@@ -6,13 +6,13 @@ import kotlinx.coroutines.*
 
 object AdScheduler {
 
-    // Iklan pertama muncul 50 detik setelah app dibuka
-    var startDelayMs: Long  = 60 * 1_000L
-    // Interval antar iklan: 90 detik
-    var intervalMs: Long    = 1 * 60 * 1_000L + 30 * 1_000L
+    // Iklan pertama muncul lebih lambat setelah app dibuka untuk mengurangi kesan spam
+    var startDelayMs: Long  = 90 * 1_000L
+    // Interval antar iklan diperpanjang agar penayangan iklan tidak terlalu sering
+    var intervalMs: Long    = 3 * 60 * 1_000L  // 3 menit
     // Minimum jarak antar iklan (guard anti-spam) — harus <= intervalMs
     // agar tryShowAfterAction tidak selalu diblokir oleh scheduler yang baru show
-    var minIntervalMs: Long = 1 * 60 * 1_000L + 30 * 1_000L
+    var minIntervalMs: Long = 3 * 60 * 1_000L
 
     private var job: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
