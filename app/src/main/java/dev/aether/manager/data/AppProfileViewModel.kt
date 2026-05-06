@@ -24,6 +24,8 @@ sealed class AppsUiState {
 
 class AppProfileViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val appContext = application.applicationContext
+
     private val _state = MutableStateFlow<AppsUiState>(AppsUiState.Loading)
     val state: StateFlow<AppsUiState> = _state.asStateFlow()
 
@@ -44,21 +46,37 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
     fun load() = viewModelScope.launch(Dispatchers.IO) {
         if (loading) return@launch
         loading = true
-        _state.value = AppsUiState.Loading
+
+        val cachedApps = AppProfileRepository.loadCachedApps(appContext)
+        val cachedProfiles = AppProfileRepository.loadCachedProfiles(appContext)
+        val cachedMonitor = AppProfileRepository.loadMonitorCache(appContext)
+
+        if (cachedApps.isNotEmpty()) {
+            _state.value = AppsUiState.Ready(cachedApps, cachedProfiles, cachedMonitor)
+        } else {
+            _state.value = AppsUiState.Loading
+        }
 
         try {
-            val apps = withTimeout(8_000L) {
-                AppProfileRepository.loadUserApps(getApplication())
+            val apps = withTimeout(6_000L) {
+                AppProfileRepository.loadUserApps(appContext)
             }
-
-            // Tampilkan daftar aplikasi secepat mungkin. Jangan tunggu root/shell,
-            // karena bagian itu yang sering bikin tab App Profile stuck Loading.
-            _state.value = AppsUiState.Ready(apps, emptyMap(), false)
+            val latestProfiles = AppProfileRepository.loadCachedProfiles(appContext)
+            val latestMonitor = AppProfileRepository.loadMonitorCache(appContext)
+            _state.value = AppsUiState.Ready(apps, latestProfiles, latestMonitor)
             syncProfilesIfRootReady()
         } catch (e: TimeoutCancellationException) {
-            _state.value = AppsUiState.Error("Timeout memuat daftar aplikasi")
+            if (cachedApps.isEmpty()) {
+                _state.value = AppsUiState.Error("Timeout memuat daftar aplikasi")
+            } else {
+                snack("Daftar aplikasi memakai cache, refresh terlalu lama")
+            }
         } catch (e: Exception) {
-            _state.value = AppsUiState.Error(e.message ?: "Gagal memuat aplikasi")
+            if (cachedApps.isEmpty()) {
+                _state.value = AppsUiState.Error(e.message ?: "Gagal memuat aplikasi")
+            } else {
+                snack("Daftar aplikasi memakai cache")
+            }
         } finally {
             loading = false
         }
@@ -71,14 +89,20 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
         val ready = _state.value as? AppsUiState.Ready ?: return@launch
         profileSyncing = true
         try {
-            val profiles = withTimeout(5_000L) { AppProfileRepository.loadAllProfiles() }
+            val rootProfiles = withTimeout(4_000L) { AppProfileRepository.loadAllProfiles() }
+            val cachedProfiles = AppProfileRepository.loadCachedProfiles(appContext)
+            val mergedProfiles = if (rootProfiles.isEmpty()) cachedProfiles else cachedProfiles + rootProfiles
+            AppProfileRepository.saveProfilesCache(appContext, mergedProfiles)
+
             val running = runCatching {
-                withTimeout(2_000L) { AppProfileRepository.isMonitorRunning() }
-            }.getOrDefault(false)
-            _state.value = ready.copy(profiles = profiles, monitorRunning = running)
+                withTimeout(1_500L) { AppProfileRepository.isMonitorRunning() }
+            }.getOrDefault(ready.monitorRunning)
+            AppProfileRepository.setMonitorCache(appContext, running)
+
+            val current = _state.value as? AppsUiState.Ready ?: return@launch
+            _state.value = current.copy(profiles = mergedProfiles, monitorRunning = running)
         } catch (_: Exception) {
-            // UI sudah Ready dengan daftar app; kegagalan sync root tidak boleh
-            // mengembalikan layar ke Loading/Error.
+            // UI tetap pakai cache lokal. Root/shell tidak boleh bikin layar balik Loading.
         } finally {
             profileSyncing = false
         }
@@ -86,94 +110,104 @@ class AppProfileViewModel(application: Application) : AndroidViewModel(applicati
 
     private suspend fun ensureRootReady(showSnack: Boolean = true): Boolean {
         val ready = RootManager.isRootGranted || RootManager.isRooted() || RootManager.requestRoot()
-        if (!ready && showSnack) snack("Root belum aktif — grant root dulu")
+        if (!ready && showSnack) snack("Root belum aktif — profile tersimpan lokal, grant root agar bisa diterapkan")
         return ready
     }
 
-    fun openEditor(app: AppInfo) = viewModelScope.launch(Dispatchers.IO) {
-        val hasRoot = RootManager.isRootGranted || RootManager.isRooted()
-        val current = if (hasRoot) {
-            runCatching { AppProfileRepository.loadProfile(app.packageName) }
-                .getOrDefault(AppProfile(app.packageName))
-        } else {
-            AppProfile(app.packageName)
-        }
-        _editingProfile.value = current
+    fun openEditor(app: AppInfo) {
+        val s = _state.value as? AppsUiState.Ready
+        _editingProfile.value = s?.profiles?.get(app.packageName)
+            ?: AppProfileRepository.loadCachedProfiles(appContext)[app.packageName]
+            ?: AppProfile(app.packageName)
     }
 
     fun closeEditor() { _editingProfile.value = null }
 
-    fun saveProfile(profile: AppProfile) = viewModelScope.launch(Dispatchers.IO) {
-        if (!ensureRootReady()) return@launch
-
-        _savingPkg.value = profile.packageName
-        try {
-            AppProfileRepository.saveProfile(profile)
-            val s = _state.value
-            if (s is AppsUiState.Ready) {
-                val updated = s.profiles.toMutableMap()
-                updated[profile.packageName] = profile
-                val hasEnabled = updated.values.any { it.enabled }
-                val monitorWasOff = !s.monitorRunning
-
-                if (hasEnabled && monitorWasOff) {
-                    AppProfileRepository.startMonitor()
-                    _state.value = s.copy(profiles = updated, monitorRunning = true)
-                } else {
-                    if (s.monitorRunning) AppProfileRepository.startMonitor()
-                    _state.value = s.copy(profiles = updated)
-                }
-            }
-            _editingProfile.value = null
-        } catch (e: Exception) {
-            snack("Gagal simpan: ${e.message}")
-        } finally {
-            _savingPkg.value = null
-        }
-    }
-
-    fun toggleMonitor(enable: Boolean) = viewModelScope.launch(Dispatchers.IO) {
-        if (!ensureRootReady()) return@launch
-
-        runCatching {
-            if (enable) AppProfileRepository.startMonitor() else AppProfileRepository.stopMonitor()
-        }.onFailure { e ->
-            snack("Gagal mengubah monitor: ${e.message}")
-            return@launch
-        }
+    fun saveProfile(profile: AppProfile) {
+        AppProfileRepository.saveProfileCache(appContext, profile)
 
         val s = _state.value
         if (s is AppsUiState.Ready) {
-            _state.value = s.copy(monitorRunning = enable)
+            val updated = s.profiles.toMutableMap()
+            updated[profile.packageName] = profile
+            val monitor = if (updated.values.any { it.enabled }) true else s.monitorRunning
+            if (monitor != s.monitorRunning) AppProfileRepository.setMonitorCache(appContext, monitor)
+            _state.value = s.copy(profiles = updated, monitorRunning = monitor)
+        }
+        _editingProfile.value = null
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _savingPkg.value = profile.packageName
+            try {
+                if (!ensureRootReady()) return@launch
+                AppProfileRepository.saveProfile(profile)
+                val ready = _state.value as? AppsUiState.Ready
+                if (ready != null && ready.profiles.values.any { it.enabled }) {
+                    AppProfileRepository.startMonitor()
+                    AppProfileRepository.setMonitorCache(appContext, true)
+                    _state.value = ready.copy(monitorRunning = true)
+                } else if (ready?.monitorRunning == true) {
+                    AppProfileRepository.startMonitor()
+                }
+            } catch (e: Exception) {
+                snack("Profile sudah tersimpan lokal, gagal apply root: ${e.message}")
+            } finally {
+                _savingPkg.value = null
+            }
         }
     }
 
-    fun deleteProfile(packageName: String) = viewModelScope.launch(Dispatchers.IO) {
-        if (!ensureRootReady()) return@launch
-        AppProfileRepository.deleteProfile(packageName)
+    fun toggleMonitor(enable: Boolean) {
+        AppProfileRepository.setMonitorCache(appContext, enable)
+        val s = _state.value
+        if (s is AppsUiState.Ready) _state.value = s.copy(monitorRunning = enable)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!ensureRootReady()) return@launch
+            runCatching {
+                if (enable) AppProfileRepository.startMonitor() else AppProfileRepository.stopMonitor()
+            }.onFailure { e ->
+                snack("Gagal mengubah monitor: ${e.message}")
+            }
+        }
+    }
+
+    fun deleteProfile(packageName: String) {
+        AppProfileRepository.deleteProfileCache(appContext, packageName)
         val s = _state.value
         if (s is AppsUiState.Ready) {
             val updated = s.profiles.toMutableMap()
             updated.remove(packageName)
             _state.value = s.copy(profiles = updated)
         }
-    }
 
-    fun resetMonitor() = viewModelScope.launch(Dispatchers.IO) {
-        if (!ensureRootReady(showSnack = false)) return@launch
-        AppProfileRepository.resetMonitor()
-        val s = _state.value
-        if (s is AppsUiState.Ready) {
-            _state.value = s.copy(monitorRunning = false)
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!ensureRootReady(showSnack = false)) return@launch
+            runCatching { AppProfileRepository.deleteProfile(packageName) }
         }
     }
 
-    fun resetAllProfiles() = viewModelScope.launch(Dispatchers.IO) {
-        if (!ensureRootReady(showSnack = false)) return@launch
-        AppProfileRepository.resetAllProfiles()
+    fun resetMonitor() {
+        AppProfileRepository.setMonitorCache(appContext, false)
+        val s = _state.value
+        if (s is AppsUiState.Ready) _state.value = s.copy(monitorRunning = false)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!ensureRootReady(showSnack = false)) return@launch
+            runCatching { AppProfileRepository.resetMonitor() }
+        }
+    }
+
+    fun resetAllProfiles() {
+        AppProfileRepository.clearLocalCache(appContext, keepApps = true)
         val s = _state.value
         if (s is AppsUiState.Ready) {
             _state.value = s.copy(profiles = emptyMap(), monitorRunning = false)
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!ensureRootReady(showSnack = false)) return@launch
+            runCatching { AppProfileRepository.resetAllProfiles() }
         }
     }
 

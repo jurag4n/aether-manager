@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import dev.aether.manager.util.RootEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 
 object AppProfileRepository {
@@ -14,12 +15,18 @@ object AppProfileRepository {
     private const val MONITOR_SCRIPT = "${RootEngine.CONF_DIR}/app_monitor.sh"
     private const val SERVICE_SCRIPT = "${RootEngine.CONF_DIR}/app_monitor_service.sh"
 
+    private const val PREF_NAME = "aether_app_profile_cache"
+    private const val KEY_APPS = "apps"
+    private const val KEY_PROFILES = "profiles"
+    private const val KEY_MONITOR = "monitor_running"
+
     // ── Public API ────────────────────────────────────────────────────────
 
     suspend fun loadUserApps(context: Context): List<AppInfo> = withContext(Dispatchers.IO) {
         val pm = context.packageManager
         val installed = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-        installed
+        val apps = installed
+            .asSequence()
             .filter { app ->
                 val isSystem = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0
                 val isUpdatedSystem = (app.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
@@ -40,6 +47,91 @@ object AppProfileRepository {
                 )
             }
             .sortedBy { it.label.lowercase() }
+            .toList()
+        saveAppsCache(context, apps)
+        apps
+    }
+
+    fun loadCachedApps(context: Context): List<AppInfo> {
+        val raw = prefs(context).getString(KEY_APPS, null).orEmpty()
+        if (raw.isBlank()) return emptyList()
+        return runCatching {
+            val arr = JSONArray(raw)
+            buildList {
+                for (i in 0 until arr.length()) {
+                    val j = arr.optJSONObject(i) ?: continue
+                    val pkg = j.optString("package_name")
+                    if (pkg.isBlank()) continue
+                    add(
+                        AppInfo(
+                            packageName = pkg,
+                            label = j.optString("label", pkg),
+                            versionName = j.optString("version_name", ""),
+                            targetSdk = j.optInt("target_sdk", 0),
+                            isSystemApp = j.optBoolean("system_app", false),
+                            icon = null,
+                        )
+                    )
+                }
+            }.sortedBy { it.label.lowercase() }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun saveAppsCache(context: Context, apps: List<AppInfo>) {
+        val arr = JSONArray()
+        apps.forEach { app ->
+            arr.put(JSONObject().apply {
+                put("package_name", app.packageName)
+                put("label", app.label)
+                put("version_name", app.versionName)
+                put("target_sdk", app.targetSdk)
+                put("system_app", app.isSystemApp)
+            })
+        }
+        prefs(context).edit().putString(KEY_APPS, arr.toString()).apply()
+    }
+
+    fun loadCachedProfiles(context: Context): Map<String, AppProfile> {
+        val raw = prefs(context).getString(KEY_PROFILES, null).orEmpty()
+        if (raw.isBlank()) return emptyMap()
+        return runCatching {
+            val root = JSONObject(raw)
+            root.keys().asSequence().associateWith { pkg ->
+                profileFromJson(pkg, root.optJSONObject(pkg) ?: JSONObject())
+            }
+        }.getOrDefault(emptyMap())
+    }
+
+    fun saveProfilesCache(context: Context, profiles: Map<String, AppProfile>) {
+        val root = JSONObject()
+        profiles.forEach { (pkg, profile) -> root.put(pkg, profileToJson(profile)) }
+        prefs(context).edit().putString(KEY_PROFILES, root.toString()).apply()
+    }
+
+    fun saveProfileCache(context: Context, profile: AppProfile) {
+        val updated = loadCachedProfiles(context).toMutableMap()
+        updated[profile.packageName] = profile
+        saveProfilesCache(context, updated)
+    }
+
+    fun deleteProfileCache(context: Context, packageName: String) {
+        val updated = loadCachedProfiles(context).toMutableMap()
+        updated.remove(packageName)
+        saveProfilesCache(context, updated)
+    }
+
+    fun setMonitorCache(context: Context, running: Boolean) {
+        prefs(context).edit().putBoolean(KEY_MONITOR, running).apply()
+    }
+
+    fun loadMonitorCache(context: Context): Boolean = prefs(context).getBoolean(KEY_MONITOR, false)
+
+    fun clearLocalCache(context: Context, keepApps: Boolean = true) {
+        val edit = prefs(context).edit()
+            .remove(KEY_PROFILES)
+            .putBoolean(KEY_MONITOR, false)
+        if (!keepApps) edit.remove(KEY_APPS)
+        edit.apply()
     }
 
     suspend fun loadProfile(packageName: String): AppProfile = withContext(Dispatchers.IO) {
@@ -47,40 +139,12 @@ object AppProfileRepository {
         val raw = RootEngine.sh("cat $path 2>/dev/null").stdout.trim()
         if (raw.isEmpty()) return@withContext AppProfile(packageName)
         try {
-            val j = JSONObject(raw)
-            val tweaks = j.optJSONObject("tweaks") ?: JSONObject()
-            AppProfile(
-                packageName  = packageName,
-                enabled      = j.optBoolean("enabled", false),
-                cpuGovernor  = j.optString("cpu_governor", "default"),
-                refreshRate  = j.optString("refresh_rate", "default"),
-                extraTweaks  = AppExtraTweaks(
-                    disableDoze    = tweaks.optBoolean("disable_doze", false),
-                    lockCpuMin     = tweaks.optBoolean("lock_cpu_min", false),
-                    killBackground = tweaks.optBoolean("kill_background", false),
-                    gpuBoost       = tweaks.optBoolean("gpu_boost", false),
-                    ioLatency      = tweaks.optBoolean("io_latency", false),
-                ),
-            )
+profileFromJson(packageName, JSONObject(raw))
         } catch (_: Exception) { AppProfile(packageName) }
     }
 
     suspend fun saveProfile(profile: AppProfile) = withContext(Dispatchers.IO) {
-        val tweaks = JSONObject().apply {
-            put("disable_doze",    profile.extraTweaks.disableDoze)
-            put("lock_cpu_min",    profile.extraTweaks.lockCpuMin)
-            put("kill_background", profile.extraTweaks.killBackground)
-            put("gpu_boost",       profile.extraTweaks.gpuBoost)
-            put("io_latency",      profile.extraTweaks.ioLatency)
-        }
-        val json = JSONObject().apply {
-            put("package_name", profile.packageName)
-            put("enabled",      profile.enabled)
-            put("cpu_governor", profile.cpuGovernor)
-            put("refresh_rate", profile.refreshRate)
-            put("tweaks",       tweaks)
-        }
-        val content = json.toString()
+        val content = profileToJson(profile).toString()
         val path = "$PROFILE_DIR/${profile.packageName}.json"
         RootEngine.sh("mkdir -p $PROFILE_DIR && printf '%s' '${content.replace("'", "'\\''")}' > $path")
         writeMonitorScript()
@@ -137,6 +201,43 @@ object AppProfileRepository {
     suspend fun isMonitorRunning(): Boolean {
         val out = RootEngine.sh("pgrep -f app_monitor.sh").stdout.trim()
         return out.isNotEmpty()
+    }
+
+    private fun prefs(context: Context) =
+        context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+
+    private fun profileFromJson(packageName: String, j: JSONObject): AppProfile {
+        val tweaks = j.optJSONObject("tweaks") ?: JSONObject()
+        return AppProfile(
+            packageName  = j.optString("package_name", packageName).ifBlank { packageName },
+            enabled      = j.optBoolean("enabled", false),
+            cpuGovernor  = j.optString("cpu_governor", "default"),
+            refreshRate  = j.optString("refresh_rate", "default"),
+            extraTweaks  = AppExtraTweaks(
+                disableDoze    = tweaks.optBoolean("disable_doze", false),
+                lockCpuMin     = tweaks.optBoolean("lock_cpu_min", false),
+                killBackground = tweaks.optBoolean("kill_background", false),
+                gpuBoost       = tweaks.optBoolean("gpu_boost", false),
+                ioLatency      = tweaks.optBoolean("io_latency", false),
+            ),
+        )
+    }
+
+    private fun profileToJson(profile: AppProfile): JSONObject {
+        val tweaks = JSONObject().apply {
+            put("disable_doze",    profile.extraTweaks.disableDoze)
+            put("lock_cpu_min",    profile.extraTweaks.lockCpuMin)
+            put("kill_background", profile.extraTweaks.killBackground)
+            put("gpu_boost",       profile.extraTweaks.gpuBoost)
+            put("io_latency",      profile.extraTweaks.ioLatency)
+        }
+        return JSONObject().apply {
+            put("package_name", profile.packageName)
+            put("enabled",      profile.enabled)
+            put("cpu_governor", profile.cpuGovernor)
+            put("refresh_rate", profile.refreshRate)
+            put("tweaks",       tweaks)
+        }
     }
 
     // ── Restore default (dipanggil saat monitor dimatikan) ────────────────
