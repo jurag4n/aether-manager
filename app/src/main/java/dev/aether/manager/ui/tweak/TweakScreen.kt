@@ -21,6 +21,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -438,90 +439,131 @@ private fun AdaptiveTweakGridRow(
     left: @Composable (Modifier) -> Unit,
     right: @Composable (Modifier) -> Unit
 ) {
-    val targetState = when (expandedKey) {
-        leftKey -> leftKey
-        rightKey -> rightKey
-        else -> "compact"
-    }
+    val expandedLeft = expandedKey == leftKey
+    val expandedRight = expandedKey == rightKey
 
-    AnimatedContent(
-        targetState = targetState,
-        transitionSpec = {
-            (fadeIn(tween(120, easing = FastOutSlowInEasing)) +
-                slideInVertically(
-                    animationSpec = tween(220, easing = FastOutSlowInEasing)
-                ) { it / 10 } +
-                scaleIn(
-                    initialScale = 0.965f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
-                )) togetherWith
-                (fadeOut(tween(110, easing = FastOutSlowInEasing)) +
-                    slideOutVertically(tween(150, easing = FastOutSlowInEasing)) { -it / 14 } +
-                    scaleOut(
-                        targetScale = 0.975f,
-                        animationSpec = tween(150, easing = FastOutSlowInEasing)
-                    ))
-        },
-        label = "adaptive_tweak_grid_${leftKey}_${rightKey}",
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
                 )
-            )
-    ) { state ->
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(if (state == "compact") 12.dp else 14.dp)
+            ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        AnimatedVisibility(
+            visible = !expandedRight,
+            enter = fadeIn(tween(150, delayMillis = 20, easing = FastOutSlowInEasing)) +
+                slideInVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) { it / 6 } +
+                expandVertically(
+                    expandFrom = Alignment.Top,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ),
+            exit = fadeOut(tween(90, easing = FastOutSlowInEasing)) +
+                slideOutVertically(
+                    animationSpec = tween(125, easing = FastOutSlowInEasing)
+                ) { it / 8 } +
+                shrinkVertically(
+                    shrinkTowards = Alignment.Top,
+                    animationSpec = tween(170, easing = FastOutSlowInEasing)
+                )
         ) {
-            when (state) {
-                leftKey -> {
-                    AnimatedGridCard(active = true) { left(Modifier.fillMaxWidth()) }
-                    CompactGridSingleCell { AnimatedGridCard(active = false) { right(Modifier.fillMaxWidth()) } }
-                }
-                rightKey -> {
-                    AnimatedGridCard(active = true) { right(Modifier.fillMaxWidth()) }
-                    CompactGridSingleCell { AnimatedGridCard(active = false) { left(Modifier.fillMaxWidth()) } }
-                }
-                else -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        AnimatedGridCard(modifier = Modifier.weight(1f), active = false) { left(Modifier.fillMaxWidth()) }
-                        AnimatedGridCard(modifier = Modifier.weight(1f), active = false) { right(Modifier.fillMaxWidth()) }
+            if (expandedLeft) {
+                TweakGridSlot(expanded = true) { left(Modifier.fillMaxWidth()) }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TweakGridSlot(modifier = Modifier.weight(1f), expanded = false) {
+                        left(Modifier.fillMaxWidth())
+                    }
+                    if (!expandedRight) {
+                        TweakGridSlot(modifier = Modifier.weight(1f), expanded = false) {
+                            right(Modifier.fillMaxWidth())
+                        }
                     }
                 }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expandedRight,
+            enter = fadeIn(tween(150, delayMillis = 20, easing = FastOutSlowInEasing)) +
+                slideInVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) { it / 6 } +
+                expandVertically(
+                    expandFrom = Alignment.Top,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ),
+            exit = fadeOut(tween(90, easing = FastOutSlowInEasing)) +
+                slideOutVertically(
+                    animationSpec = tween(125, easing = FastOutSlowInEasing)
+                ) { it / 8 } +
+                shrinkVertically(
+                    shrinkTowards = Alignment.Top,
+                    animationSpec = tween(170, easing = FastOutSlowInEasing)
+                )
+        ) {
+            TweakGridSlot(expanded = true) { right(Modifier.fillMaxWidth()) }
+        }
+
+        if (expandedLeft || expandedRight) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (expandedLeft) {
+                    TweakGridSlot(modifier = Modifier.weight(1f), expanded = false) {
+                        right(Modifier.fillMaxWidth())
+                    }
+                } else {
+                    TweakGridSlot(modifier = Modifier.weight(1f), expanded = false) {
+                        left(Modifier.fillMaxWidth())
+                    }
+                }
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun AnimatedGridCard(
+private fun TweakGridSlot(
     modifier: Modifier = Modifier,
-    active: Boolean,
+    expanded: Boolean,
     content: @Composable () -> Unit
 ) {
     val scale by animateFloatAsState(
-        targetValue = if (active) 1f else 0.985f,
+        targetValue = if (expanded) 1.01f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            stiffness = Spring.StiffnessLow
         ),
-        label = "animated_grid_card_scale"
+        label = "tweak_grid_slot_scale"
     )
     Box(
         modifier = modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                translationY = if (active) -1f else 0f
             }
             .animateContentSize(
                 animationSpec = spring(
@@ -531,46 +573,6 @@ private fun AnimatedGridCard(
             )
     ) {
         content()
-    }
-}
-
-@Composable
-private fun AnimatedCompactPairCard(content: @Composable () -> Unit) {
-    AnimatedVisibility(
-        visible = true,
-        enter = fadeIn(tween(120, easing = FastOutSlowInEasing)) +
-            slideInVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                ),
-                initialOffsetY = { it / 5 }
-            ) +
-            scaleIn(
-                initialScale = 0.94f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ),
-        exit = fadeOut(tween(90, easing = FastOutSlowInEasing)) +
-            slideOutVertically(targetOffsetY = { it / 8 }) +
-            scaleOut(targetScale = 0.96f)
-    ) {
-        CompactGridSingleCell {
-            AnimatedGridCard(active = false) { content() }
-        }
-    }
-}
-
-@Composable
-private fun CompactGridSingleCell(content: @Composable () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(modifier = Modifier.weight(1f)) { content() }
-        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -970,121 +972,74 @@ private fun ExpandableTweakCard(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
 
-    val container by animateColorAsState(
-        targetValue = if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh
-                      else MaterialTheme.colorScheme.surfaceContainerLow,
-        animationSpec = tween(300),
-        label = "card_container_$title"
+    val cardScale by animateFloatAsState(
+        targetValue = when {
+            pressed -> 0.985f
+            expanded -> 1.01f
+            else -> 1f
+        },
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "tweak_card_scale_$title"
+    )
+    val corner by animateDpAsState(
+        targetValue = if (expanded) 28.dp else 24.dp,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "tweak_card_corner_$title"
+    )
+    val detailAlpha by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = tween(if (expanded) 180 else 100, easing = FastOutSlowInEasing),
+        label = "tweak_detail_alpha_$title"
+    )
+    val detailOffset by animateFloatAsState(
+        targetValue = if (expanded) 0f else 16f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "tweak_detail_offset_$title"
     )
     val iconBg by animateColorAsState(
-        targetValue = if (active || expanded) MaterialTheme.colorScheme.primaryContainer
-                      else MaterialTheme.colorScheme.surfaceContainerHighest,
-        animationSpec = tween(260),
-        label = "icon_bg_$title"
+        targetValue = if (active || expanded) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.70f)
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        label = "tweak_icon_bg_$title"
     )
     val iconTint by animateColorAsState(
         targetValue = if (active || expanded) MaterialTheme.colorScheme.primary
-                      else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(260),
-        label = "icon_tint_$title"
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        label = "tweak_icon_tint_$title"
     )
     val badgeBg by animateColorAsState(
         targetValue = if (active || expanded) MaterialTheme.colorScheme.primary
-                      else MaterialTheme.colorScheme.surfaceContainerHighest,
-        animationSpec = tween(260),
-        label = "badge_bg_$title"
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        label = "tweak_badge_bg_$title"
     )
     val badgeFg by animateColorAsState(
         targetValue = if (active || expanded) MaterialTheme.colorScheme.onPrimary
-                      else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(260),
-        label = "badge_fg_$title"
-    )
-
-    // Corner radius dianimasikan supaya transisi mengembang/mengecil lebih smooth
-    val cornerRadius by animateDpAsState(
-        targetValue = if (expanded) 28.dp else 22.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "card_corner_$title"
-    )
-
-    // Elevation juga dianimasikan
-    val elevation by animateDpAsState(
-        targetValue = if (expanded) 4.dp else 0.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "card_elev_$title"
-    )
-
-    val cardScale by animateFloatAsState(
-        targetValue = when {
-            pressed -> 0.975f
-            expanded -> 1.012f
-            else -> 1f
-        },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "card_scale_$title"
-    )
-    val iconScale by animateFloatAsState(
-        targetValue = if (expanded) 1.08f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "icon_scale_$title"
-    )
-    val headerOffset by animateFloatAsState(
-        targetValue = if (expanded) -2f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "header_offset_$title"
-    )
-
-    // Alpha konten detail
-    val detailAlpha by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = if (expanded) 140 else 180,
-            easing = FastOutSlowInEasing
-        ),
-        label = "detail_alpha_$title"
-    )
-    // Konten slide dari bawah saat muncul, ke bawah saat hilang
-    val detailSlide by animateFloatAsState(
-        targetValue = if (expanded) 0f else 18f,
-        animationSpec = tween(
-            durationMillis = if (expanded) 160 else 220,
-            easing = FastOutSlowInEasing
-        ),
-        label = "detail_slide_$title"
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        label = "tweak_badge_fg_$title"
     )
 
     Surface(
         onClick = onClick,
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(cornerRadius),
-        color = container,
-        tonalElevation = elevation,
+        shape = RoundedCornerShape(corner),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = if (expanded) 3.dp else 1.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (expanded) 0.32f else 0.22f)
+        ),
         modifier = modifier
             .graphicsLayer {
                 scaleX = cardScale
                 scaleY = cardScale
-                translationY = headerOffset
             }
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = if (expanded) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
-                    stiffness = if (expanded) Spring.StiffnessLow else Spring.StiffnessMediumLow
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
                 )
             )
             .heightIn(min = baseHeight)
@@ -1103,12 +1058,7 @@ private fun ExpandableTweakCard(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(iconBg)
-                        .graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        },
+                        .background(iconBg, RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(icon, null, tint = iconTint, modifier = Modifier.size(21.dp))
@@ -1137,48 +1087,35 @@ private fun ExpandableTweakCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(tween(durationMillis = 120, easing = FastOutSlowInEasing)) +
-                        slideInVertically(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            initialOffsetY = { it / 6 }
-                        ) +
-                        scaleIn(
-                            initialScale = 0.92f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            )
-                        ) +
-                        expandVertically(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
-                            ),
-                            expandFrom = Alignment.Top
-                        ),
-                exit = fadeOut(tween(durationMillis = 180, easing = FastOutSlowInEasing)) +
-                       slideOutVertically(
-                           animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                           targetOffsetY = { it / 10 }
-                       ) +
-                       scaleOut(
-                           targetScale = 0.90f,
-                           animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
-                       ) +
-                       shrinkVertically(
-                           animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-                           shrinkTowards = Alignment.Top
-                       )
+                enter = fadeIn(tween(durationMillis = 150, delayMillis = 25, easing = FastOutSlowInEasing)) +
+                    slideInVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    ) { it / 5 } +
+                    expandVertically(
+                        expandFrom = Alignment.Top,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    ),
+                exit = fadeOut(tween(durationMillis = 95, easing = FastOutSlowInEasing)) +
+                    slideOutVertically(
+                        animationSpec = tween(125, easing = FastOutSlowInEasing)
+                    ) { it / 7 } +
+                    shrinkVertically(
+                        shrinkTowards = Alignment.Top,
+                        animationSpec = tween(175, easing = FastOutSlowInEasing)
+                    )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .graphicsLayer {
                             alpha = detailAlpha
-                            translationY = detailSlide
+                            translationY = detailOffset
                         },
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     content = content
@@ -1192,33 +1129,33 @@ private fun ExpandableTweakCard(
 private fun DeviceInfoCard(onClick: () -> Unit) {
     val deviceName = rememberDeviceName()
     val androidVersion = "Android ${Build.VERSION.RELEASE} • API ${Build.VERSION.SDK_INT}"
-    val kernel = System.getProperty("os.version") ?: "Unknown"
+    val bootloader = remember { resolveBootloaderLabel() }
 
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 104.dp)
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
                 )
             )
     ) {
         Row(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(13.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .size(46.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f), RoundedCornerShape(17.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -1230,7 +1167,7 @@ private fun DeviceInfoCard(onClick: () -> Unit) {
             }
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = deviceName,
@@ -1241,7 +1178,7 @@ private fun DeviceInfoCard(onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "$androidVersion • $kernel",
+                    text = "$androidVersion • Bootloader $bootloader",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -1265,158 +1202,168 @@ fun DeviceInfoScreen(
 ) {
     BackHandler(onBack = onBack)
     val infoState by vm.deviceInfo.collectAsState()
+    val bootloader = remember { resolveBootloaderLabel() }
+    val buildId = remember { valueOrUnknown(Build.ID) }
+    val fingerprint = remember { valueOrUnknown(Build.FINGERPRINT) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            tonalElevation = 1.dp,
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(top = 14.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 1.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "Device Info",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Detail perangkat, root, SELinux, build",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-
-        when (val state = infoState) {
-            is UiState.Loading -> {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text("Loading device info", fontWeight = FontWeight.Bold)
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "Device Info",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Device, root, SELinux, build, kernel",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
-            is UiState.Error -> {
-                DeviceInfoSection(
-                    title = "Status",
-                    rows = listOf("Error" to state.msg)
-                )
-            }
-            is UiState.Success -> {
-                val info = state.data
-                DeviceInfoHero(info)
-                DeviceInfoSection(
-                    title = "System",
-                    rows = listOf(
-                        "Device ID" to Build.ID.orEmpty().ifBlank { "Unknown" },
-                        "Model" to info.model,
-                        "Brand" to Build.BRAND.orEmpty().ifBlank { "Unknown" },
-                        "Manufacturer" to Build.MANUFACTURER.orEmpty().ifBlank { "Unknown" },
-                        "Device" to Build.DEVICE.orEmpty().ifBlank { "Unknown" },
-                        "Product" to Build.PRODUCT.orEmpty().ifBlank { "Unknown" },
-                        "Board" to Build.BOARD.orEmpty().ifBlank { "Unknown" },
-                        "Hardware" to Build.HARDWARE.orEmpty().ifBlank { "Unknown" }
+
+            when (val state = infoState) {
+                is UiState.Loading -> {
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text("Loading device info", fontWeight = FontWeight.Bold)
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+                is UiState.Error -> {
+                    DeviceInfoSection(
+                        title = "Status",
+                        rows = listOf("Error" to state.msg)
                     )
-                )
-                DeviceInfoSection(
-                    title = "Build",
-                    rows = listOf(
-                        "Android" to "${info.android} / API ${Build.VERSION.SDK_INT}",
-                        "Fingerprint" to Build.FINGERPRINT.orEmpty().ifBlank { "Unknown" },
-                        "Build Type" to Build.TYPE.orEmpty().ifBlank { "Unknown" },
-                        "Build Tags" to Build.TAGS.orEmpty().ifBlank { "Unknown" },
-                        "Bootloader" to Build.BOOTLOADER.orEmpty().ifBlank { "Unknown" },
-                        "Host" to Build.HOST.orEmpty().ifBlank { "Unknown" }
+                }
+                is UiState.Success -> {
+                    val info = state.data
+                    DeviceInfoHero(info, bootloader)
+                    DeviceInfoSection(
+                        title = "Device",
+                        rows = listOf(
+                            "Device ID" to buildId,
+                            "Model" to valueOrUnknown(info.model),
+                            "Brand" to valueOrUnknown(Build.BRAND),
+                            "Manufacturer" to valueOrUnknown(Build.MANUFACTURER),
+                            "Device" to valueOrUnknown(Build.DEVICE),
+                            "Product" to valueOrUnknown(Build.PRODUCT),
+                            "Board" to valueOrUnknown(Build.BOARD),
+                            "Hardware" to valueOrUnknown(Build.HARDWARE)
+                        )
                     )
-                )
-                DeviceInfoSection(
-                    title = "Root & Kernel",
-                    rows = listOf(
-                        "Root Status" to if (RootManager.isRootGranted) "Granted" else "Not granted",
-                        "Root Type" to info.rootType,
-                        "SELinux" to info.selinux.ifBlank { "Unknown" },
-                        "Kernel" to info.kernel,
-                        "Chipset" to info.soc.label,
-                        "Raw SoC" to info.socRaw.ifBlank { "Unknown" },
-                        "Profile" to info.profile,
-                        "Safe Mode" to if (info.safeMode) "On" else "Off",
-                        "Boot Count" to info.bootCount.toString()
+                    DeviceInfoSection(
+                        title = "Build",
+                        rows = listOf(
+                            "Android" to "${valueOrUnknown(info.android)} / API ${Build.VERSION.SDK_INT}",
+                            "Fingerprint" to fingerprint,
+                            "Build Type" to valueOrUnknown(Build.TYPE),
+                            "Build Tags" to valueOrUnknown(Build.TAGS),
+                            "Bootloader" to bootloader,
+                            "Host" to valueOrUnknown(Build.HOST)
+                        )
                     )
-                )
+                    DeviceInfoSection(
+                        title = "Root & Kernel",
+                        rows = listOf(
+                            "Root Status" to if (RootManager.isRootGranted) "Granted" else "Not granted",
+                            "Root Type" to valueOrUnknown(info.rootType),
+                            "SELinux" to valueOrUnknown(info.selinux),
+                            "Kernel" to valueOrUnknown(info.kernel),
+                            "Chipset" to info.soc.label,
+                            "Raw SoC" to valueOrUnknown(info.socRaw),
+                            "Profile" to valueOrUnknown(info.profile),
+                            "Safe Mode" to if (info.safeMode) "On" else "Off",
+                            "Boot Count" to info.bootCount.toString()
+                        )
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DeviceInfoHero(info: DeviceInfo) {
+private fun DeviceInfoHero(info: DeviceInfo, bootloader: String) {
     Surface(
         shape = RoundedCornerShape(30.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        tonalElevation = 2.dp,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(13.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .size(52.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)),
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f), RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Outlined.DeveloperMode,
                         null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(27.dp)
                     )
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
-                        text = info.model,
+                        text = valueOrUnknown(info.model),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${info.soc.label} • Android ${info.android}",
+                        text = "${info.soc.label} • Android ${valueOrUnknown(info.android)}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1424,16 +1371,22 @@ private fun DeviceInfoHero(info: DeviceInfo) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatusPill(
-                    text = info.rootType.ifBlank { "Root" },
+                    text = valueOrUnknown(info.rootType),
                     active = RootManager.isRootGranted,
-                    bg = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fg = MaterialTheme.colorScheme.primaryContainer
+                    bg = if (RootManager.isRootGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    fg = if (RootManager.isRootGranted) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 StatusPill(
-                    text = info.selinux.ifBlank { "SELinux" },
+                    text = valueOrUnknown(info.selinux),
                     active = info.selinux.equals("Enforcing", true),
-                    bg = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.90f),
-                    fg = MaterialTheme.colorScheme.primaryContainer
+                    bg = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    fg = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                StatusPill(
+                    text = "BL $bootloader",
+                    active = bootloader != "Unavailable",
+                    bg = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    fg = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1449,12 +1402,13 @@ private fun DeviceInfoSection(
         shape = RoundedCornerShape(26.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f)),
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
                 )
             )
     ) {
@@ -1468,7 +1422,15 @@ private fun DeviceInfoSection(
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            rows.forEach { (label, value) ->
+            rows.forEachIndexed { index, (label, value) ->
+                if (index > 0) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
+                    )
+                }
                 DeviceInfoLine(label = label, value = value)
             }
         }
@@ -1482,7 +1444,7 @@ private fun DeviceInfoLine(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
@@ -1497,13 +1459,42 @@ private fun DeviceInfoLine(
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1.14f),
-            maxLines = 3,
+            maxLines = 4,
             overflow = TextOverflow.Ellipsis
         )
     }
+}
+
+private fun valueOrUnknown(value: String?): String {
+    val cleaned = value.orEmpty().trim()
+    return if (cleaned.isBlank() || cleaned.equals("unknown", true) || cleaned == "?") "Unknown" else cleaned
+}
+
+private fun resolveBootloaderLabel(): String {
+    val candidates = listOf(
+        Build.BOOTLOADER,
+        readSystemProperty("ro.bootloader"),
+        readSystemProperty("ro.boot.bootloader"),
+        readSystemProperty("ro.boot.bootloader_version"),
+        readSystemProperty("ro.product.bootloader"),
+        readSystemProperty("gsm.version.baseband")
+    )
+    return candidates.firstOrNull { raw ->
+        val v = raw.orEmpty().trim()
+        v.isNotBlank() && !v.equals("unknown", true) && v != "?"
+    } ?: "Unavailable"
+}
+
+private fun readSystemProperty(name: String): String {
+    return runCatching {
+        val process = ProcessBuilder("getprop", name).redirectErrorStream(true).start()
+        val result = process.inputStream.bufferedReader().readText().trim()
+        process.destroy()
+        result
+    }.getOrDefault("")
 }
 
 @Composable
