@@ -432,5 +432,5 @@ data class AppStrings(
 )
 
 val LocalStrings = staticCompositionLocalOf<AppStrings> {
-    error("AppStrings not provided")
+    StringsId
 }

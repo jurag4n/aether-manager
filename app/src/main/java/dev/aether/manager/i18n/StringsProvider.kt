@@ -49,37 +49,52 @@ private const val KEY_LANGUAGE = "selected_language"
 private fun getPrefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+private fun safeSystemLocale(context: Context): Locale {
+    return try {
+        val config = context.resources.configuration
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            val locales = config.locales
+            if (!locales.isEmpty) locales[0] ?: Locale.getDefault() else Locale.getDefault()
+        } else {
+            @Suppress("DEPRECATION")
+            config.locale ?: Locale.getDefault()
+        }
+    } catch (_: Throwable) {
+        Locale.getDefault()
+    }
+}
+
+private fun safeSystemLanguage(context: Context): AppLanguage =
+    AppLanguage.fromSystemLocale(safeSystemLocale(context))
+
 fun loadSavedLanguage(context: Context): AppLanguage? {
-    val code = getPrefs(context).getString(KEY_LANGUAGE, null) ?: return null
-    return AppLanguage.fromCode(code)
+    return try {
+        val code = getPrefs(context).getString(KEY_LANGUAGE, null) ?: return null
+        AppLanguage.entries.firstOrNull { it.code == code }
+    } catch (_: Throwable) {
+        null
+    }
 }
 
 fun saveLanguage(context: Context, language: AppLanguage) {
-    getPrefs(context).edit().putString(KEY_LANGUAGE, language.code).apply()
+    runCatching {
+        getPrefs(context).edit().putString(KEY_LANGUAGE, language.code).apply()
+    }
 }
 
-
 fun getStringsForContext(context: Context): AppStrings =
-    getStringsForLanguage(
-        loadSavedLanguage(context)
-            ?: AppLanguage.fromSystemLocale(
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N)
-                    context.resources.configuration.locales[0]
-                else
-                    @Suppress("DEPRECATION") context.resources.configuration.locale
-            )
-    )
+    getStringsForLanguage(loadSavedLanguage(context) ?: safeSystemLanguage(context))
 
 // ── CompositionLocal ──────────────────────────────────────────────────────────
 
 /** Exposes the current AppLanguage so any composable can read or change it. */
 val LocalLanguage = staticCompositionLocalOf<AppLanguage> {
-    error("AppLanguage not provided")
+    AppLanguage.INDONESIAN
 }
 
 /** Callback type to change language from any composable. */
 val LocalSetLanguage = staticCompositionLocalOf<(AppLanguage) -> Unit> {
-    error("SetLanguage not provided")
+    {}
 }
 
 // ── ProvideStrings ────────────────────────────────────────────────────────────
@@ -97,13 +112,7 @@ fun ProvideStrings(content: @Composable () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
     val initial = remember {
-        loadSavedLanguage(context)
-            ?: AppLanguage.fromSystemLocale(
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N)
-                    context.resources.configuration.locales[0]
-                else
-                    @Suppress("DEPRECATION") context.resources.configuration.locale
-            )
+        loadSavedLanguage(context) ?: safeSystemLanguage(context)
     }
 
     var currentLanguage by remember { mutableStateOf(initial) }
