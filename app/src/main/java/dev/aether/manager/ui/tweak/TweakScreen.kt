@@ -3,10 +3,8 @@ package dev.aether.manager.ui.tweak
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.using
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
@@ -451,7 +449,7 @@ private fun AdaptiveTweakGridRow(
                     shrinkVertically(
                         animationSpec = tween(150, easing = FastOutSlowInEasing),
                         shrinkTowards = Alignment.Top
-                    )) using SizeTransform(clip = false)
+                    ))
         },
         label = "adaptive_tweak_grid"
     ) { state ->
