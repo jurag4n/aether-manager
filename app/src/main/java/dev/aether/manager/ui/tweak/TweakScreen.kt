@@ -441,7 +441,7 @@ private fun AdaptiveTweakGridRow(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMediumLow
         ),
-        label = "tweak_row_gap_$leftKey_$rightKey"
+        label = "tweak_row_gap_${leftKey}_${rightKey}"
     )
     val expandedLift by animateFloatAsState(
         targetValue = if (rowActive) 1f else 0f,
@@ -449,7 +449,7 @@ private fun AdaptiveTweakGridRow(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMediumLow
         ),
-        label = "tweak_row_lift_$leftKey_$rightKey"
+        label = "tweak_row_lift_${leftKey}_${rightKey}"
     )
 
     Column(
