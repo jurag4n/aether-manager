@@ -92,7 +92,6 @@ import kotlin.math.sin
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
-import android.os.SELinux
 import dev.aether.manager.util.RootManager
 
 @Composable
