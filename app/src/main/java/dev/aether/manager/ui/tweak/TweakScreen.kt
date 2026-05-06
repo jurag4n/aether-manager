@@ -447,12 +447,10 @@ private fun AdaptiveTweakGridRow(
     AnimatedContent(
         targetState = targetState,
         transitionSpec = {
-            val springSpec = spring<Int>(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            )
             (fadeIn(tween(120, easing = FastOutSlowInEasing)) +
-                slideInVertically(animationSpec = springSpec) { it / 10 } +
+                slideInVertically(
+                    animationSpec = tween(220, easing = FastOutSlowInEasing)
+                ) { it / 10 } +
                 scaleIn(
                     initialScale = 0.965f,
                     animationSpec = spring(
