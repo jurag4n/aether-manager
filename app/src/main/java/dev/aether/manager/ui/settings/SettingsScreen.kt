@@ -395,7 +395,6 @@ private fun LanguagePickerSheet(
     onSelect : (AppLanguage) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val s = LocalStrings.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -487,7 +486,6 @@ private fun SettingsLicenseCard(
     isLicensed    : Boolean,
     onOpenLicense : () -> Unit,
 ) {
-    val s = LocalStrings.current
     val bg = if (isLicensed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.52f)
              else MaterialTheme.colorScheme.surfaceContainerLow
     val border = if (isLicensed) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)

@@ -380,7 +380,7 @@ val StringsId = AppStrings(
 
     tweakTapToSelect = "Tap untuk memilih",
 
-    serviceNotifChannelName = "Aether Manager Service",
+        serviceNotifChannelName = "Aether Manager Service",
     serviceNotifChannelDesc = "Layanan background",
     serviceNotifText = "Tweak aktif",
 )

@@ -195,7 +195,6 @@ private val refreshRateOptions = listOf(
 
 @Composable
 private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
-    val s = LocalStrings.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(ProfileFilter.ALL) }
     var expandedPackage by remember(state.apps) { mutableStateOf<String?>(null) }
@@ -631,7 +630,6 @@ private fun AppListItem(
     onClick: () -> Unit,
     onProfileChange: (AppProfile) -> Unit
 ) {
-    val s = LocalStrings.current
     val currentProfile = profile ?: defaultProfile(app.packageName)
     val isEnabled = currentProfile.enabled
 
@@ -851,7 +849,6 @@ private fun ProfileSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    val s = LocalStrings.current
     val accent by animateColorAsState(
         if (checked) MaterialTheme.colorScheme.primary
         else MaterialTheme.colorScheme.onSurfaceVariant,

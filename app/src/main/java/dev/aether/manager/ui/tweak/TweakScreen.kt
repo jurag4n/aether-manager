@@ -1393,7 +1393,6 @@ private fun DropdownAction(
     options: List<String>,
     onSelect: (String) -> Unit
 ) {
-    val s = LocalStrings.current
     var expanded by rememberSaveable { mutableStateOf(false) }
 
     if (expanded) {

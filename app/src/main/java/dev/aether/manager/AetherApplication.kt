@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
-import android.util.Log
 import android.os.Looper
 import com.topjohnwu.superuser.Shell
 import com.unity3d.ads.IUnityAdsInitializationListener
@@ -56,15 +55,8 @@ class AetherApplication : Application() {
         NotificationScheduler.schedule(this)
     }
 
-    private fun reportSecurityIssue(reason: String) {
-        Log.w(TAG, "security check blocked: $reason")
-        if (SECURITY_ENFORCED) {
-            android.os.Process.killProcess(android.os.Process.myPid())
-        }
-    }
-
-    private fun killSelf(reason: String = "unknown") {
-        reportSecurityIssue(reason)
+    private fun killSelf() {
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     private fun checkSignature() {
@@ -73,7 +65,7 @@ class AetherApplication : Application() {
         // no real cert hash can ever match the placeholder string.
         if (EXPECTED_SIGNATURE == SIGNATURE_PLACEHOLDER) return
 
-        if (!NativeAether.isLoaded) { killSelf("native library not loaded"); return }
+        if (!NativeAether.isLoaded) { killSelf(); return }
         try {
             @Suppress("DEPRECATION")
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
@@ -90,16 +82,15 @@ class AetherApplication : Application() {
                 info.signatures?.firstOrNull()?.toByteArray()
             }
 
-            if (sigBytes == null) { killSelf("signature missing"); return }
+            if (sigBytes == null) { killSelf(); return }
 
             val hex = java.security.MessageDigest.getInstance("SHA-256")
                 .digest(sigBytes)
                 .joinToString("") { "%02x".format(it) }
 
-            if (hex != EXPECTED_SIGNATURE) killSelf("signature mismatch")
-        } catch (t: Throwable) {
-            Log.w(TAG, "signature check failed", t)
-            killSelf("signature check exception")
+            if (hex != EXPECTED_SIGNATURE) killSelf()
+        } catch (_: Throwable) {
+            killSelf()
         }
     }
 
@@ -107,17 +98,16 @@ class AetherApplication : Application() {
         if (!NativeAether.isLoaded) return
         try {
             if (NativeAether.nativeIsHooked()) {
-                killSelf("hook detected"); return
+                killSelf(); return
             }
             if (NativeAether.nativeIsDebugged()) {
-                killSelf("debugger detected"); return
+                killSelf(); return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
-                killSelf("anti patch failed"); return
+                killSelf(); return
             }
-        } catch (t: Throwable) {
-            Log.w(TAG, "security check exception", t)
-            if (NativeAether.isLoaded) killSelf("security exception")
+        } catch (_: Throwable) {
+            if (NativeAether.isLoaded) killSelf()
         }
     }
 
@@ -167,19 +157,12 @@ class AetherApplication : Application() {
         if (!NativeAether.isLoaded) return
         try {
             NativeAether.nativeCheckUnityIntact()
-        } catch (t: Exception) {
-            Log.w(TAG, "unity integrity check exception", t)
-            if (NativeAether.isLoaded) killSelf("unity integrity exception")
+        } catch (_: Exception) {
+            if (NativeAether.isLoaded) killSelf()
         }
     }
 
     companion object {
-        private const val TAG = "AetherApp"
-
-        // Saat development/test release, jangan hard-kill proses dulu.
-        // Kalau sudah semua stabil dan fingerprint/signature sudah final, ubah ke true.
-        private const val SECURITY_ENFORCED = false
-
         private const val SECURITY_INTERVAL_MS = 45_000L
 
         // Replace EXPECTED_SIGNATURE with the actual SHA-256 hex of your signing cert.
