@@ -87,7 +87,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.aether.manager.data.MainViewModel
-import dev.aether.manager.i18n.LocalStrings
+import dev.aether.manager.i18n.AppLanguage
+import dev.aether.manager.i18n.LocalLanguage
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -751,20 +752,20 @@ private fun NetworkCard(
     onTcpToggle: () -> Unit
 ) {
     // Localized strings for network card
-    val strings = LocalStrings.current
+    val strings = rememberTweakI18n()
 
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.NetworkCheck,
-        title = strings.misc.networkTitle,
-        subtitle = strings.misc.networkSubtitle,
+        title = strings.networkTitle,
+        subtitle = strings.networkSubtitle,
         badge = if (active) "Tuned" else "Off",
         active = active,
         expanded = expanded,
         onClick = onClick
     ) {
         DropdownAction(
-            title = strings.misc.networkDnsTitle,
+            title = strings.networkDnsTitle,
             value = dnsProvider,
             options = listOf("Off", "AdGuard", "Cloudflare", "Google", "CleanBrowsing"),
             onSelect = onDnsSelect
@@ -775,15 +776,15 @@ private fun NetworkCard(
         ) {
             ToggleOption(
                 modifier = Modifier.weight(1f),
-                title = strings.misc.networkStabilizeTitle,
-                subtitle = strings.misc.networkStabilizeSubtitle,
+                title = strings.networkStabilizeTitle,
+                subtitle = strings.networkStabilizeSubtitle,
                 checked = networkStable,
                 onClick = onNetworkStableToggle
             )
             ToggleOption(
                 modifier = Modifier.weight(1f),
-                title = strings.misc.networkTcpTitle,
-                subtitle = strings.misc.networkTcpSubtitle,
+                title = strings.networkTcpTitle,
+                subtitle = strings.networkTcpSubtitle,
                 checked = tcpEnabled,
                 onClick = onTcpToggle
             )
@@ -1225,7 +1226,7 @@ private fun DeviceInfoCard(
     val kernel = System.getProperty("os.version") ?: "Unknown"
 
     // Localized strings used in the device info card
-    val strings = LocalStrings.current
+    val strings = rememberTweakI18n()
 
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
@@ -1293,7 +1294,7 @@ private fun DeviceInfoCard(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = strings.misc.deviceInfoTitle,
+                        text = strings.deviceInfoTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -1301,7 +1302,7 @@ private fun DeviceInfoCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = strings.misc.deviceInfoSubtitle,
+                        text = strings.deviceInfoSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -1339,10 +1340,10 @@ private fun DeviceInfoCard(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        DeviceInfoLine(label = strings.misc.deviceInfoName, value = deviceName)
-                        DeviceInfoLine(label = strings.misc.deviceInfoAndroidVersion, value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
-                        DeviceInfoLine(label = strings.misc.deviceInfoCodename, value = codeName)
-                        DeviceInfoLine(label = strings.misc.deviceInfoKernel, value = kernel)
+                        DeviceInfoLine(label = strings.deviceInfoName, value = deviceName)
+                        DeviceInfoLine(label = strings.deviceInfoAndroidVersion, value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
+                        DeviceInfoLine(label = strings.deviceInfoCodename, value = codeName)
+                        DeviceInfoLine(label = strings.deviceInfoKernel, value = kernel)
                     }
                 }
             }
@@ -1513,7 +1514,7 @@ private fun rememberDeviceName(): String {
 
 @Composable
 private fun AppProfileCard(onClick: () -> Unit) {
-    val strings = LocalStrings.current
+    val strings = rememberTweakI18n()
 
     Surface(
         onClick = onClick,
@@ -1554,7 +1555,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = strings.appProfile.appProfileCardTitle,
+                    text = strings.appProfileCardTitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1562,7 +1563,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = strings.appProfile.appProfileCardSubtitle,
+                    text = strings.appProfileCardSubtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                     maxLines = 2,
@@ -1570,7 +1571,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 )
             }
             StatusPill(
-                text = strings.misc.commonOpen,
+                text = strings.commonOpen,
                 active = true,
                 bg = MaterialTheme.colorScheme.onPrimaryContainer,
                 fg = MaterialTheme.colorScheme.primaryContainer
@@ -1587,7 +1588,7 @@ private fun DropdownAction(
     options: List<String>,
     onSelect: (String) -> Unit
 ) {
-    val strings = LocalStrings.current
+    val strings = rememberTweakI18n()
     var expanded by rememberSaveable { mutableStateOf(false) }
 
     if (expanded) {
@@ -1617,7 +1618,7 @@ private fun DropdownAction(
             },
             confirmButton = {
                 TextButton(onClick = { expanded = false }) {
-                    Text(strings.misc.commonClose)
+                    Text(strings.commonClose)
                 }
             }
         )
@@ -1650,7 +1651,7 @@ private fun DropdownAction(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            StatusPill(text = strings.misc.commonSelect, active = true)
+            StatusPill(text = strings.commonSelect, active = true)
         }
     }
 }
@@ -2106,3 +2107,33 @@ private fun <T> snappySpring() = spring<T>(
     dampingRatio = Spring.DampingRatioNoBouncy,
     stiffness = Spring.StiffnessHigh
 )
+
+
+private class TweakI18n(private val isId: Boolean) {
+    val deviceInfoTitle: String get() = if (isId) "Info Perangkat" else "Device Info"
+    val deviceInfoSubtitle: String get() = if (isId) "Ringkas dan bersih" else "Concise and clean"
+    val deviceInfoName: String get() = if (isId) "Nama Perangkat" else "Device Name"
+    val deviceInfoAndroidVersion: String get() = "Android"
+    val deviceInfoCodename: String get() = "Codename"
+    val deviceInfoKernel: String get() = "Kernel"
+
+    val networkTitle: String get() = if (isId) "Jaringan" else "Network"
+    val networkSubtitle: String get() = if (isId) "DNS privat, stabilizer, TCP" else "Private DNS, stabilizer, TCP"
+    val networkDnsTitle: String get() = if (isId) "DNS Privat" else "Private DNS"
+    val networkStabilizeTitle: String get() = if (isId) "Stabilkan Jaringan" else "Stabilize Network"
+    val networkStabilizeSubtitle: String get() = if (isId) "Prioritaskan koneksi stabil dan latensi rendah" else "Prioritize stable connection and low latency"
+    val networkTcpTitle: String get() = "TCP"
+    val networkTcpSubtitle: String get() = if (isId) "Optimalkan stack TCP" else "Optimize TCP stack"
+
+    val appProfileCardTitle: String get() = if (isId) "Profil Aplikasi" else "App Profile"
+    val appProfileCardSubtitle: String get() = if (isId) "Kelola profil aplikasi" else "Manage app profiles"
+
+    val commonOpen: String get() = if (isId) "Buka" else "Open"
+    val commonClose: String get() = if (isId) "Tutup" else "Close"
+    val commonSelect: String get() = if (isId) "Pilih" else "Select"
+}
+
+@Composable
+private fun rememberTweakI18n(): TweakI18n {
+    return TweakI18n(LocalLanguage.current == AppLanguage.INDONESIAN)
+}

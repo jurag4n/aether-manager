@@ -33,16 +33,16 @@ fun RebootBottomSheet(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(s.log.logRebootOptions,
+            Text(s.logRebootOptions,
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 4.dp))
 
-            RebootOption(Icons.Outlined.RestartAlt, s.log.logRebootSystem, s.log.logRebootSystemDesc) { onReboot(); onDismiss() }
-            RebootOption(Icons.Outlined.Build, s.log.logRebootRecovery, s.log.logRebootRecoveryDesc) { onRebootRecovery(); onDismiss() }
-            RebootOption(Icons.Outlined.Refresh, s.log.logReloadUi, s.log.logReloadUiDesc) { onReloadUI(); onDismiss() }
+            RebootOption(Icons.Outlined.RestartAlt, s.logRebootSystem, s.logRebootSystemDesc) { onReboot(); onDismiss() }
+            RebootOption(Icons.Outlined.Build, s.logRebootRecovery, s.logRebootRecoveryDesc) { onRebootRecovery(); onDismiss() }
+            RebootOption(Icons.Outlined.Refresh, s.logReloadUi, s.logReloadUiDesc) { onReloadUI(); onDismiss() }
 
             OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                Text(s.log.logBtnCancel)
+                Text(s.logBtnCancel)
             }
         }
     }

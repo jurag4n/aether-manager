@@ -77,7 +77,7 @@ fun LicenseScreen(onBack: () -> Unit) {
 
     val expLabel = when {
         !isActive        -> "-"
-        expiresAt == -1L -> s.license.licenseExpireLifetime
+        expiresAt == -1L -> s.licenseExpireLifetime
         else             -> SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(expiresAt))
     }
 
@@ -95,7 +95,7 @@ fun LicenseScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(s.license.licenseScreenTitle, fontWeight = FontWeight.SemiBold) },
+                title = { Text(s.licenseScreenTitle, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, null)
@@ -109,7 +109,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                         }
                     ) {
                         IconButton(onClick = { showInvoiceHistory = true }) {
-                            Icon(Icons.Outlined.Receipt, s.license.licenseInvoiceHistoryIcon)
+                            Icon(Icons.Outlined.Receipt, s.licenseInvoiceHistoryIcon)
                         }
                     }
                 }
@@ -140,8 +140,8 @@ fun LicenseScreen(onBack: () -> Unit) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                        Text(s.license.licensePollingWaiting, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
-                        Text(s.license.licensePollingDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        Text(s.licensePollingWaiting, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                        Text(s.licensePollingDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         ContactAdminRow(ctx)
                     }
                 }
@@ -163,7 +163,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Icon(Icons.Outlined.Pending, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
-                                Text(s.license.licensePendingTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                Text(s.licensePendingTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
                             pendingInvoices.take(1).forEach { inv ->
                                 val fmt = NumberFormat.getNumberInstance(Locale("id","ID"))
@@ -176,7 +176,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                                 ) {
                                     Icon(Icons.Outlined.Replay, null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text(s.license.licenseContinuePaymentBtn)
+                                    Text(s.licenseContinuePaymentBtn)
                                 }
                             }
                         }
@@ -187,11 +187,11 @@ fun LicenseScreen(onBack: () -> Unit) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Icon(Icons.Outlined.VpnKey, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                            Text(s.license.licenseHaveKeyTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            Text(s.licenseHaveKeyTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         }
                         OutlinedTextField(
                             value = keyInput, onValueChange = { keyInput = it.uppercase() },
-                            label = { Text(s.license.licenseKeyInputLabel) },
+                            label = { Text(s.licenseKeyInputLabel) },
                             modifier = Modifier.fillMaxWidth(), singleLine = true,
                             shape = RoundedCornerShape(12.dp),
                             enabled = licState !is LicenseViewModel.UiState.Loading
@@ -206,7 +206,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                         ) {
                             if (licState is LicenseViewModel.UiState.Loading) {
                                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                            } else { Text(s.license.licenseActivateBtn) }
+                            } else { Text(s.licenseActivateBtn) }
                         }
                     }
                 }
@@ -220,7 +220,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                 ) {
                     Icon(Icons.Outlined.LinkOff, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(s.license.licenseDeactivateBtn)
+                    Text(s.licenseDeactivateBtn)
                 }
             }
         }
@@ -390,14 +390,14 @@ fun LicenseScreen(onBack: () -> Unit) {
     if (showDeactivateDialog) {
         AlertDialog(
             onDismissRequest = { showDeactivateDialog = false },
-            title = { Text(s.license.licenseDeactivateDialogTitle) },
-            text  = { Text(s.license.licenseDeactivateDialogBody) },
+            title = { Text(s.licenseDeactivateDialogTitle) },
+            text  = { Text(s.licenseDeactivateDialogBody) },
             confirmButton = {
                 TextButton(onClick = { licVm.deactivate(); showDeactivateDialog = false; triggerRefresh() },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(s.license.licenseDeactivateConfirmBtn) }
+                ) { Text(s.licenseDeactivateConfirmBtn) }
             },
-            dismissButton = { TextButton(onClick = { showDeactivateDialog = false }) { Text(s.license.licenseDeactivateCancelBtn) } }
+            dismissButton = { TextButton(onClick = { showDeactivateDialog = false }) { Text(s.licenseDeactivateCancelBtn) } }
         )
     }
 }
@@ -420,26 +420,26 @@ private fun PremiumActiveCard(expLabel: String, daysLeft: Long, currentKey: Stri
                         Icon(Icons.Outlined.WorkspacePremium, null, tint = onPrimary, modifier = Modifier.size(24.dp))
                     }
                     Column {
-                        Text(s.license.licensePremiumActive, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text(s.license.licensePremiumValidUntil.format(expLabel), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(s.licensePremiumActive, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text(s.licensePremiumValidUntil.format(expLabel), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (daysLeft >= 0) {
                     Surface(shape = RoundedCornerShape(8.dp), color = primary) {
-                        Text(s.license.licenseDaysLeft.format(daysLeft), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = onPrimary)
+                        Text(s.licenseDaysLeft.format(daysLeft), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = onPrimary)
                     }
                 }
             }
 
             HorizontalDivider(color = primary.copy(alpha = 0.2f))
 
-            Text(s.license.licenseYourBenefits, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(s.licenseYourBenefits, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             listOf(
-                Icons.Outlined.Block        to s.license.licenseSuccessBenefits.getOrElse(0) { "" },
-                Icons.Outlined.Speed        to s.license.licenseSuccessBenefits.getOrElse(1) { "" },
-                Icons.Outlined.Devices      to s.license.licenseBenefitDeviceLocked,
-                Icons.Outlined.SupportAgent to s.license.licenseSuccessBenefits.getOrElse(2) { "" },
-                Icons.Outlined.NewReleases  to s.license.licenseSuccessBenefits.getOrElse(3) { "" },
+                Icons.Outlined.Block        to s.licenseSuccessBenefits.getOrElse(0) { "" },
+                Icons.Outlined.Speed        to s.licenseSuccessBenefits.getOrElse(1) { "" },
+                Icons.Outlined.Devices      to s.licenseBenefitDeviceLocked,
+                Icons.Outlined.SupportAgent to s.licenseSuccessBenefits.getOrElse(2) { "" },
+                Icons.Outlined.NewReleases  to s.licenseSuccessBenefits.getOrElse(3) { "" },
             ).forEach { (icon, text) ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(icon, null, modifier = Modifier.size(16.dp), tint = primary)
@@ -450,14 +450,14 @@ private fun PremiumActiveCard(expLabel: String, daysLeft: Long, currentKey: Stri
             HorizontalDivider(color = primary.copy(alpha = 0.2f))
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(s.license.licenseKeyLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(s.licenseKeyLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
                         .clickable {
                             val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             cm.setPrimaryClip(ClipData.newPlainText("License", currentKey))
-                            Toast.makeText(ctx, s.license.licenseKeyCopied, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(ctx, s.licenseKeyCopied, Toast.LENGTH_SHORT).show()
                         }.padding(10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
@@ -471,7 +471,7 @@ private fun PremiumActiveCard(expLabel: String, daysLeft: Long, currentKey: Stri
                 Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.errorContainer) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Outlined.Warning, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
-                        Text(s.license.licenseExpiringSoon.format(expLabel), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Text(s.licenseExpiringSoon.format(expLabel), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
             }
@@ -502,8 +502,8 @@ private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)) {
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(s.license.licensePrice1Month, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(s.license.licensePrice, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text(s.licensePrice1Month, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(s.licensePrice, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                     Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)) {
                         Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -515,10 +515,10 @@ private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                CleanBenefitRow(Icons.Outlined.Block, s.license.licenseSuccessBenefits.getOrElse(0) { "Tanpa iklan" })
-                CleanBenefitRow(Icons.Outlined.Speed, s.license.licenseSuccessBenefits.getOrElse(1) { "Fitur tweak premium" })
-                CleanBenefitRow(Icons.Outlined.Devices, s.license.licenseBenefitDeviceLocked)
-                CleanBenefitRow(Icons.Outlined.SupportAgent, s.license.licenseSuccessBenefits.getOrElse(2) { "Support admin" })
+                CleanBenefitRow(Icons.Outlined.Block, s.licenseSuccessBenefits.getOrElse(0) { "Tanpa iklan" })
+                CleanBenefitRow(Icons.Outlined.Speed, s.licenseSuccessBenefits.getOrElse(1) { "Fitur tweak premium" })
+                CleanBenefitRow(Icons.Outlined.Devices, s.licenseBenefitDeviceLocked)
+                CleanBenefitRow(Icons.Outlined.SupportAgent, s.licenseSuccessBenefits.getOrElse(2) { "Support admin" })
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
@@ -1019,7 +1019,7 @@ private fun ContactAdminRow(ctx: Context) {
         ) {
             Icon(Icons.Outlined.Chat, null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text(s.license.licenseContactWhatsApp, style = MaterialTheme.typography.labelMedium)
+            Text(s.licenseContactWhatsApp, style = MaterialTheme.typography.labelMedium)
         }
         OutlinedButton(
             onClick  = { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AetherDev22"))) },
@@ -1027,7 +1027,7 @@ private fun ContactAdminRow(ctx: Context) {
         ) {
             Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text(s.license.licenseContactTelegram, style = MaterialTheme.typography.labelMedium)
+            Text(s.licenseContactTelegram, style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -1054,10 +1054,10 @@ private fun InvoiceHistoryContent(
         modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp).heightIn(max = 500.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(s.license.licenseInvoiceHistoryTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(s.licenseInvoiceHistoryTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         if (invoices.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                Text(s.license.licenseInvoiceHistoryEmpty, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                Text(s.licenseInvoiceHistoryEmpty, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
         } else {
             invoices.forEach { inv ->
@@ -1068,9 +1068,9 @@ private fun InvoiceHistoryContent(
                     else      -> MaterialTheme.colorScheme.secondary
                 }
                 val statusLabel = when (inv.status) {
-                    "paid"    -> s.license.licenseInvoiceStatusPaid
-                    "expired" -> s.license.licenseInvoiceStatusExpired
-                    else      -> s.license.licenseInvoiceStatusPending
+                    "paid"    -> s.licenseInvoiceStatusPaid
+                    "expired" -> s.licenseInvoiceStatusExpired
+                    else      -> s.licenseInvoiceStatusPending
                 }
                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1090,13 +1090,13 @@ private fun InvoiceHistoryContent(
                                 OutlinedButton(onClick = { onResume(inv) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) {
                                     Icon(Icons.Outlined.Replay, null, modifier = Modifier.size(14.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text(s.license.licenseInvoiceContinueBtn, style = MaterialTheme.typography.labelMedium)
+                                    Text(s.licenseInvoiceContinueBtn, style = MaterialTheme.typography.labelMedium)
                                 }
                                 OutlinedButton(onClick = { onDelete(inv) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
                                     Icon(Icons.Outlined.Delete, null, modifier = Modifier.size(14.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text(s.license.licenseInvoiceDeleteBtn, style = MaterialTheme.typography.labelMedium)
+                                    Text(s.licenseInvoiceDeleteBtn, style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                             "paid", "expired" -> Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
@@ -1104,7 +1104,7 @@ private fun InvoiceHistoryContent(
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
                                     Icon(Icons.Outlined.Delete, null, modifier = Modifier.size(14.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text(s.license.licenseInvoiceDeleteBtn, style = MaterialTheme.typography.labelMedium)
+                                    Text(s.licenseInvoiceDeleteBtn, style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                         }
@@ -1162,8 +1162,8 @@ private fun PremiumSuccessDialog(licenseKey: String, expLabel: String, onDismiss
                                 Text("Premium Active", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = green)
                             }
                         }
-                        Text(s.license.licenseSuccessTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-                        Text(s.license.licenseSuccessBody, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(s.licenseSuccessTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                        Text(s.licenseSuccessBody, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -1171,13 +1171,13 @@ private fun PremiumSuccessDialog(licenseKey: String, expLabel: String, onDismiss
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.VpnKey, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                            Text(s.license.licenseSuccessKeyLabel, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(s.licenseSuccessKeyLabel, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)).clickable {
                                 val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 cm.setPrimaryClip(ClipData.newPlainText("Aether License", licenseKey))
-                                Toast.makeText(ctx, s.license.licenseKeyCopied, Toast.LENGTH_SHORT).show()
+                                Toast.makeText(ctx, s.licenseKeyCopied, Toast.LENGTH_SHORT).show()
                             }.padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -1187,14 +1187,14 @@ private fun PremiumSuccessDialog(licenseKey: String, expLabel: String, onDismiss
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.EventAvailable, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                            Text(s.license.licenseSuccessValidUntil.format(expLabel), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(s.licenseSuccessValidUntil.format(expLabel), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                     }
                 }
 
                 AnimatedVisibility(visible = showContent, enter = fadeIn(tween(300)) + expandVertically()) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        s.license.licenseSuccessBenefits.take(4).forEach { label ->
+                        s.licenseSuccessBenefits.take(4).forEach { label ->
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Surface(shape = RoundedCornerShape(10.dp), color = green.copy(alpha = 0.10f)) {
                                     Icon(Icons.Outlined.CheckCircle, null, tint = green, modifier = Modifier.padding(6.dp).size(14.dp))
@@ -1213,7 +1213,7 @@ private fun PremiumSuccessDialog(licenseKey: String, expLabel: String, onDismiss
                 ) {
                     Icon(Icons.Outlined.RocketLaunch, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(s.license.licenseSuccessStartBtn, fontWeight = FontWeight.Bold)
+                    Text(s.licenseSuccessStartBtn, fontWeight = FontWeight.Bold)
                 }
             }
         }

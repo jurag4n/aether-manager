@@ -78,7 +78,7 @@ fun AdBlockDetectedDialog(
         },
         title = {
             Text(
-                text       = strings.adBlock.adBlockTitle,
+                text       = strings.adBlockTitle,
                 fontWeight = FontWeight.Bold,
                 fontSize   = 18.sp,
                 textAlign  = TextAlign.Center,
@@ -92,7 +92,7 @@ fun AdBlockDetectedDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text      = strings.adBlock.adBlockBody,
+                    text      = strings.adBlockBody,
                     textAlign = TextAlign.Center,
                     style     = MaterialTheme.typography.bodyMedium,
                     color     = MaterialTheme.colorScheme.onSurfaceVariant
@@ -115,7 +115,7 @@ fun AdBlockDetectedDialog(
                             modifier           = Modifier.size(18.dp).padding(top = 2.dp)
                         )
                         Text(
-                            text  = strings.adBlock.adBlockInfoCard,
+                            text  = strings.adBlockInfoCard,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -133,7 +133,7 @@ fun AdBlockDetectedDialog(
                         modifier           = Modifier.size(14.dp)
                     )
                     Text(
-                        text  = strings.adBlock.adBlockSafeLabel,
+                        text  = strings.adBlockSafeLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -148,7 +148,7 @@ fun AdBlockDetectedDialog(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text(strings.adBlock.adBlockBtnDisable, fontWeight = FontWeight.SemiBold)
+                Text(strings.adBlockBtnDisable, fontWeight = FontWeight.SemiBold)
             }
         },
         shape = RoundedCornerShape(24.dp)

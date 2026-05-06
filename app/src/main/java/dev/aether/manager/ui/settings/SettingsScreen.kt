@@ -100,18 +100,18 @@ fun SettingsScreen(
         val ev = backupEvent ?: return@LaunchedEffect
         val msg = when (ev) {
             is MainViewModel.BackupEvent.Success -> when (ev.msgKey) {
-                "create" -> s.backup.backupSuccessCreate
-                "restore" -> s.backup.backupSuccessRestore
-                "delete" -> s.backup.backupSuccessDelete
-                "reset" -> s.backup.backupSuccessReset
-                "resetProfiles" -> s.backup.backupSuccessResetProfiles
-                "resetMonitor" -> s.backup.backupSuccessResetMonitor
-                else -> s.backup.backupSuccessCreate
+                "create" -> s.backupSuccessCreate
+                "restore" -> s.backupSuccessRestore
+                "delete" -> s.backupSuccessDelete
+                "reset" -> s.backupSuccessReset
+                "resetProfiles" -> s.backupSuccessResetProfiles
+                "resetMonitor" -> s.backupSuccessResetMonitor
+                else -> s.backupSuccessCreate
             }
             is MainViewModel.BackupEvent.Failure -> when (ev.msgKey) {
-                "create" -> s.backup.backupFailCreate
-                "restore" -> s.backup.backupFailRestore
-                else -> s.backup.backupFailReset
+                "create" -> s.backupFailCreate
+                "restore" -> s.backupFailRestore
+                else -> s.backupFailReset
             }
         }
         android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
@@ -127,7 +127,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = s.settings.settingsTitle,
+                        text = s.settingsTitle,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 20.sp
                     )
@@ -136,7 +136,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = s.settings.settingsBtnBack
+                            contentDescription = s.settingsBtnBack
                         )
                     }
                 },
@@ -163,7 +163,7 @@ fun SettingsScreen(
 
             SettingsSectionCard(
                 icon = Icons.Outlined.Palette,
-                title = s.settings.settingsSectionAppearance,
+                title = s.settingsSectionAppearance,
                 subtitle = "Tema, warna, dan tampilan aplikasi",
                 expanded = appearanceExpanded,
                 onToggle = { appearanceExpanded = !appearanceExpanded }
@@ -171,16 +171,16 @@ fun SettingsScreen(
                 val systemDark = isSystemInDarkTheme()
                 SettingsRowSwitch(
                     icon = Icons.Outlined.DarkMode,
-                    title = s.settings.settingsDarkMode,
-                    subtitle = s.settings.settingsDarkModeDesc,
+                    title = s.settingsDarkMode,
+                    subtitle = s.settingsDarkModeDesc,
                     checked = if (darkModeOverride) darkMode else systemDark,
                     onCheckedChange = { vm.setDarkMode(it) }
                 )
                 SettingsDivider()
                 SettingsRowSwitch(
                     icon = Icons.Outlined.ColorLens,
-                    title = s.settings.settingsDynamicColor,
-                    subtitle = s.settings.settingsDynamicColorDesc,
+                    title = s.settingsDynamicColor,
+                    subtitle = s.settingsDynamicColorDesc,
                     checked = dynamicColor,
                     onCheckedChange = { vm.setDynamicColor(it) }
                 )
@@ -188,38 +188,38 @@ fun SettingsScreen(
 
             SettingsSectionCard(
                 icon = Icons.Outlined.Tune,
-                title = s.settings.settingsSectionGeneral,
+                title = s.settingsSectionGeneral,
                 subtitle = "Boot, notifikasi, dan bahasa",
                 expanded = generalExpanded,
                 onToggle = { generalExpanded = !generalExpanded }
             ) {
                 SettingsRowSwitch(
                     icon = Icons.Outlined.CloudUpload,
-                    title = s.settings.settingsAutoBackup,
-                    subtitle = s.settings.settingsAutoBackupDesc,
+                    title = s.settingsAutoBackup,
+                    subtitle = s.settingsAutoBackupDesc,
                     checked = autoBackup,
                     onCheckedChange = { vm.setAutoBackup(it) }
                 )
                 SettingsDivider()
                 SettingsRowSwitch(
                     icon = Icons.Outlined.FlashOn,
-                    title = s.settings.settingsApplyOnBoot,
-                    subtitle = s.settings.settingsApplyOnBootDesc,
+                    title = s.settingsApplyOnBoot,
+                    subtitle = s.settingsApplyOnBootDesc,
                     checked = applyOnBoot,
                     onCheckedChange = { vm.setApplyOnBoot(it) }
                 )
                 SettingsDivider()
                 SettingsRowSwitch(
                     icon = Icons.Outlined.Notifications,
-                    title = s.settings.settingsNotifications,
-                    subtitle = s.settings.settingsNotificationsDesc,
+                    title = s.settingsNotifications,
+                    subtitle = s.settingsNotificationsDesc,
                     checked = notifications,
                     onCheckedChange = { vm.setNotifications(it) }
                 )
                 SettingsDivider()
                 SettingsRowInfo(
                     icon = Icons.Outlined.Language,
-                    title = s.settings.settingsLanguage,
+                    title = s.settingsLanguage,
                     subtitle = currentLanguage.nativeName,
                     onClick = { showLangSheet = true }
                 )
@@ -228,14 +228,14 @@ fun SettingsScreen(
             SettingsSectionCard(
                 icon = Icons.Outlined.Archive,
                 title = "Backup & Reset",
-                subtitle = if (backupList.isEmpty()) s.settings.settingsNoBackup else "${backupList.size} backup tersimpan",
+                subtitle = if (backupList.isEmpty()) s.settingsNoBackup else "${backupList.size} backup tersimpan",
                 expanded = backupExpanded,
                 onToggle = { backupExpanded = !backupExpanded }
             ) {
                 SettingsActionRow(
                     icon = Icons.Outlined.Save,
-                    title = s.settings.settingsBtnBackup,
-                    subtitle = s.backup.backupSubtitleBackup,
+                    title = s.settingsBtnBackup,
+                    subtitle = s.backupSubtitleBackup,
                     iconTint = MaterialTheme.colorScheme.primary,
                     iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
                     isLoading = working && processingFile == null && !showReset && !showResetProfiles && !showResetMonitor,
@@ -245,8 +245,8 @@ fun SettingsScreen(
                 SettingsDivider()
                 SettingsActionRow(
                     icon = Icons.Outlined.RestartAlt,
-                    title = s.settings.settingsBtnResetDefault,
-                    subtitle = s.backup.backupSubtitleReset,
+                    title = s.settingsBtnResetDefault,
+                    subtitle = s.backupSubtitleReset,
                     iconTint = MaterialTheme.colorScheme.error,
                     iconBg = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.62f),
                     enabled = !working,
@@ -255,25 +255,25 @@ fun SettingsScreen(
                 SettingsDivider()
                 SettingsActionRow(
                     icon = Icons.Outlined.ManageAccounts,
-                    title = s.settings.settingsBtnResetProfiles,
-                    subtitle = if (hasProfiles) s.backup.backupSubtitleResetProfiles else s.backup.backupNoProfiles,
+                    title = s.settingsBtnResetProfiles,
+                    subtitle = if (hasProfiles) s.backupSubtitleResetProfiles else s.backupNoProfiles,
                     iconTint = if (hasProfiles) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     iconBg = if (hasProfiles) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.62f) else MaterialTheme.colorScheme.surfaceVariant,
                     enabled = !working && hasProfiles,
                     showChip = !hasProfiles,
-                    chipText = s.backup.backupNoProfiles,
+                    chipText = s.backupNoProfiles,
                     onClick = { showResetProfiles = true }
                 )
                 SettingsDivider()
                 SettingsActionRow(
                     icon = Icons.Outlined.MonitorHeart,
-                    title = s.settings.settingsBtnResetMonitor,
-                    subtitle = if (monitorActive) s.backup.backupSubtitleResetMonitor else s.backup.backupMonitorInactive,
+                    title = s.settingsBtnResetMonitor,
+                    subtitle = if (monitorActive) s.backupSubtitleResetMonitor else s.backupMonitorInactive,
                     iconTint = if (monitorActive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
                     iconBg = if (monitorActive) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.62f) else MaterialTheme.colorScheme.surfaceVariant,
                     enabled = !working && monitorActive,
                     showChip = !monitorActive,
-                    chipText = s.backup.backupMonitorInactive,
+                    chipText = s.backupMonitorInactive,
                     onClick = { showResetMonitor = true }
                 )
 
@@ -284,15 +284,15 @@ fun SettingsScreen(
                 )
 
                 if (backupList.isEmpty()) {
-                    EmptyBackupRow(text = s.settings.settingsNoBackup)
+                    EmptyBackupRow(text = s.settingsNoBackup)
                 } else {
                     backupList.forEachIndexed { index, entry ->
                         SettingsBackupItem(
                             entry = entry,
                             working = working,
                             isProcessing = processingFile == entry.filename,
-                            profileLabel = s.settings.settingsBackupProfile.format(entry.profile),
-                            deleteLabel = s.settings.settingsBtnDelete,
+                            profileLabel = s.settingsBackupProfile.format(entry.profile),
+                            deleteLabel = s.settingsBtnDelete,
                             onRestore = {
                                 processingFile = entry.filename
                                 restoreTarget = entry.filename
@@ -315,16 +315,16 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showReset = false },
             icon = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(s.settings.settingsResetTitle) },
-            text = { Text(s.settings.settingsResetDesc) },
+            title = { Text(s.settingsResetTitle) },
+            text = { Text(s.settingsResetDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showReset = false; vm.resetToDefaults() },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(s.settings.settingsResetConfirm) }
+                ) { Text(s.settingsResetConfirm) }
             },
             dismissButton = {
-                TextButton(onClick = { showReset = false }) { Text(s.settings.settingsBtnCancel) }
+                TextButton(onClick = { showReset = false }) { Text(s.settingsBtnCancel) }
             }
         )
     }
@@ -333,15 +333,15 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { restoreTarget = null },
             icon = { Icon(Icons.Outlined.Restore, null) },
-            title = { Text(s.settings.settingsRestoreTitle) },
-            text = { Text(s.settings.settingsRestoreDesc) },
+            title = { Text(s.settingsRestoreTitle) },
+            text = { Text(s.settingsRestoreDesc) },
             confirmButton = {
                 TextButton(onClick = { restoreTarget = null; vm.restoreBackup(fname) }) {
-                    Text(s.settings.settingsRestoreConfirm)
+                    Text(s.settingsRestoreConfirm)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { restoreTarget = null }) { Text(s.settings.settingsBtnCancel) }
+                TextButton(onClick = { restoreTarget = null }) { Text(s.settingsBtnCancel) }
             }
         )
     }
@@ -350,16 +350,16 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showResetProfiles = false },
             icon = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(s.settings.settingsResetProfilesTitle) },
-            text = { Text(s.settings.settingsResetProfilesDesc) },
+            title = { Text(s.settingsResetProfilesTitle) },
+            text = { Text(s.settingsResetProfilesDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showResetProfiles = false; onResetProfiles() },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(s.settings.settingsResetConfirm) }
+                ) { Text(s.settingsResetConfirm) }
             },
             dismissButton = {
-                TextButton(onClick = { showResetProfiles = false }) { Text(s.settings.settingsBtnCancel) }
+                TextButton(onClick = { showResetProfiles = false }) { Text(s.settingsBtnCancel) }
             }
         )
     }
@@ -368,16 +368,16 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showResetMonitor = false },
             icon = { Icon(Icons.Outlined.MonitorHeart, null, tint = MaterialTheme.colorScheme.tertiary) },
-            title = { Text(s.settings.settingsResetMonitorTitle) },
-            text = { Text(s.settings.settingsResetMonitorDesc) },
+            title = { Text(s.settingsResetMonitorTitle) },
+            text = { Text(s.settingsResetMonitorDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showResetMonitor = false; onResetMonitor() },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.tertiary)
-                ) { Text(s.settings.settingsResetConfirm) }
+                ) { Text(s.settingsResetConfirm) }
             },
             dismissButton = {
-                TextButton(onClick = { showResetMonitor = false }) { Text(s.settings.settingsBtnCancel) }
+                TextButton(onClick = { showResetMonitor = false }) { Text(s.settingsBtnCancel) }
             }
         )
     }

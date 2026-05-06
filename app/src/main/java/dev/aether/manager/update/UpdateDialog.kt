@@ -138,7 +138,7 @@ fun UpdateDialog(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text       = s.update.updateAvailable,
+                        text       = s.updateAvailable,
                         style      = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         textAlign  = TextAlign.Center,
@@ -154,7 +154,7 @@ fun UpdateDialog(
                 VersionArrowChip(currentVersion = currentVersion, newVersion = info.versionName)
 
                 // ── Tab: Deskripsi / Changelog ────────────────────
-                val tabs = listOf(s.update.updateTabDesc, s.update.updateTabChangelog)
+                val tabs = listOf(s.updateTabDesc, s.updateTabChangelog)
                 TabRow(
                     selectedTabIndex = selectedTab,
                     modifier         = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
@@ -230,7 +230,7 @@ fun UpdateDialog(
                                 Icon(Icons.Outlined.Download, null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    s.update.updateBtnDownload,
+                                    s.updateBtnDownload,
                                     style = MaterialTheme.typography.labelLarge
                                 )
                             }
@@ -241,7 +241,7 @@ fun UpdateDialog(
                                 shape    = RoundedCornerShape(14.dp),
                             ) {
                                 Text(
-                                    s.update.updateBtnLater,
+                                    s.updateBtnLater,
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -266,7 +266,7 @@ fun UpdateDialog(
                         }
                         DownloadProgressBar(percent = 100, downloadedBytes = -1L, totalBytes = -1L)
                         Text(
-                            s.update.updateInstalling,
+                            s.updateInstalling,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -280,7 +280,7 @@ fun UpdateDialog(
                                 color    = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
                             ) {
                                 Text(
-                                    s.update.updateFailed.format(dl.reason),
+                                    s.updateFailed.format(dl.reason),
                                     modifier  = Modifier.padding(12.dp),
                                     style     = MaterialTheme.typography.bodySmall,
                                     color     = MaterialTheme.colorScheme.onErrorContainer,
@@ -291,7 +291,7 @@ fun UpdateDialog(
                                 onClick  = { dlState = DownloadState.Idle },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape    = RoundedCornerShape(12.dp),
-                            ) { Text(s.update.updateBtnRetry) }
+                            ) { Text(s.updateBtnRetry) }
                         TextButton(
                                 onClick  = {
                                     context.startActivity(
@@ -299,7 +299,7 @@ fun UpdateDialog(
                                     )
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                            ) { Text(s.update.updateBtnBrowser) }
+                            ) { Text(s.updateBtnBrowser) }
                         }
                     }
                 }
@@ -365,14 +365,14 @@ private fun DescriptionBox(s: AppStrings) {
                     tint     = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    s.update.updateAboutTitle,
+                    s.updateAboutTitle,
                     style      = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color      = MaterialTheme.colorScheme.primary
                 )
             }
             Text(
-                text      = s.update.updateAboutDesc,
+                text      = s.updateAboutDesc,
                 style     = MaterialTheme.typography.bodySmall,
                 color     = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 18.sp,
@@ -400,7 +400,7 @@ private fun ChangelogBox(notes: String, loading: Boolean, s: AppStrings) {
                         color       = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        s.update.updateChangelogLoading,
+                        s.updateChangelogLoading,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -415,7 +415,7 @@ private fun ChangelogBox(notes: String, loading: Boolean, s: AppStrings) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text       = notes.ifBlank { s.update.updateChangelogEmpty },
+                    text       = notes.ifBlank { s.updateChangelogEmpty },
                     style      = MaterialTheme.typography.bodySmall,
                     color      = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp,
@@ -469,7 +469,7 @@ private fun DownloadProgressBar(
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            s.update.updateDownloadDone,
+                            s.updateDownloadDone,
                             style  = MaterialTheme.typography.labelSmall,
                             color  = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold,
@@ -481,7 +481,7 @@ private fun DownloadProgressBar(
                             color       = MaterialTheme.colorScheme.primary,
                         )
                         Text(
-                            s.update.updateDownloading,
+                            s.updateDownloading,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

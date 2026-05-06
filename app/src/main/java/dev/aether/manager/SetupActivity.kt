@@ -1198,7 +1198,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                         PagerDotIndicator(total = totalPages, current = currentPage)
 
                         SmoothNextButton(
-                            text = if (currentPage == totalPages - 1) s.setup.setupBtnStart else s.setup.setupBtnNext,
+                            text = if (currentPage == totalPages - 1) s.setupBtnStart else s.setupBtnNext,
                             enabled = canProceed,
                             running = buttonRunning,
                             onClick = { runNextAction() }
@@ -1218,7 +1218,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                 if (includeStorage && storState == PermState.IDLE) add("Penyimpanan")
                             }
                             Text(
-                                text = if (!rootOk) s.setup.setupRootRequired
+                                text = if (!rootOk) s.setupRootRequired
                                 else "Selesaikan izin: ${pendingPerms.joinToString(", ")}",
                                 color = MaterialTheme.colorScheme.error.copy(alpha = 0.86f),
                                 fontSize = 12.sp,
@@ -1234,7 +1234,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                             exit = fadeOut(tween(160, easing = FastOutSlowInEasing)) + slideOutVertically { it / 8 }
                         ) {
                             SmoothBackButton(
-                                text = s.setup.setupBtnBack,
+                                text = s.setupBtnBack,
                                 enabled = !buttonRunning,
                                 running = buttonRunning,
                                 onClick = { goBack() }
@@ -1251,14 +1251,14 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
 private fun WelcomePage(s: AppStrings) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(
-            text = s.setup.setupWelcomeTitle,
+            text = s.setupWelcomeTitle,
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             lineHeight = 40.sp
         )
         Text(
-            text = s.setup.setupWelcomeDesc,
+            text = s.setupWelcomeDesc,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
@@ -1366,7 +1366,7 @@ private fun PermissionsPage(
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = s.setup.setupRootDenied,
+                        text = s.setupRootDenied,
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         fontSize = 12.sp,
                         lineHeight = 17.sp,
@@ -1425,7 +1425,7 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
         }
 
         Text(
-            text = if (allGranted) "Setup Complete" else s.setup.setupIncompleteTitle,
+            text = if (allGranted) "Setup Complete" else s.setupIncompleteTitle,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -1503,7 +1503,7 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
                         modifier = Modifier.size(17.dp)
                     )
                     Text(
-                        text = s.setup.setupAllPermsGranted,
+                        text = s.setupAllPermsGranted,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,

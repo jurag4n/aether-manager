@@ -238,9 +238,9 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
     }
 
     val navItems = listOf(
-        NavItem(Screen.HOME,  s.nav.navHome,  Icons.Filled.Home,  Icons.Outlined.Home),
-        NavItem(Screen.TWEAK, s.nav.navTweak, Icons.Filled.Tune,  Icons.Outlined.Tune),
-        NavItem(Screen.APPS,  s.nav.navApps,  Icons.Filled.Apps,  Icons.Outlined.Apps),
+        NavItem(Screen.HOME,  s.navHome,  Icons.Filled.Home,  Icons.Outlined.Home),
+        NavItem(Screen.TWEAK, s.navTweak, Icons.Filled.Tune,  Icons.Outlined.Tune),
+        NavItem(Screen.APPS,  s.navApps,  Icons.Filled.Apps,  Icons.Outlined.Apps),
     )
 
     var bottomNavVisible by remember { mutableStateOf(true) }

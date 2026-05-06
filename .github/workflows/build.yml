@@ -93,6 +93,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           ./gradlew :app:assembleRelease \
+            --no-daemon \
             --build-cache \
             --parallel \
             --configuration-cache \

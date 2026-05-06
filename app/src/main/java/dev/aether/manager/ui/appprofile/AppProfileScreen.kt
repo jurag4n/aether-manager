@@ -93,7 +93,7 @@ private fun LoadingContent() {
                 color       = MaterialTheme.colorScheme.primary
             )
             Text(
-                s.appProfile.appProfileLoading,
+                s.appProfileLoading,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -117,7 +117,7 @@ private fun ErrorContent(msg: String, onRetry: () -> Unit) {
             )
             Text(msg, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FilledTonalButton(onClick = onRetry) { Text(s.appProfile.appProfileRetry) }
+            FilledTonalButton(onClick = onRetry) { Text(s.appProfileRetry) }
         }
     }
 }
@@ -609,7 +609,7 @@ private fun EmptyListHint(isSearch: Boolean) {
                 modifier = Modifier.size(44.dp)
             )
             Text(
-                if (isSearch) s.appProfile.appProfileNoResults else s.appProfile.appProfileEmpty,
+                if (isSearch) s.appProfileNoResults else s.appProfileEmpty,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1248,7 +1248,7 @@ fun AppProfileEditor(
                         )
                     )
                     Text(
-                        if (draft.enabled) s.appProfile.appProfileEditorActive else s.appProfile.appProfileEditorInactive,
+                        if (draft.enabled) s.appProfileEditorActive else s.appProfileEditorInactive,
                         style = MaterialTheme.typography.labelSmall,
                         color = if (draft.enabled) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1262,7 +1262,7 @@ fun AppProfileEditor(
             )
 
             // ── CPU Governor ─────────────────────────────────────────
-            EditorSection(icon = Icons.Outlined.Memory, title = s.appProfile.appProfileCpuGovernor) {
+            EditorSection(icon = Icons.Outlined.Memory, title = s.appProfileCpuGovernor) {
                 GovernorSelector(
                     selected = draft.cpuGovernor,
                     onSelect = { draft = draft.copy(cpuGovernor = it) },
@@ -1271,7 +1271,7 @@ fun AppProfileEditor(
             }
 
             // ── Refresh Rate ─────────────────────────────────────────
-            EditorSection(icon = Icons.Outlined.DisplaySettings, title = s.appProfile.appProfileRefreshRate) {
+            EditorSection(icon = Icons.Outlined.DisplaySettings, title = s.appProfileRefreshRate) {
                 RefreshRateSelector(
                     selected = draft.refreshRate,
                     onSelect = { draft = draft.copy(refreshRate = it) },
@@ -1280,7 +1280,7 @@ fun AppProfileEditor(
             }
 
             // ── Extra Tweaks ─────────────────────────────────────────
-            EditorSection(icon = Icons.Outlined.Tune, title = s.appProfile.appProfileExtraTweaks) {
+            EditorSection(icon = Icons.Outlined.Tune, title = s.appProfileExtraTweaks) {
                 ExtraTweaksPanel(
                     tweaks   = draft.extraTweaks,
                     enabled  = draft.enabled,
@@ -1306,7 +1306,7 @@ fun AppProfileEditor(
                 } else {
                     Icon(Icons.Outlined.Save, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(s.appProfile.appProfileSaveBtn, style = MaterialTheme.typography.labelLarge)
+                    Text(s.appProfileSaveBtn, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -1500,40 +1500,40 @@ private fun ExtraTweaksPanel(
         Column(Modifier.fillMaxWidth()) {
             ExtraTweakRow(
                 icon     = Icons.Outlined.BatterySaver,
-                title    = s.appProfile.appProfileDisableDoze,
-                subtitle = s.appProfile.appProfileDisableDozeDesc,
+                title    = s.appProfileDisableDoze,
+                subtitle = s.appProfileDisableDozeDesc,
                 checked  = tweaks.disableDoze,
                 enabled  = enabled
             ) { onChange(tweaks.copy(disableDoze = it)) }
             ExtraDivider()
             ExtraTweakRow(
                 icon     = Icons.Outlined.Speed,
-                title    = s.appProfile.appProfileLockCpuMin,
-                subtitle = s.appProfile.appProfileLockCpuMinDesc,
+                title    = s.appProfileLockCpuMin,
+                subtitle = s.appProfileLockCpuMinDesc,
                 checked  = tweaks.lockCpuMin,
                 enabled  = enabled
             ) { onChange(tweaks.copy(lockCpuMin = it)) }
             ExtraDivider()
             ExtraTweakRow(
                 icon     = Icons.Outlined.CleaningServices,
-                title    = s.appProfile.appProfileKillBg,
-                subtitle = s.appProfile.appProfileKillBgDesc,
+                title    = s.appProfileKillBg,
+                subtitle = s.appProfileKillBgDesc,
                 checked  = tweaks.killBackground,
                 enabled  = enabled
             ) { onChange(tweaks.copy(killBackground = it)) }
             ExtraDivider()
             ExtraTweakRow(
                 icon     = Icons.Outlined.Videocam,
-                title    = s.appProfile.appProfileGpuBoost,
-                subtitle = s.appProfile.appProfileGpuBoostDesc,
+                title    = s.appProfileGpuBoost,
+                subtitle = s.appProfileGpuBoostDesc,
                 checked  = tweaks.gpuBoost,
                 enabled  = enabled
             ) { onChange(tweaks.copy(gpuBoost = it)) }
             ExtraDivider()
             ExtraTweakRow(
                 icon     = Icons.Outlined.Storage,
-                title    = s.appProfile.appProfileIoLatency,
-                subtitle = s.appProfile.appProfileIoLatencyDesc,
+                title    = s.appProfileIoLatency,
+                subtitle = s.appProfileIoLatencyDesc,
                 checked  = tweaks.ioLatency,
                 enabled  = enabled
             ) { onChange(tweaks.copy(ioLatency = it)) }
@@ -1617,12 +1617,12 @@ private fun govIcon(gov: String): ImageVector = when (gov) {
 }
 
 private fun govDescription(gov: String, s: dev.aether.manager.i18n.AppStrings): String = when (gov) {
-    "default"      -> s.tweak.govDescDefault
-    "performance"  -> s.tweak.govDescPerformance
-    "powersave"    -> s.tweak.govDescPowersave
-    "ondemand"     -> s.tweak.govDescOndemand
-    "conservative" -> s.tweak.govDescConservative
-    "schedutil"    -> s.tweak.govDescSchedutil
-    "interactive"  -> s.tweak.govDescInteractive
+    "default"      -> s.govDescDefault
+    "performance"  -> s.govDescPerformance
+    "powersave"    -> s.govDescPowersave
+    "ondemand"     -> s.govDescOndemand
+    "conservative" -> s.govDescConservative
+    "schedutil"    -> s.govDescSchedutil
+    "interactive"  -> s.govDescInteractive
     else           -> ""
 }
