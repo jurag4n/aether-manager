@@ -2,13 +2,15 @@ package dev.aether.manager.ui.tweak
 
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -17,6 +19,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,6 +71,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -426,37 +431,80 @@ private fun AdaptiveTweakGridRow(
     left: @Composable (Modifier) -> Unit,
     right: @Composable (Modifier) -> Unit
 ) {
+    val leftExpanded = expandedKey == leftKey
+    val rightExpanded = expandedKey == rightKey
+    val rowActive = leftExpanded || rightExpanded
+
+    val rowGap by animateDpAsState(
+        targetValue = if (rowActive) 14.dp else 12.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "tweak_row_gap_$leftKey_$rightKey"
+    )
+    val expandedLift by animateFloatAsState(
+        targetValue = if (rowActive) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "tweak_row_lift_$leftKey_$rightKey"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                translationY = -2f * expandedLift
+                scaleX = 1f + (0.004f * expandedLift)
+                scaleY = 1f + (0.004f * expandedLift)
+            }
             .animateContentSize(
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
                     stiffness = Spring.StiffnessLow
                 )
             ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(rowGap)
     ) {
-        when (expandedKey) {
-            leftKey -> {
-                left(Modifier.fillMaxWidth())
-                AnimatedGridCell(visible = true) {
-                    CompactGridSingleCell { right(Modifier.fillMaxWidth()) }
+        when {
+            leftExpanded -> {
+                AnimatedGridCard(active = true) {
+                    left(Modifier.fillMaxWidth())
+                }
+                AnimatedCompactPairCard {
+                    right(Modifier.fillMaxWidth())
                 }
             }
-            rightKey -> {
-                right(Modifier.fillMaxWidth())
-                AnimatedGridCell(visible = true) {
-                    CompactGridSingleCell { left(Modifier.fillMaxWidth()) }
+            rightExpanded -> {
+                AnimatedGridCard(active = true) {
+                    right(Modifier.fillMaxWidth())
+                }
+                AnimatedCompactPairCard {
+                    left(Modifier.fillMaxWidth())
                 }
             }
             else -> {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        ),
+                    horizontalArrangement = Arrangement.spacedBy(rowGap)
                 ) {
-                    left(Modifier.weight(1f))
-                    right(Modifier.weight(1f))
+                    AnimatedGridCard(
+                        modifier = Modifier.weight(1f),
+                        active = false
+                    ) { left(Modifier.fillMaxWidth()) }
+                    AnimatedGridCard(
+                        modifier = Modifier.weight(1f),
+                        active = false
+                    ) { right(Modifier.fillMaxWidth()) }
                 }
             }
         }
@@ -464,34 +512,63 @@ private fun AdaptiveTweakGridRow(
 }
 
 @Composable
-private fun AnimatedGridCell(
-    visible: Boolean,
+private fun AnimatedGridCard(
+    modifier: Modifier = Modifier,
+    active: Boolean,
     content: @Composable () -> Unit
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(130, delayMillis = 20, easing = FastOutSlowInEasing)) +
-                slideInVertically(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                ) { it / 6 } +
-                expandVertically(
-                    expandFrom = Alignment.Top,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                ),
-        exit = fadeOut(tween(90, easing = FastOutSlowInEasing)) +
-                slideOutVertically(tween(120, easing = FastOutSlowInEasing)) { it / 7 } +
-                shrinkVertically(
-                    shrinkTowards = Alignment.Top,
-                    animationSpec = tween(165, easing = FastOutSlowInEasing)
+    val scale by animateFloatAsState(
+        targetValue = if (active) 1f else 0.985f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "animated_grid_card_scale"
+    )
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationY = if (active) -1f else 0f
+            }
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
                 )
+            )
     ) {
         content()
+    }
+}
+
+@Composable
+private fun AnimatedCompactPairCard(content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn(tween(120, easing = FastOutSlowInEasing)) +
+            slideInVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                initialOffsetY = { it / 5 }
+            ) +
+            scaleIn(
+                initialScale = 0.94f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ),
+        exit = fadeOut(tween(90, easing = FastOutSlowInEasing)) +
+            slideOutVertically(targetOffsetY = { it / 8 }) +
+            scaleOut(targetScale = 0.96f)
+    ) {
+        CompactGridSingleCell {
+            AnimatedGridCard(active = false) { content() }
+        }
     }
 }
 
@@ -899,6 +976,9 @@ private fun ExpandableTweakCard(
     onClick: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+
     val container by animateColorAsState(
         targetValue = if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh
                       else MaterialTheme.colorScheme.surfaceContainerLow,
@@ -930,57 +1010,77 @@ private fun ExpandableTweakCard(
         label = "badge_fg_$title"
     )
 
+    // Corner radius dianimasikan supaya transisi mengembang/mengecil lebih smooth
     val cornerRadius by animateDpAsState(
         targetValue = if (expanded) 28.dp else 22.dp,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
         label = "card_corner_$title"
     )
+
+    // Elevation juga dianimasikan
     val elevation by animateDpAsState(
-        targetValue = if (expanded) 5.dp else 1.dp,
+        targetValue = if (expanded) 4.dp else 0.dp,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
         label = "card_elev_$title"
     )
+
     val cardScale by animateFloatAsState(
-        targetValue = if (expanded) 1.012f else 1f,
+        targetValue = when {
+            pressed -> 0.975f
+            expanded -> 1.012f
+            else -> 1f
+        },
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "card_scale_$title"
     )
+    val iconScale by animateFloatAsState(
+        targetValue = if (expanded) 1.08f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "icon_scale_$title"
+    )
+    val headerOffset by animateFloatAsState(
+        targetValue = if (expanded) -2f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "header_offset_$title"
+    )
+
+    // Alpha konten detail
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = tween(
-            durationMillis = if (expanded) 180 else 95,
+            durationMillis = if (expanded) 140 else 100,
             easing = FastOutSlowInEasing
         ),
         label = "detail_alpha_$title"
     )
+    // Konten slide dari bawah saat muncul, ke bawah saat hilang
     val detailSlide by animateFloatAsState(
         targetValue = if (expanded) 0f else 18f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+        animationSpec = tween(
+            durationMillis = if (expanded) 160 else 120,
+            easing = FastOutSlowInEasing
         ),
         label = "detail_slide_$title"
-    )
-    val detailScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.96f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "detail_scale_$title"
     )
 
     Surface(
         onClick = onClick,
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(cornerRadius),
         color = container,
         tonalElevation = elevation,
@@ -988,6 +1088,7 @@ private fun ExpandableTweakCard(
             .graphicsLayer {
                 scaleX = cardScale
                 scaleY = cardScale
+                translationY = headerOffset
             }
             .animateContentSize(
                 animationSpec = spring(
@@ -1012,7 +1113,11 @@ private fun ExpandableTweakCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(iconBg),
+                        .background(iconBg)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(icon, null, tint = iconTint, modifier = Modifier.size(21.dp))
@@ -1041,27 +1146,40 @@ private fun ExpandableTweakCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(tween(durationMillis = 150, delayMillis = 20, easing = FastOutSlowInEasing)) +
+                enter = fadeIn(tween(durationMillis = 120, easing = FastOutSlowInEasing)) +
                         slideInVertically(
                             animationSpec = spring(
                                 dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            initialOffsetY = { it / 6 }
+                        ) +
+                        scaleIn(
+                            initialScale = 0.92f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
                             )
-                        ) { it / 5 } +
+                        ) +
                         expandVertically(
-                            expandFrom = Alignment.Top,
                             animationSpec = spring(
                                 dampingRatio = Spring.DampingRatioMediumBouncy,
                                 stiffness = Spring.StiffnessLow
-                            )
+                            ),
+                            expandFrom = Alignment.Top
                         ),
-                exit = fadeOut(tween(durationMillis = 95, easing = FastOutSlowInEasing)) +
+                exit = fadeOut(tween(durationMillis = 90, easing = FastOutSlowInEasing)) +
                        slideOutVertically(
-                           animationSpec = tween(125, easing = FastOutSlowInEasing)
-                       ) { it / 7 } +
+                           animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
+                           targetOffsetY = { it / 8 }
+                       ) +
+                       scaleOut(
+                           targetScale = 0.96f,
+                           animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing)
+                       ) +
                        shrinkVertically(
-                           shrinkTowards = Alignment.Top,
-                           animationSpec = tween(durationMillis = 175, easing = FastOutSlowInEasing)
+                           animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                           shrinkTowards = Alignment.Top
                        )
             ) {
                 Column(
@@ -1070,8 +1188,6 @@ private fun ExpandableTweakCard(
                         .graphicsLayer {
                             alpha = detailAlpha
                             translationY = detailSlide
-                            scaleX = detailScale
-                            scaleY = detailScale
                         },
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     content = content
