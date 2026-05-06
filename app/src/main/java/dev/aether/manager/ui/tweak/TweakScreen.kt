@@ -756,15 +756,15 @@ private fun NetworkCard(
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.NetworkCheck,
-        title = strings.networkTitle,
-        subtitle = strings.networkSubtitle,
+        title = strings.misc.networkTitle,
+        subtitle = strings.misc.networkSubtitle,
         badge = if (active) "Tuned" else "Off",
         active = active,
         expanded = expanded,
         onClick = onClick
     ) {
         DropdownAction(
-            title = strings.networkDnsTitle,
+            title = strings.misc.networkDnsTitle,
             value = dnsProvider,
             options = listOf("Off", "AdGuard", "Cloudflare", "Google", "CleanBrowsing"),
             onSelect = onDnsSelect
@@ -775,15 +775,15 @@ private fun NetworkCard(
         ) {
             ToggleOption(
                 modifier = Modifier.weight(1f),
-                title = strings.networkStabilizeTitle,
-                subtitle = strings.networkStabilizeSubtitle,
+                title = strings.misc.networkStabilizeTitle,
+                subtitle = strings.misc.networkStabilizeSubtitle,
                 checked = networkStable,
                 onClick = onNetworkStableToggle
             )
             ToggleOption(
                 modifier = Modifier.weight(1f),
-                title = strings.networkTcpTitle,
-                subtitle = strings.networkTcpSubtitle,
+                title = strings.misc.networkTcpTitle,
+                subtitle = strings.misc.networkTcpSubtitle,
                 checked = tcpEnabled,
                 onClick = onTcpToggle
             )
@@ -1293,7 +1293,7 @@ private fun DeviceInfoCard(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = strings.deviceInfoTitle,
+                        text = strings.misc.deviceInfoTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -1301,7 +1301,7 @@ private fun DeviceInfoCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = strings.deviceInfoSubtitle,
+                        text = strings.misc.deviceInfoSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -1339,10 +1339,10 @@ private fun DeviceInfoCard(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        DeviceInfoLine(label = strings.deviceInfoName, value = deviceName)
-                        DeviceInfoLine(label = strings.deviceInfoAndroidVersion, value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
-                        DeviceInfoLine(label = strings.deviceInfoCodename, value = codeName)
-                        DeviceInfoLine(label = strings.deviceInfoKernel, value = kernel)
+                        DeviceInfoLine(label = strings.misc.deviceInfoName, value = deviceName)
+                        DeviceInfoLine(label = strings.misc.deviceInfoAndroidVersion, value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
+                        DeviceInfoLine(label = strings.misc.deviceInfoCodename, value = codeName)
+                        DeviceInfoLine(label = strings.misc.deviceInfoKernel, value = kernel)
                     }
                 }
             }
@@ -1554,7 +1554,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = strings.appProfileCardTitle,
+                    text = strings.appProfile.appProfileCardTitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1562,7 +1562,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = strings.appProfileCardSubtitle,
+                    text = strings.appProfile.appProfileCardSubtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                     maxLines = 2,
@@ -1570,7 +1570,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 )
             }
             StatusPill(
-                text = strings.commonOpen,
+                text = strings.misc.commonOpen,
                 active = true,
                 bg = MaterialTheme.colorScheme.onPrimaryContainer,
                 fg = MaterialTheme.colorScheme.primaryContainer
@@ -1617,7 +1617,7 @@ private fun DropdownAction(
             },
             confirmButton = {
                 TextButton(onClick = { expanded = false }) {
-                    Text(strings.commonClose)
+                    Text(strings.misc.commonClose)
                 }
             }
         )
@@ -1650,7 +1650,7 @@ private fun DropdownAction(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            StatusPill(text = strings.commonSelect, active = true)
+            StatusPill(text = strings.misc.commonSelect, active = true)
         }
     }
 }

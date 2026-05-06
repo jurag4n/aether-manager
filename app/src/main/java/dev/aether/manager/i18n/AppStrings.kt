@@ -2,17 +2,19 @@ package dev.aether.manager.i18n
 
 import androidx.compose.runtime.staticCompositionLocalOf
 
-/**
- * All UI strings in one data class.
- * Add new strings here, then provide values in StringsId and StringsEn.
- */
-data class AppStrings(
-    // ── Navigation ───────────────────────────────────────────
+// ── Sub-classes ───────────────────────────────────────────────────────────────
+
+// ── Navigation ──────────────────────────────────────────────────
+
+data class NavStrings(
     val navHome: String,
     val navTweak: String,
     val navApps: String,
+)
 
-    // ── Setup ────────────────────────────────────────────────
+// ── Setup wizard ────────────────────────────────────────────────
+
+data class SetupStrings(
     val setupWelcomeTitle: String,
     val setupWelcomeDesc: String,
     val setupRootTitle: String,
@@ -49,8 +51,11 @@ data class AppStrings(
     val setupBtnBack: String,
     val setupBtnRetry: String,
     val setupBtnSkip: String,
+)
 
-    // ── Home ─────────────────────────────────────────────────
+// ── Home screen ─────────────────────────────────────────────────
+
+data class HomeStrings(
     val homeSystemStatus: String,
     val homeMonitor: String,
     val homeRetry: String,
@@ -62,15 +67,18 @@ data class AppStrings(
     val homeTempCpu: String,
     val homeTempBat: String,
     val homeSelinux: String,
-    val homeBatCurrent: String,      // label "Arus"
-    val homeBatVoltage: String,      // label "Tegangan"
-    val homeBatCharging: String,     // label "Mengisi"
-    val homeBatDischarging: String,  // label "Discharge"
-    val homeBatFull: String,         // label "Penuh"
-    val homeBatNotCharging: String,  // label "Tidak Mengisi"
-    val homeBatStatusLabel: String,  // label header row
+    val homeBatCurrent: String,      // label "Arus",
+    val homeBatVoltage: String,      // label "Tegangan",
+    val homeBatCharging: String,     // label "Mengisi",
+    val homeBatDischarging: String,  // label "Discharge",
+    val homeBatFull: String,         // label "Penuh",
+    val homeBatNotCharging: String,  // label "Tidak Mengisi",
+    val homeBatStatusLabel: String,  // label header row,
+)
 
-    // ── Tweak ────────────────────────────────────────────────
+// ── Tweak screen + CPU/GPU/thermal/touch/KSM + governor descriptions ─
+
+data class TweakStrings(
     val tweakPerformanceProfile: String,
     val tweakSectionCpu: String,
     val tweakSectionMemory: String,
@@ -112,8 +120,6 @@ data class AppStrings(
     val tweakZramSize: String,
     val tweakZramAlgo: String,
     val tweakIoScheduler: String,
-
-    // ── CPU Freq Limiter ──────────────────────────────────────
     val tweakSectionCpuFreq: String,
     val tweakCpuFreqEnable: String,
     val tweakCpuFreqEnableDesc: String,
@@ -122,31 +128,33 @@ data class AppStrings(
     val tweakCpuClusterSilver: String,
     val tweakCpuFreqMin: String,
     val tweakCpuFreqMax: String,
-
-    // ── Thermal Control ───────────────────────────────────────
     val tweakThermalProfile: String,
     val tweakThermalDefault: String,
     val tweakThermalPerformance: String,
     val tweakThermalExtreme: String,
     val tweakThermalDesc: String,
-
-    // ── GPU Freq Lock ─────────────────────────────────────────
     val tweakGpuFreqLock: String,
     val tweakGpuFreqLockDesc: String,
     val tweakGpuFreqMax: String,
-
-    // ── Touch Boost ───────────────────────────────────────────
     val tweakTouchBoost: String,
     val tweakTouchBoostDesc: String,
     val tweakTouchSampleRate: String,
-
-    // ── KSM ──────────────────────────────────────────────────
     val tweakKsm: String,
     val tweakKsmDesc: String,
     val tweakKsmAggressive: String,
     val tweakKsmAggressiveDesc: String,
+    val govDescDefault: String,
+    val govDescPerformance: String,
+    val govDescPowersave: String,
+    val govDescOndemand: String,
+    val govDescConservative: String,
+    val govDescSchedutil: String,
+    val govDescInteractive: String,
+)
 
-    // ── Log / Reboot sheet ───────────────────────────────────
+// ── Log / Reboot sheet ──────────────────────────────────────────
+
+data class LogStrings(
     val logRebootOptions: String,
     val logRebootSystem: String,
     val logRebootSystemDesc: String,
@@ -155,8 +163,11 @@ data class AppStrings(
     val logReloadUi: String,
     val logReloadUiDesc: String,
     val logBtnCancel: String,
+)
 
-    // ── Settings / Backup screen ─────────────────────────────
+// ── Settings screen (all sections) ──────────────────────────────
+
+data class SettingsStrings(
     val settingsTitle: String,
     val settingsSectionBackup: String,
     val settingsBtnBackup: String,
@@ -173,17 +184,144 @@ data class AppStrings(
     val settingsRestoreTitle: String,
     val settingsRestoreDesc: String,
     val settingsRestoreConfirm: String,
-    val settingsBackupProfile: String,   // "Profile: %s"
+    val settingsBackupProfile: String,   // "Profile: %s",
     val settingsBtnDelete: String,
+    val settingsBtnResetProfiles: String,
+    val settingsResetProfilesTitle: String,
+    val settingsResetProfilesDesc: String,
+    val settingsBtnResetMonitor: String,
+    val settingsResetMonitorTitle: String,
+    val settingsResetMonitorDesc: String,
+    val settingsSectionAppearance: String,
+    val settingsLanguage: String,
+    val settingsDarkMode: String,
+    val settingsDarkModeDesc: String,
+    val settingsDynamicColor: String,
+    val settingsDynamicColorDesc: String,
+    val settingsSectionGeneral: String,
+    val settingsAutoBackup: String,
+    val settingsAutoBackupDesc: String,
+    val settingsApplyOnBoot: String,
+    val settingsApplyOnBootDesc: String,
+    val settingsNotifications: String,
+    val settingsNotificationsDesc: String,
+    val settingsSectionAdvanced: String,
+    val settingsRootMethod: String,
+    val settingsDebugLog: String,
+    val settingsDebugLogDesc: String,
+    val settingsClearCache: String,
+    val settingsClearCacheDesc: String,
+    val settingsSectionAbout: String,
+    val settingsVersion: String,
+    val settingsSourceCode: String,
+    val settingsSourceCodeDesc: String,
+    val settingsLicense: String,
+    val settingsLicenseDesc: String,
+)
 
-    // ── AdBlock dialog ───────────────────────────────────────
-    val adBlockTitle: String,
-    val adBlockBody: String,
-    val adBlockInfoCard: String,
-    val adBlockSafeLabel: String,
-    val adBlockBtnDisable: String,
+// ── Backup screen ───────────────────────────────────────────────
 
-    // ── Update dialog ────────────────────────────────────────
+data class BackupStrings(
+    val backupSuccessCreate: String,
+    val backupSuccessRestore: String,
+    val backupSuccessDelete: String,
+    val backupSuccessReset: String,
+    val backupSuccessResetProfiles: String,
+    val backupSuccessResetMonitor: String,
+    val backupFailCreate: String,
+    val backupFailRestore: String,
+    val backupFailReset: String,
+    val backupNoProfiles: String,
+    val backupMonitorInactive: String,
+    val backupSubtitleBackup: String,
+    val backupSubtitleReset: String,
+    val backupSubtitleResetProfiles: String,
+    val backupSubtitleResetMonitor: String,
+)
+
+// ── License / Premium screen ────────────────────────────────────
+
+data class LicenseStrings(
+    val licenseScreenTitle: String,
+    val licenseInvoiceHistoryIcon: String,          // content desc icon riwayat invoice,
+    val licensePremiumActive: String,
+    val licensePremiumValidUntil: String,           // "Berlaku hingga %s",
+    val licenseDaysLeft: String,                    // "%d hari",
+    val licenseYourBenefits: String,
+    val licenseKeyLabel: String,
+    val licenseKeyCopied: String,                   // toast,
+    val licenseExpiringSoon: String,                // "Premium kamu hampir habis! Perpanjang sebelum %s.",
+    val licenseDeactivateBtn: String,
+    val licenseFreeTitle: String,
+    val licenseFreeDesc: String,
+    val licenseUpgradeTitle: String,
+    val licenseUpgradeDesc: String,
+    val licensePrice1Month: String,
+    val licensePrice: String,                       // "Rp 25.000",
+    val licenseBuyBtn: String,
+    val licensePendingTitle: String,
+    val licenseContinuePaymentBtn: String,
+    val licenseHaveKeyTitle: String,
+    val licenseKeyInputLabel: String,
+    val licenseActivateBtn: String,
+    val licenseDeactivateDialogTitle: String,
+    val licenseDeactivateDialogBody: String,
+    val licenseDeactivateConfirmBtn: String,
+    val licenseDeactivateCancelBtn: String,
+    val licensePollingWaiting: String,
+    val licensePollingDesc: String,
+    val licenseBuySheetTitle: String,
+    val licenseBuySheetSubtitle: String,
+    val licenseBuySheetFormDesc: String,
+    val licenseBuySheetNameLabel: String,
+    val licenseBuySheetPhoneLabel: String,
+    val licenseBuySheetPhoneHint: String,
+    val licenseBuySheetCreateInvoiceBtn: String,
+    val licensePayDetailTitle: String,
+    val licensePayDetailSubtitle: String,
+    val licenseOrderIdLabel: String,
+    val licenseOrderIdCopied: String,               // toast,
+    val licenseOrderIdWarning: String,
+    val licenseTotalLabel: String,
+    val licenseDuration1Month: String,
+    val licenseImportantLabel: String,
+    val licenseImportantBody: String,               // "Transfer Rp %s. Jangan sampai salah nominal…",
+    val licenseAfterTransferLabel: String,
+    val licenseVerifyNowBtn: String,
+    val licenseCancelBtn: String,
+    val licensePayTypeEwallet: String,              // "E-Wallet",
+    val licensePayTypeBank: String,                 // "Transfer Bank",
+    val licensePayTypeInternational: String,        // "International",
+    val licenseContactWhatsApp: String,
+    val licenseContactTelegram: String,
+    val licenseNumberCopied: String,                // "Nomor %s disalin",
+    val licenseCopyLabel: String,                   // "Salin",
+    val licenseInvoiceHistoryTitle: String,
+    val licenseInvoiceHistoryEmpty: String,
+    val licenseInvoiceStatusPaid: String,
+    val licenseInvoiceStatusExpired: String,
+    val licenseInvoiceStatusPending: String,
+    val licenseInvoiceContinueBtn: String,
+    val licenseInvoiceDeleteBtn: String,
+    val licenseSuccessTitle: String,
+    val licenseSuccessBody: String,                 // "Terima kasih…",
+    val licenseSuccessKeyLabel: String,             // "License Key kamu",
+    val licenseSuccessValidUntil: String,           // "Berlaku hingga %s",
+    val licenseSuccessSaveHint: String,
+    val licenseSuccessBenefits: List<String>,
+    val licenseSuccessStartBtn: String,
+    val licenseExpireLifetime: String,
+    val licenseBenefitDeviceLocked: String,
+    val licenseStepNoteOrderId: String,
+    val licenseStepTransferExact: String,
+    val licenseStepTapPaid: String,
+    val licenseStepWaitAdmin: String,
+    val licenseSelectPayMethod: String,             // "Pilih Metode Pembayaran",
+)
+
+// ── Update dialog ───────────────────────────────────────────────
+
+data class UpdateStrings(
     val updateAvailable: String,
     val updateTabDesc: String,
     val updateTabChangelog: String,
@@ -192,25 +330,28 @@ data class AppStrings(
     val updateBtnRetry: String,
     val updateBtnBrowser: String,
     val updateInstalling: String,
-    val updateFailed: String,          // "Failed: %s"
+    val updateFailed: String,          // "Failed: %s",
     val updateDownloadDone: String,
     val updateDownloading: String,
     val updateAboutTitle: String,
     val updateAboutDesc: String,
     val updateChangelogLoading: String,
     val updateChangelogEmpty: String,
+)
 
-    // ── App Profile screen ───────────────────────────────────
+// ── App Profile screen ──────────────────────────────────────────
+
+data class AppProfileStrings(
     val appProfileTitle: String,
     val appProfileMonitorOn: String,
     val appProfileMonitorOff: String,
-    val appProfileAppsCount: String,    // "%d Aplikasi"
-    val appProfileActiveCount: String,  // "%d Profile Aktif"
+    val appProfileAppsCount: String,    // "%d Aplikasi",
+    val appProfileActiveCount: String,  // "%d Profile Aktif",
     val appProfileSearchHint: String,
     val appProfileNoResults: String,
     val appProfileEmpty: String,
     val appProfileDeleteTitle: String,
-    val appProfileDeleteDesc: String,   // "Profile \"%s\" akan dihapus permanen."
+    val appProfileDeleteDesc: String,   // "Profile \"%s\" akan dihapus permanen.",
     val appProfileDeleteConfirm: String,
     val appProfileBtnCancel: String,
     val appProfileLoading: String,
@@ -231,240 +372,72 @@ data class AppStrings(
     val appProfileGpuBoostDesc: String,
     val appProfileIoLatency: String,
     val appProfileIoLatencyDesc: String,
-
-    // ── CPU Governor descriptions ─────────────────────────────
-    val govDescDefault: String,
-    val govDescPerformance: String,
-    val govDescPowersave: String,
-    val govDescOndemand: String,
-    val govDescConservative: String,
-    val govDescSchedutil: String,
-    val govDescInteractive: String,
-
-    // ── Backup screen — reset app profile & monitor ──────────
-    val settingsBtnResetProfiles: String,
-    val settingsResetProfilesTitle: String,
-    val settingsResetProfilesDesc: String,
-    val settingsBtnResetMonitor: String,
-    val settingsResetMonitorTitle: String,
-    val settingsResetMonitorDesc: String,
-
-    // ── Settings — Appearance ─────────────────────────────────
-    val settingsSectionAppearance: String,
-    val settingsLanguage: String,
-    val settingsDarkMode: String,
-    val settingsDarkModeDesc: String,
-    val settingsDynamicColor: String,
-    val settingsDynamicColorDesc: String,
-
-    // ── Settings — General ────────────────────────────────────
-    val settingsSectionGeneral: String,
-    val settingsAutoBackup: String,
-    val settingsAutoBackupDesc: String,
-    val settingsApplyOnBoot: String,
-    val settingsApplyOnBootDesc: String,
-    val settingsNotifications: String,
-    val settingsNotificationsDesc: String,
-
-    // ── Settings — Advanced ───────────────────────────────────
-    val settingsSectionAdvanced: String,
-    val settingsRootMethod: String,
-    val settingsDebugLog: String,
-    val settingsDebugLogDesc: String,
-    val settingsClearCache: String,
-    val settingsClearCacheDesc: String,
-
-    // ── Settings — About App ──────────────────────────────────
-    val settingsSectionAbout: String,
-    val settingsVersion: String,
-    val settingsSourceCode: String,
-    val settingsSourceCodeDesc: String,
-    val settingsLicense: String,
-    val settingsLicenseDesc: String,
-
-    // ── Backup — success toasts ───────────────────────────────
-    val backupSuccessCreate: String,
-    val backupSuccessRestore: String,
-    val backupSuccessDelete: String,
-    val backupSuccessReset: String,
-    val backupSuccessResetProfiles: String,
-    val backupSuccessResetMonitor: String,
-    val backupFailCreate: String,
-    val backupFailRestore: String,
-    val backupFailReset: String,
-
-    // ── Backup — empty-state info chips ──────────────────────
-    val backupNoProfiles: String,
-    val backupMonitorInactive: String,
-    val backupSubtitleBackup: String,
-    val backupSubtitleReset: String,
-    val backupSubtitleResetProfiles: String,
-    val backupSubtitleResetMonitor: String,
-
-    // ── License / Premium screen ──────────────────────────────
-    val licenseScreenTitle: String,
-    val licenseInvoiceHistoryIcon: String,          // content desc icon riwayat invoice
-
-    // Status card — active
-    val licensePremiumActive: String,
-    val licensePremiumValidUntil: String,           // "Berlaku hingga %s"
-    val licenseDaysLeft: String,                    // "%d hari"
-    val licenseYourBenefits: String,
-    val licenseKeyLabel: String,
-    val licenseKeyCopied: String,                   // toast
-    val licenseExpiringSoon: String,                // "Premium kamu hampir habis! Perpanjang sebelum %s."
-    val licenseDeactivateBtn: String,
-
-    // Status card — free
-    val licenseFreeTitle: String,
-    val licenseFreeDesc: String,
-
-    // Benefit card (upgrade prompt)
-    val licenseUpgradeTitle: String,
-    val licenseUpgradeDesc: String,
-    val licensePrice1Month: String,
-    val licensePrice: String,                       // "Rp 25.000"
-    val licenseBuyBtn: String,
-
-    // Pending payment card
-    val licensePendingTitle: String,
-    val licenseContinuePaymentBtn: String,
-
-    // Key activation card
-    val licenseHaveKeyTitle: String,
-    val licenseKeyInputLabel: String,
-    val licenseActivateBtn: String,
-
-    // Deactivate dialog
-    val licenseDeactivateDialogTitle: String,
-    val licenseDeactivateDialogBody: String,
-    val licenseDeactivateConfirmBtn: String,
-    val licenseDeactivateCancelBtn: String,
-
-    // Polling card
-    val licensePollingWaiting: String,
-    val licensePollingDesc: String,
-
-    // Buy sheet
-    val licenseBuySheetTitle: String,
-    val licenseBuySheetSubtitle: String,
-    val licenseBuySheetFormDesc: String,
-    val licenseBuySheetNameLabel: String,
-    val licenseBuySheetPhoneLabel: String,
-    val licenseBuySheetPhoneHint: String,
-    val licenseBuySheetCreateInvoiceBtn: String,
-
-    // Payment detail sheet
-    val licensePayDetailTitle: String,
-    val licensePayDetailSubtitle: String,
-    val licenseOrderIdLabel: String,
-    val licenseOrderIdCopied: String,               // toast
-    val licenseOrderIdWarning: String,
-    val licenseTotalLabel: String,
-    val licenseDuration1Month: String,
-    val licenseImportantLabel: String,
-    val licenseImportantBody: String,               // "Transfer Rp %s. Jangan sampai salah nominal…"
-    val licenseAfterTransferLabel: String,
-    val licenseVerifyNowBtn: String,
-    val licenseCancelBtn: String,
-
-    // Payment method type labels
-    val licensePayTypeEwallet: String,              // "E-Wallet"
-    val licensePayTypeBank: String,                 // "Transfer Bank"
-    val licensePayTypeInternational: String,        // "International"
-
-    // Contact admin row
-    val licenseContactWhatsApp: String,
-    val licenseContactTelegram: String,
-
-    // Copy number row
-    val licenseNumberCopied: String,                // "Nomor %s disalin"
-    val licenseCopyLabel: String,                   // "Salin"
-
-    // Invoice history sheet
-    val licenseInvoiceHistoryTitle: String,
-    val licenseInvoiceHistoryEmpty: String,
-    val licenseInvoiceStatusPaid: String,
-    val licenseInvoiceStatusExpired: String,
-    val licenseInvoiceStatusPending: String,
-    val licenseInvoiceContinueBtn: String,
-    val licenseInvoiceDeleteBtn: String,
-
-    // Success dialog
-    val licenseSuccessTitle: String,
-    val licenseSuccessBody: String,                 // "Terima kasih…"
-    val licenseSuccessKeyLabel: String,             // "License Key kamu"
-    val licenseSuccessValidUntil: String,           // "Berlaku hingga %s"
-    val licenseSuccessSaveHint: String,
-    val licenseSuccessBenefits: List<String>,
-    val licenseSuccessStartBtn: String,
-
-    // Lifetime label (expiry == -1)
-    val licenseExpireLifetime: String,
-
-    // Device-locked benefit item (shown in active card & benefit card)
-    val licenseBenefitDeviceLocked: String,
-
-    // Transfer instruction steps (shown in TransferInstructionContent)
-    val licenseStepNoteOrderId: String,
-    val licenseStepTransferExact: String,
-    val licenseStepTapPaid: String,
-    val licenseStepWaitAdmin: String,
-
-    // ── License — payment method selection ───────────────────
-    val licenseSelectPayMethod: String,             // "Pilih Metode Pembayaran"
-
-    // ── Service / Notification ───────────────────────────────
-    val serviceNotifChannelName: String,            // "Aether Manager Service"
-    val serviceNotifChannelDesc: String,            // "Background service"
-    val serviceNotifText: String,                   // "Tweaks active"
-
-    // ── Device Info (Tweak screen) ───────────────────────────
-    /** Title for the device information card/screen */
-    val deviceInfoTitle: String = "Device Info",
-    /** Subtitle beneath the device info title */
-    val deviceInfoSubtitle: String = "Concise and clean",
-    /** Label for the device name row */
-    val deviceInfoName: String = "Device Name",
-    /** Label for the Android version row. This will be combined with the actual version and API level */
-    val deviceInfoAndroidVersion: String = "Android",
-    /** Label for the device codename row */
-    val deviceInfoCodename: String = "Codename",
-    /** Label for the kernel version row */
-    val deviceInfoKernel: String = "Kernel",
-
-    // ── Network card (Tweak screen) ───────────────────────────
-    /** Title of the network tuning card */
-    val networkTitle: String = "Network",
-    /** Subtitle describing the network features */
-    val networkSubtitle: String = "Private DNS, stabilizer, TCP",
-    /** Label for the DNS provider selection row */
-    val networkDnsTitle: String = "Private DNS",
-    /** Label for the network stabilization toggle */
-    val networkStabilizeTitle: String = "Stabilize Network",
-    /** Description for the network stabilization toggle */
-    val networkStabilizeSubtitle: String = "Prioritize stable connection and low latency",
-    /** Label for the TCP optimization toggle */
-    val networkTcpTitle: String = "TCP",
-    /** Description for the TCP optimization toggle */
-    val networkTcpSubtitle: String = "Optimize TCP stack",
-
-    // ── App profile card (Tweak screen) ───────────────────────
-    /** Title for the app profile card shown on the tweak screen */
     val appProfileCardTitle: String = "App Profile",
-    /** Subtitle for the app profile card shown on the tweak screen */
     val appProfileCardSubtitle: String = "Manage app profiles",
+)
 
-    // ── Common words / actions ────────────────────────────────
-    /** Generic label used for an action button that opens a new page */
+// ── AdBlock dialog ──────────────────────────────────────────────
+
+data class AdBlockStrings(
+    val adBlockTitle: String,
+    val adBlockBody: String,
+    val adBlockInfoCard: String,
+    val adBlockSafeLabel: String,
+    val adBlockBtnDisable: String,
+)
+
+// ── Foreground service notification ─────────────────────────────
+
+data class ServiceStrings(
+    val serviceNotifChannelName: String,            // "Aether Manager Service",
+    val serviceNotifChannelDesc: String,            // "Background service",
+    val serviceNotifText: String,                   // "Tweaks active",
+)
+
+// ── Device info, Network card, App profile card, Common ─────────
+
+data class MiscStrings(
+    val deviceInfoTitle: String = "Device Info",
+    val deviceInfoSubtitle: String = "Concise and clean",
+    val deviceInfoName: String = "Device Name",
+    val deviceInfoAndroidVersion: String = "Android",
+    val deviceInfoCodename: String = "Codename",
+    val deviceInfoKernel: String = "Kernel",
+    val networkTitle: String = "Network",
+    val networkSubtitle: String = "Private DNS, stabilizer, TCP",
+    val networkDnsTitle: String = "Private DNS",
+    val networkStabilizeTitle: String = "Stabilize Network",
+    val networkStabilizeSubtitle: String = "Prioritize stable connection and low latency",
+    val networkTcpTitle: String = "TCP",
+    val networkTcpSubtitle: String = "Optimize TCP stack",
     val commonOpen: String = "Open",
-    /** Generic label used for closing dialogs or sheets */
     val commonClose: String = "Close",
-    /** Generic label used for a selection action */
     val commonSelect: String = "Select",
 )
 
+// ── Root ──────────────────────────────────────────────────────────────────────
+
+/**
+ * All UI strings in one data class.
+ * Each field is a sub-data-class to keep DEX register count per constructor
+ * well below the ART VerifyError threshold.
+ */
+data class AppStrings(
+    val nav: NavStrings = NavStrings(),
+    val setup: SetupStrings,
+    val home: HomeStrings,
+    val tweak: TweakStrings,
+    val log: LogStrings,
+    val settings: SettingsStrings,
+    val backup: BackupStrings,
+    val license: LicenseStrings,
+    val update: UpdateStrings,
+    val appProfile: AppProfileStrings,
+    val adBlock: AdBlockStrings,
+    val service: ServiceStrings,
+    val misc: MiscStrings = MiscStrings(),
+)
+
 val LocalStrings = staticCompositionLocalOf<AppStrings> {
-    // Safe fallback to prevent crashes if a composable is accidentally rendered before ProvideStrings.
     StringsEn
 }

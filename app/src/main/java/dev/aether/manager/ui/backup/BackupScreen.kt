@@ -51,18 +51,18 @@ fun BackupScreen(
         val ev = backupEvent ?: return@LaunchedEffect
         val msg = when (ev) {
             is dev.aether.manager.data.MainViewModel.BackupEvent.Success -> when (ev.msgKey) {
-                "create"        -> s.backupSuccessCreate
-                "restore"       -> s.backupSuccessRestore
-                "delete"        -> s.backupSuccessDelete
-                "reset"         -> s.backupSuccessReset
-                "resetProfiles" -> s.backupSuccessResetProfiles
-                "resetMonitor"  -> s.backupSuccessResetMonitor
-                else            -> s.backupSuccessCreate
+                "create"        -> s.backup.backupSuccessCreate
+                "restore"       -> s.backup.backupSuccessRestore
+                "delete"        -> s.backup.backupSuccessDelete
+                "reset"         -> s.backup.backupSuccessReset
+                "resetProfiles" -> s.backup.backupSuccessResetProfiles
+                "resetMonitor"  -> s.backup.backupSuccessResetMonitor
+                else            -> s.backup.backupSuccessCreate
             }
             is dev.aether.manager.data.MainViewModel.BackupEvent.Failure -> when (ev.msgKey) {
-                "create"  -> s.backupFailCreate
-                "restore" -> s.backupFailRestore
-                else      -> s.backupFailReset
+                "create"  -> s.backup.backupFailCreate
+                "restore" -> s.backup.backupFailRestore
+                else      -> s.backup.backupFailReset
             }
         }
         android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
@@ -81,7 +81,7 @@ fun BackupScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            s.settingsSectionBackup,
+            s.settings.settingsSectionBackup,
             style      = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
@@ -98,8 +98,8 @@ fun BackupScreen(
             Column {
                 BackupActionRow(
                     icon      = Icons.Outlined.Save,
-                    title     = s.settingsBtnBackupNow,
-                    subtitle  = s.backupSubtitleBackup,
+                    title     = s.settings.settingsBtnBackupNow,
+                    subtitle  = s.backup.backupSubtitleBackup,
                     iconTint  = MaterialTheme.colorScheme.primary,
                     isLoading = working && processingFile == null && !showReset
                                  && !showResetProfiles && !showResetMonitor,
@@ -113,8 +113,8 @@ fun BackupScreen(
                 )
                 BackupActionRow(
                     icon     = Icons.Outlined.RestartAlt,
-                    title    = s.settingsBtnResetAll,
-                    subtitle = s.backupSubtitleReset,
+                    title    = s.settings.settingsBtnResetAll,
+                    subtitle = s.backup.backupSubtitleReset,
                     iconTint = MaterialTheme.colorScheme.error,
                     iconBg   = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
                     enabled  = !working,
@@ -127,14 +127,14 @@ fun BackupScreen(
                 )
                 BackupActionRow(
                     icon      = Icons.Outlined.ManageAccounts,
-                    title     = s.settingsBtnResetProfiles,
-                    subtitle  = if (hasProfiles) s.backupSubtitleResetProfiles else s.backupNoProfiles,
+                    title     = s.settings.settingsBtnResetProfiles,
+                    subtitle  = if (hasProfiles) s.backup.backupSubtitleResetProfiles else s.backup.backupNoProfiles,
                     iconTint  = if (hasProfiles) MaterialTheme.colorScheme.error
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                     iconBg    = if (hasProfiles) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
                                 else MaterialTheme.colorScheme.surfaceVariant,
                     showChip  = !hasProfiles,
-                    chipText  = s.backupNoProfiles,
+                    chipText  = s.backup.backupNoProfiles,
                     enabled   = !working && hasProfiles,
                     onClick   = { showResetProfiles = true }
                 )
@@ -145,14 +145,14 @@ fun BackupScreen(
                 )
                 BackupActionRow(
                     icon      = Icons.Outlined.MonitorHeart,
-                    title     = s.settingsBtnResetMonitor,
-                    subtitle  = if (monitorActive) s.backupSubtitleResetMonitor else s.backupMonitorInactive,
+                    title     = s.settings.settingsBtnResetMonitor,
+                    subtitle  = if (monitorActive) s.backup.backupSubtitleResetMonitor else s.backup.backupMonitorInactive,
                     iconTint  = if (monitorActive) MaterialTheme.colorScheme.tertiary
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                     iconBg    = if (monitorActive) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                                 else MaterialTheme.colorScheme.surfaceVariant,
                     showChip  = !monitorActive,
-                    chipText  = s.backupMonitorInactive,
+                    chipText  = s.backup.backupMonitorInactive,
                     enabled   = !working && monitorActive,
                     onClick   = { showResetMonitor = true }
                 )
@@ -162,7 +162,7 @@ fun BackupScreen(
         // ── Backup list label ─────────────────────────────────────────────
         Spacer(Modifier.height(4.dp))
         Text(
-            s.settingsBackupSaved,
+            s.settings.settingsBackupSaved,
             style      = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
             color      = MaterialTheme.colorScheme.onSurfaceVariant
@@ -186,7 +186,7 @@ fun BackupScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        s.settingsNoBackup,
+                        s.settings.settingsNoBackup,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -237,16 +237,16 @@ fun BackupScreen(
         AlertDialog(
             onDismissRequest = { showReset = false },
             icon  = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(s.settingsResetTitle) },
-            text  = { Text(s.settingsResetDesc) },
+            title = { Text(s.settings.settingsResetTitle) },
+            text  = { Text(s.settings.settingsResetDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showReset = false; vm.resetToDefaults() },
                     colors  = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(s.settingsResetConfirm) }
+                ) { Text(s.settings.settingsResetConfirm) }
             },
             dismissButton = {
-                TextButton(onClick = { showReset = false }) { Text(s.settingsBtnCancel) }
+                TextButton(onClick = { showReset = false }) { Text(s.settings.settingsBtnCancel) }
             }
         )
     }
@@ -255,16 +255,16 @@ fun BackupScreen(
         AlertDialog(
             onDismissRequest = { restoreTarget = null; processingFile = null },
             icon  = { Icon(Icons.Outlined.Restore, null) },
-            title = { Text(s.settingsRestoreTitle) },
-            text  = { Text(s.settingsRestoreDesc) },
+            title = { Text(s.settings.settingsRestoreTitle) },
+            text  = { Text(s.settings.settingsRestoreDesc) },
             confirmButton = {
                 TextButton(onClick = { restoreTarget = null; vm.restoreBackup(fname) }) {
-                    Text(s.settingsRestoreConfirm)
+                    Text(s.settings.settingsRestoreConfirm)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { restoreTarget = null; processingFile = null }) {
-                    Text(s.settingsBtnCancel)
+                    Text(s.settings.settingsBtnCancel)
                 }
             }
         )
@@ -274,16 +274,16 @@ fun BackupScreen(
         AlertDialog(
             onDismissRequest = { showResetProfiles = false },
             icon  = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(s.settingsResetProfilesTitle) },
-            text  = { Text(s.settingsResetProfilesDesc) },
+            title = { Text(s.settings.settingsResetProfilesTitle) },
+            text  = { Text(s.settings.settingsResetProfilesDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showResetProfiles = false; onResetProfiles() },
                     colors  = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(s.settingsResetConfirm) }
+                ) { Text(s.settings.settingsResetConfirm) }
             },
             dismissButton = {
-                TextButton(onClick = { showResetProfiles = false }) { Text(s.settingsBtnCancel) }
+                TextButton(onClick = { showResetProfiles = false }) { Text(s.settings.settingsBtnCancel) }
             }
         )
     }
@@ -292,16 +292,16 @@ fun BackupScreen(
         AlertDialog(
             onDismissRequest = { showResetMonitor = false },
             icon  = { Icon(Icons.Outlined.MonitorHeart, null, tint = MaterialTheme.colorScheme.tertiary) },
-            title = { Text(s.settingsResetMonitorTitle) },
-            text  = { Text(s.settingsResetMonitorDesc) },
+            title = { Text(s.settings.settingsResetMonitorTitle) },
+            text  = { Text(s.settings.settingsResetMonitorDesc) },
             confirmButton = {
                 TextButton(
                     onClick = { showResetMonitor = false; onResetMonitor() },
                     colors  = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.tertiary)
-                ) { Text(s.settingsResetConfirm) }
+                ) { Text(s.settings.settingsResetConfirm) }
             },
             dismissButton = {
-                TextButton(onClick = { showResetMonitor = false }) { Text(s.settingsBtnCancel) }
+                TextButton(onClick = { showResetMonitor = false }) { Text(s.settings.settingsBtnCancel) }
             }
         )
     }
@@ -419,7 +419,7 @@ private fun BackupItem(
                 fontWeight = FontWeight.Medium
             )
             Text(
-                s.settingsBackupProfile.format(entry.profile),
+                s.settings.settingsBackupProfile.format(entry.profile),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -430,7 +430,7 @@ private fun BackupItem(
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                Icons.Outlined.Restore, s.settingsRestoreConfirm,
+                Icons.Outlined.Restore, s.settings.settingsRestoreConfirm,
                 tint     = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(19.dp)
             )
@@ -441,7 +441,7 @@ private fun BackupItem(
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                Icons.Outlined.Delete, s.settingsBtnDelete,
+                Icons.Outlined.Delete, s.settings.settingsBtnDelete,
                 tint     = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(19.dp)
             )
