@@ -371,4 +371,30 @@ val StringsId = AppStrings(
         serviceNotifChannelName = "Aether Manager Service",
     serviceNotifChannelDesc = "Layanan background",
     serviceNotifText = "Tweak aktif",
+
+    // ── Device Info (Tweak screen) ───────────────────────────
+    deviceInfoTitle = "Info Perangkat",
+    deviceInfoSubtitle = "Ringkas dan bersih",
+    deviceInfoName = "Nama Perangkat",
+    deviceInfoAndroidVersion = "Android",
+    deviceInfoCodename = "Codename",
+    deviceInfoKernel = "Kernel",
+
+    // ── Network card (Tweak screen) ───────────────────────────
+    networkTitle = "Jaringan",
+    networkSubtitle = "DNS privat, stabilizer, TCP",
+    networkDnsTitle = "DNS Privat",
+    networkStabilizeTitle = "Stabilkan Jaringan",
+    networkStabilizeSubtitle = "Prioritaskan koneksi stabil dan latensi rendah",
+    networkTcpTitle = "TCP",
+    networkTcpSubtitle = "Optimalkan stack TCP",
+
+    // ── App profile card (Tweak screen) ───────────────────────
+    appProfileCardTitle = "Profil Aplikasi",
+    appProfileCardSubtitle = "Kelola profil aplikasi",
+
+    // ── Common words / actions ────────────────────────────────
+    commonOpen = "Buka",
+    commonClose = "Tutup",
+    commonSelect = "Pilih",
 )

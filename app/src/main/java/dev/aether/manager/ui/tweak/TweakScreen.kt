@@ -87,12 +87,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.aether.manager.data.MainViewModel
+import dev.aether.manager.i18n.LocalStrings
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
-import dev.aether.manager.util.RootManager
 
 @Composable
 fun TweakScreen(
@@ -139,9 +139,8 @@ fun TweakScreen(
     var ioScheduler by rememberSaveable {
         mutableStateOf(if (tweaks.ioScheduler.isBlank()) "Auto" else normalizeLabel(tweaks.ioScheduler))
     }
-    // Sched boost mode selection. Start as Off and let LaunchedEffect restore proper state.
     var schedBoostMode by rememberSaveable {
-        mutableStateOf("Off")
+        mutableStateOf(if (tweaks.schedboost) "Game" else "Off")
     }
 
     LaunchedEffect(tweaks) {
@@ -155,15 +154,7 @@ fun TweakScreen(
         killBackgroundActive = tweaks.killBackground
         dnsProvider = tweaks.dnsProvider.ifBlank { "Off" }
         ioScheduler = if (tweaks.ioScheduler.isBlank()) "Auto" else normalizeLabel(tweaks.ioScheduler)
-        // Preserve previously selected sched boost mode. Only set to Off when the tweak is disabled.
-        if (tweaks.schedboost) {
-            // Default to Game if current mode is Off; otherwise keep the current selection
-            if (schedBoostMode == "Off") {
-                schedBoostMode = "Game"
-            }
-        } else {
-            schedBoostMode = "Off"
-        }
+        schedBoostMode = if (tweaks.schedboost) "Game" else "Off"
         cpuGovernor = when {
             tweaks.cpuGovernor.contains("performance", ignoreCase = true) -> "Performance"
             tweaks.cpuGovernor.contains("powersave", ignoreCase = true) -> "Battery"
@@ -759,18 +750,21 @@ private fun NetworkCard(
     onNetworkStableToggle: () -> Unit,
     onTcpToggle: () -> Unit
 ) {
+    // Localized strings for network card
+    val strings = LocalStrings.current
+
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.NetworkCheck,
-        title = "Network",
-        subtitle = "DNS private, stabilizer, TCP",
+        title = strings.networkTitle,
+        subtitle = strings.networkSubtitle,
         badge = if (active) "Tuned" else "Off",
         active = active,
         expanded = expanded,
         onClick = onClick
     ) {
         DropdownAction(
-            title = "DNS Private",
+            title = strings.networkDnsTitle,
             value = dnsProvider,
             options = listOf("Off", "AdGuard", "Cloudflare", "Google", "CleanBrowsing"),
             onSelect = onDnsSelect
@@ -781,15 +775,15 @@ private fun NetworkCard(
         ) {
             ToggleOption(
                 modifier = Modifier.weight(1f),
-                title = "Stabilkan Network",
-                subtitle = "Prioritas koneksi stabil dan latency rendah",
+                title = strings.networkStabilizeTitle,
+                subtitle = strings.networkStabilizeSubtitle,
                 checked = networkStable,
                 onClick = onNetworkStableToggle
             )
             ToggleOption(
                 modifier = Modifier.weight(1f),
-                title = "TCP",
-                subtitle = "Optimasi TCP stack",
+                title = strings.networkTcpTitle,
+                subtitle = strings.networkTcpSubtitle,
                 checked = tcpEnabled,
                 onClick = onTcpToggle
             )
@@ -1230,6 +1224,9 @@ private fun DeviceInfoCard(
     val androidVersion = "Android ${Build.VERSION.RELEASE}"
     val kernel = System.getProperty("os.version") ?: "Unknown"
 
+    // Localized strings used in the device info card
+    val strings = LocalStrings.current
+
     val detailAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = spring(
@@ -1296,7 +1293,7 @@ private fun DeviceInfoCard(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "Device Info",
+                        text = strings.deviceInfoTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -1304,7 +1301,7 @@ private fun DeviceInfoCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Ringkas dan clean",
+                        text = strings.deviceInfoSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -1342,10 +1339,10 @@ private fun DeviceInfoCard(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        DeviceInfoLine(label = "Nama Perangkat", value = deviceName)
-                        DeviceInfoLine(label = "Android", value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
-                        DeviceInfoLine(label = "CodeName", value = codeName)
-                        DeviceInfoLine(label = "Kernel", value = kernel)
+                        DeviceInfoLine(label = strings.deviceInfoName, value = deviceName)
+                        DeviceInfoLine(label = strings.deviceInfoAndroidVersion, value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
+                        DeviceInfoLine(label = strings.deviceInfoCodename, value = codeName)
+                        DeviceInfoLine(label = strings.deviceInfoKernel, value = kernel)
                     }
                 }
             }
@@ -1531,6 +1528,9 @@ private fun AppProfileCard(onClick: () -> Unit) {
             )
             .height(96.dp)
     ) {
+        // Localized strings for app profile card
+        val strings = LocalStrings.current
+
         Row(
             modifier = Modifier.padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1555,7 +1555,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = "App Profile",
+                    text = strings.appProfileCardTitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1563,7 +1563,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Kelola profil aplikasi",
+                    text = strings.appProfileCardSubtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                     maxLines = 2,
@@ -1571,7 +1571,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 )
             }
             StatusPill(
-                text = "Open",
+                text = strings.commonOpen,
                 active = true,
                 bg = MaterialTheme.colorScheme.onPrimaryContainer,
                 fg = MaterialTheme.colorScheme.primaryContainer
@@ -1591,6 +1591,7 @@ private fun DropdownAction(
     var expanded by rememberSaveable { mutableStateOf(false) }
 
     if (expanded) {
+        val strings = LocalStrings.current
         AlertDialog(
             onDismissRequest = { expanded = false },
             shape = RoundedCornerShape(28.dp),
@@ -1617,7 +1618,7 @@ private fun DropdownAction(
             },
             confirmButton = {
                 TextButton(onClick = { expanded = false }) {
-                    Text("Tutup")
+                    Text(strings.commonClose)
                 }
             }
         )
@@ -1650,7 +1651,8 @@ private fun DropdownAction(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            StatusPill(text = "Select", active = true)
+            val strings = LocalStrings.current
+            StatusPill(text = strings.commonSelect, active = true)
         }
     }
 }

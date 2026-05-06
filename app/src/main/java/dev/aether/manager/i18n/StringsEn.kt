@@ -371,4 +371,30 @@ val StringsEn = AppStrings(
         serviceNotifChannelName = "Aether Manager Service",
     serviceNotifChannelDesc = "Background service",
     serviceNotifText = "Tweaks active",
+
+    // ── Device Info (Tweak screen) ───────────────────────────
+    deviceInfoTitle = "Device Info",
+    deviceInfoSubtitle = "Concise and clean",
+    deviceInfoName = "Device Name",
+    deviceInfoAndroidVersion = "Android",
+    deviceInfoCodename = "Codename",
+    deviceInfoKernel = "Kernel",
+
+    // ── Network card (Tweak screen) ───────────────────────────
+    networkTitle = "Network",
+    networkSubtitle = "Private DNS, stabilizer, TCP",
+    networkDnsTitle = "Private DNS",
+    networkStabilizeTitle = "Stabilize Network",
+    networkStabilizeSubtitle = "Prioritize stable connection and low latency",
+    networkTcpTitle = "TCP",
+    networkTcpSubtitle = "Optimize TCP stack",
+
+    // ── App profile card (Tweak screen) ───────────────────────
+    appProfileCardTitle = "App Profile",
+    appProfileCardSubtitle = "Manage app profiles",
+
+    // ── Common words / actions ────────────────────────────────
+    commonOpen = "Open",
+    commonClose = "Close",
+    commonSelect = "Select",
 )

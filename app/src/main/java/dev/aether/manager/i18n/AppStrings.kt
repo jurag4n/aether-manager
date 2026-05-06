@@ -418,6 +418,50 @@ data class AppStrings(
     val serviceNotifChannelName: String,            // "Aether Manager Service"
     val serviceNotifChannelDesc: String,            // "Background service"
     val serviceNotifText: String,                   // "Tweaks active"
+
+    // ── Device Info (Tweak screen) ───────────────────────────
+    /** Title for the device information card/screen */
+    val deviceInfoTitle: String,
+    /** Subtitle beneath the device info title */
+    val deviceInfoSubtitle: String,
+    /** Label for the device name row */
+    val deviceInfoName: String,
+    /** Label for the Android version row. This will be combined with the actual version and API level */
+    val deviceInfoAndroidVersion: String,
+    /** Label for the device codename row */
+    val deviceInfoCodename: String,
+    /** Label for the kernel version row */
+    val deviceInfoKernel: String,
+
+    // ── Network card (Tweak screen) ───────────────────────────
+    /** Title of the network tuning card */
+    val networkTitle: String,
+    /** Subtitle describing the network features */
+    val networkSubtitle: String,
+    /** Label for the DNS provider selection row */
+    val networkDnsTitle: String,
+    /** Label for the network stabilization toggle */
+    val networkStabilizeTitle: String,
+    /** Description for the network stabilization toggle */
+    val networkStabilizeSubtitle: String,
+    /** Label for the TCP optimization toggle */
+    val networkTcpTitle: String,
+    /** Description for the TCP optimization toggle */
+    val networkTcpSubtitle: String,
+
+    // ── App profile card (Tweak screen) ───────────────────────
+    /** Title for the app profile card shown on the tweak screen */
+    val appProfileCardTitle: String,
+    /** Subtitle for the app profile card shown on the tweak screen */
+    val appProfileCardSubtitle: String,
+
+    // ── Common words / actions ────────────────────────────────
+    /** Generic label used for an action button that opens a new page */
+    val commonOpen: String,
+    /** Generic label used for closing dialogs or sheets */
+    val commonClose: String,
+    /** Generic label used for a selection action */
+    val commonSelect: String,
 )
 
 val LocalStrings = staticCompositionLocalOf<AppStrings> {
