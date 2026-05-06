@@ -421,49 +421,50 @@ data class AppStrings(
 
     // ── Device Info (Tweak screen) ───────────────────────────
     /** Title for the device information card/screen */
-    val deviceInfoTitle: String,
+    val deviceInfoTitle: String = "Device Info",
     /** Subtitle beneath the device info title */
-    val deviceInfoSubtitle: String,
+    val deviceInfoSubtitle: String = "Concise and clean",
     /** Label for the device name row */
-    val deviceInfoName: String,
+    val deviceInfoName: String = "Device Name",
     /** Label for the Android version row. This will be combined with the actual version and API level */
-    val deviceInfoAndroidVersion: String,
+    val deviceInfoAndroidVersion: String = "Android",
     /** Label for the device codename row */
-    val deviceInfoCodename: String,
+    val deviceInfoCodename: String = "Codename",
     /** Label for the kernel version row */
-    val deviceInfoKernel: String,
+    val deviceInfoKernel: String = "Kernel",
 
     // ── Network card (Tweak screen) ───────────────────────────
     /** Title of the network tuning card */
-    val networkTitle: String,
+    val networkTitle: String = "Network",
     /** Subtitle describing the network features */
-    val networkSubtitle: String,
+    val networkSubtitle: String = "Private DNS, stabilizer, TCP",
     /** Label for the DNS provider selection row */
-    val networkDnsTitle: String,
+    val networkDnsTitle: String = "Private DNS",
     /** Label for the network stabilization toggle */
-    val networkStabilizeTitle: String,
+    val networkStabilizeTitle: String = "Stabilize Network",
     /** Description for the network stabilization toggle */
-    val networkStabilizeSubtitle: String,
+    val networkStabilizeSubtitle: String = "Prioritize stable connection and low latency",
     /** Label for the TCP optimization toggle */
-    val networkTcpTitle: String,
+    val networkTcpTitle: String = "TCP",
     /** Description for the TCP optimization toggle */
-    val networkTcpSubtitle: String,
+    val networkTcpSubtitle: String = "Optimize TCP stack",
 
     // ── App profile card (Tweak screen) ───────────────────────
     /** Title for the app profile card shown on the tweak screen */
-    val appProfileCardTitle: String,
+    val appProfileCardTitle: String = "App Profile",
     /** Subtitle for the app profile card shown on the tweak screen */
-    val appProfileCardSubtitle: String,
+    val appProfileCardSubtitle: String = "Manage app profiles",
 
     // ── Common words / actions ────────────────────────────────
     /** Generic label used for an action button that opens a new page */
-    val commonOpen: String,
+    val commonOpen: String = "Open",
     /** Generic label used for closing dialogs or sheets */
-    val commonClose: String,
+    val commonClose: String = "Close",
     /** Generic label used for a selection action */
-    val commonSelect: String,
+    val commonSelect: String = "Select",
 )
 
 val LocalStrings = staticCompositionLocalOf<AppStrings> {
-    error("AppStrings not provided")
+    // Safe fallback to prevent crashes if a composable is accidentally rendered before ProvideStrings.
+    StringsEn
 }

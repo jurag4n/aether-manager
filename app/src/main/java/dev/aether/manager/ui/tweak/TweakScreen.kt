@@ -1513,6 +1513,8 @@ private fun rememberDeviceName(): String {
 
 @Composable
 private fun AppProfileCard(onClick: () -> Unit) {
+    val strings = LocalStrings.current
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
@@ -1528,9 +1530,6 @@ private fun AppProfileCard(onClick: () -> Unit) {
             )
             .height(96.dp)
     ) {
-        // Localized strings for app profile card
-        val strings = LocalStrings.current
-
         Row(
             modifier = Modifier.padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1588,10 +1587,10 @@ private fun DropdownAction(
     options: List<String>,
     onSelect: (String) -> Unit
 ) {
+    val strings = LocalStrings.current
     var expanded by rememberSaveable { mutableStateOf(false) }
 
     if (expanded) {
-        val strings = LocalStrings.current
         AlertDialog(
             onDismissRequest = { expanded = false },
             shape = RoundedCornerShape(28.dp),
@@ -1651,7 +1650,6 @@ private fun DropdownAction(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            val strings = LocalStrings.current
             StatusPill(text = strings.commonSelect, active = true)
         }
     }
