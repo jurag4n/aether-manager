@@ -1,7 +1,10 @@
 package dev.aether.manager.ui.tweak
 
 import android.os.Build
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
@@ -39,6 +42,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.BatteryChargingFull
@@ -62,6 +66,8 @@ import androidx.compose.material.icons.outlined.RocketLaunch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -87,6 +93,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.aether.manager.data.MainViewModel
+import dev.aether.manager.data.UiState
+import dev.aether.manager.util.DeviceInfo
+import dev.aether.manager.util.RootManager
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -96,13 +105,13 @@ import kotlinx.coroutines.delay
 @Composable
 fun TweakScreen(
     vm: MainViewModel,
-    onOpenAppProfile: () -> Unit = {}
+    onOpenAppProfile: () -> Unit = {},
+    onOpenDeviceInfo: () -> Unit = {}
 ) {
     val tweaks by vm.tweaks.collectAsState()
     val scroll = rememberScrollState()
 
     var expandedCard by rememberSaveable { mutableStateOf<String?>(null) }
-    var deviceInfoExpanded by rememberSaveable { mutableStateOf(false) }
     var activeProfile by rememberSaveable { mutableStateOf(tweaks.profile) }
     var thermalProfile by rememberSaveable {
         mutableStateOf(if (tweaks.thermalProfile.isBlank()) "default" else tweaks.thermalProfile)
@@ -246,10 +255,7 @@ fun TweakScreen(
             .padding(top = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        DeviceInfoCard(
-            expanded = deviceInfoExpanded,
-            onClick = { deviceInfoExpanded = !deviceInfoExpanded }
-        )
+        DeviceInfoCard(onClick = onOpenDeviceInfo)
 
         ActiveProfileCard(
             expanded = expandedCard == "active_profile",
@@ -432,92 +438,66 @@ private fun AdaptiveTweakGridRow(
     left: @Composable (Modifier) -> Unit,
     right: @Composable (Modifier) -> Unit
 ) {
-    var visualExpandedKey by remember(leftKey, rightKey) { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(expandedKey, leftKey, rightKey) {
-        val targetInThisRow = expandedKey == leftKey || expandedKey == rightKey
-        if (targetInThisRow) {
-            visualExpandedKey = expandedKey
-        } else if (visualExpandedKey != null) {
-            delay(260)
-            visualExpandedKey = null
-        }
+    val targetState = when (expandedKey) {
+        leftKey -> leftKey
+        rightKey -> rightKey
+        else -> "compact"
     }
 
-    val leftExpanded = visualExpandedKey == leftKey
-    val rightExpanded = visualExpandedKey == rightKey
-    val rowActive = leftExpanded || rightExpanded
-
-    val rowGap by animateDpAsState(
-        targetValue = if (rowActive) 14.dp else 12.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "tweak_row_gap_${leftKey}_${rightKey}"
-    )
-    val expandedLift by animateFloatAsState(
-        targetValue = if (rowActive) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "tweak_row_lift_${leftKey}_${rightKey}"
-    )
-
-    Column(
+    AnimatedContent(
+        targetState = targetState,
+        transitionSpec = {
+            val springSpec = spring<Int>(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+            (fadeIn(tween(120, easing = FastOutSlowInEasing)) +
+                slideInVertically(animationSpec = springSpec) { it / 10 } +
+                scaleIn(
+                    initialScale = 0.965f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )) togetherWith
+                (fadeOut(tween(110, easing = FastOutSlowInEasing)) +
+                    slideOutVertically(tween(150, easing = FastOutSlowInEasing)) { -it / 14 } +
+                    scaleOut(
+                        targetScale = 0.975f,
+                        animationSpec = tween(150, easing = FastOutSlowInEasing)
+                    ))
+        },
+        label = "adaptive_tweak_grid_${leftKey}_${rightKey}",
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                translationY = -2f * expandedLift
-                scaleX = 1f + (0.004f * expandedLift)
-                scaleY = 1f + (0.004f * expandedLift)
-            }
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = if (rowActive) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
-                    stiffness = if (rowActive) Spring.StiffnessLow else Spring.StiffnessMediumLow
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
                 )
-            ),
-        verticalArrangement = Arrangement.spacedBy(rowGap)
-    ) {
-        when {
-            leftExpanded -> {
-                AnimatedGridCard(active = true) {
-                    left(Modifier.fillMaxWidth())
+            )
+    ) { state ->
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(if (state == "compact") 12.dp else 14.dp)
+        ) {
+            when (state) {
+                leftKey -> {
+                    AnimatedGridCard(active = true) { left(Modifier.fillMaxWidth()) }
+                    CompactGridSingleCell { AnimatedGridCard(active = false) { right(Modifier.fillMaxWidth()) } }
                 }
-                AnimatedCompactPairCard {
-                    right(Modifier.fillMaxWidth())
+                rightKey -> {
+                    AnimatedGridCard(active = true) { right(Modifier.fillMaxWidth()) }
+                    CompactGridSingleCell { AnimatedGridCard(active = false) { left(Modifier.fillMaxWidth()) } }
                 }
-            }
-            rightExpanded -> {
-                AnimatedGridCard(active = true) {
-                    right(Modifier.fillMaxWidth())
-                }
-                AnimatedCompactPairCard {
-                    left(Modifier.fillMaxWidth())
-                }
-            }
-            else -> {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            )
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(rowGap)
-                ) {
-                    AnimatedGridCard(
-                        modifier = Modifier.weight(1f),
-                        active = false
-                    ) { left(Modifier.fillMaxWidth()) }
-                    AnimatedGridCard(
-                        modifier = Modifier.weight(1f),
-                        active = false
-                    ) { right(Modifier.fillMaxWidth()) }
+                else -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AnimatedGridCard(modifier = Modifier.weight(1f), active = false) { left(Modifier.fillMaxWidth()) }
+                        AnimatedGridCard(modifier = Modifier.weight(1f), active = false) { right(Modifier.fillMaxWidth()) }
+                    }
                 }
             }
         }
@@ -1211,39 +1191,11 @@ private fun ExpandableTweakCard(
 }
 
 @Composable
-private fun DeviceInfoCard(
-    expanded: Boolean,
-    onClick: () -> Unit
-) {
+private fun DeviceInfoCard(onClick: () -> Unit) {
     val deviceName = rememberDeviceName()
-    val codeName = Build.DEVICE ?: "Unknown"
-    val androidVersion = "Android ${Build.VERSION.RELEASE}"
+    val androidVersion = "Android ${Build.VERSION.RELEASE} • API ${Build.VERSION.SDK_INT}"
     val kernel = System.getProperty("os.version") ?: "Unknown"
 
-    val detailAlpha by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "device_info_alpha"
-    )
-    val detailScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.92f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "device_info_scale"
-    )
-    val detailOffset by animateFloatAsState(
-        targetValue = if (expanded) 0f else 24f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "device_info_offset"
-    )
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
@@ -1251,50 +1203,102 @@ private fun DeviceInfoCard(
         tonalElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 104.dp)
             .animateContentSize(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMedium
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
             )
-        )
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.DeveloperMode,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = deviceName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "$androidVersion • $kernel",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            StatusPill(
+                text = "Detail",
+                active = true,
+                bg = MaterialTheme.colorScheme.primary,
+                fg = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+    }
+}
+
+@Composable
+fun DeviceInfoScreen(
+    vm: MainViewModel,
+    onBack: () -> Unit
+) {
+    BackHandler(onBack = onBack)
+    val infoState by vm.deviceInfo.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(top = 14.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            tonalElevation = 1.dp,
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(17.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.DeveloperMode,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(23.dp)
-                    )
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = "Device Info",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Ringkas dan clean",
+                        text = "Detail perangkat, root, SELinux, build",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -1302,42 +1306,172 @@ private fun DeviceInfoCard(
                     )
                 }
             }
+        }
 
-            AnimatedVisibility(
-                visible = expanded,
-                enter = fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) +
-                        expandVertically(
-                            spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
-                            expandFrom = Alignment.Top
-                        ),
-                exit  = fadeOut(tween(durationMillis = 200)) +
-                        shrinkVertically(
-                            tween(durationMillis = 220),
-                            shrinkTowards = Alignment.Top
-                        )
-            ) {
+        when (val state = infoState) {
+            is UiState.Loading -> {
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer {
-                            alpha = detailAlpha
-                            translationY = detailOffset
-                            scaleX = detailScale
-                            scaleY = detailScale
-                        }
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        DeviceInfoLine(label = "Nama Perangkat", value = deviceName)
-                        DeviceInfoLine(label = "Android", value = "$androidVersion / API ${Build.VERSION.SDK_INT}")
-                        DeviceInfoLine(label = "CodeName", value = codeName)
-                        DeviceInfoLine(label = "Kernel", value = kernel)
+                        Text("Loading device info", fontWeight = FontWeight.Bold)
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                 }
+            }
+            is UiState.Error -> {
+                DeviceInfoSection(
+                    title = "Status",
+                    rows = listOf("Error" to state.msg)
+                )
+            }
+            is UiState.Success -> {
+                val info = state.data
+                DeviceInfoHero(info)
+                DeviceInfoSection(
+                    title = "System",
+                    rows = listOf(
+                        "Device ID" to Build.ID.orEmpty().ifBlank { "Unknown" },
+                        "Model" to info.model,
+                        "Brand" to Build.BRAND.orEmpty().ifBlank { "Unknown" },
+                        "Manufacturer" to Build.MANUFACTURER.orEmpty().ifBlank { "Unknown" },
+                        "Device" to Build.DEVICE.orEmpty().ifBlank { "Unknown" },
+                        "Product" to Build.PRODUCT.orEmpty().ifBlank { "Unknown" },
+                        "Board" to Build.BOARD.orEmpty().ifBlank { "Unknown" },
+                        "Hardware" to Build.HARDWARE.orEmpty().ifBlank { "Unknown" }
+                    )
+                )
+                DeviceInfoSection(
+                    title = "Build",
+                    rows = listOf(
+                        "Android" to "${info.android} / API ${Build.VERSION.SDK_INT}",
+                        "Fingerprint" to Build.FINGERPRINT.orEmpty().ifBlank { "Unknown" },
+                        "Build Type" to Build.TYPE.orEmpty().ifBlank { "Unknown" },
+                        "Build Tags" to Build.TAGS.orEmpty().ifBlank { "Unknown" },
+                        "Bootloader" to Build.BOOTLOADER.orEmpty().ifBlank { "Unknown" },
+                        "Host" to Build.HOST.orEmpty().ifBlank { "Unknown" }
+                    )
+                )
+                DeviceInfoSection(
+                    title = "Root & Kernel",
+                    rows = listOf(
+                        "Root Status" to if (RootManager.isRootGranted) "Granted" else "Not granted",
+                        "Root Type" to info.rootType,
+                        "SELinux" to info.selinux.ifBlank { "Unknown" },
+                        "Kernel" to info.kernel,
+                        "Chipset" to info.soc.label,
+                        "Raw SoC" to info.socRaw.ifBlank { "Unknown" },
+                        "Profile" to info.profile,
+                        "Safe Mode" to if (info.safeMode) "On" else "Off",
+                        "Boot Count" to info.bootCount.toString()
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceInfoHero(info: DeviceInfo) {
+    Surface(
+        shape = RoundedCornerShape(30.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        tonalElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Outlined.DeveloperMode,
+                        null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(27.dp)
+                    )
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = info.model,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${info.soc.label} • Android ${info.android}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusPill(
+                    text = info.rootType.ifBlank { "Root" },
+                    active = RootManager.isRootGranted,
+                    bg = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fg = MaterialTheme.colorScheme.primaryContainer
+                )
+                StatusPill(
+                    text = info.selinux.ifBlank { "SELinux" },
+                    active = info.selinux.equals("Enforcing", true),
+                    bg = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.90f),
+                    fg = MaterialTheme.colorScheme.primaryContainer
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceInfoSection(
+    title: String,
+    rows: List<Pair<String, String>>
+) {
+    Surface(
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 1.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            rows.forEach { (label, value) ->
+                DeviceInfoLine(label = label, value = value)
             }
         }
     }
@@ -1368,7 +1502,7 @@ private fun DeviceInfoLine(
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1.14f),
-            maxLines = 1,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
     }
