@@ -4,6 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -29,6 +34,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -570,19 +576,46 @@ private fun SettingsSectionCard(
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
         label = "settings_chevron"
+    )
+    val cardScale by animateFloatAsState(
+        targetValue = if (expanded) 1.01f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "settings_card_scale"
+    )
+    val corner by animateDpAsState(
+        targetValue = if (expanded) 28.dp else 24.dp,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "settings_card_corner"
+    )
+    val detailAlpha by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = tween(if (expanded) 180 else 100, easing = FastOutSlowInEasing),
+        label = "settings_detail_alpha"
+    )
+    val detailOffset by animateFloatAsState(
+        targetValue = if (expanded) 0f else 16f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "settings_detail_offset"
     )
 
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(corner),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 1.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
+        tonalElevation = if (expanded) 3.dp else 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (expanded) 0.32f else 0.22f)),
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+            }
             .animateContentSize(
-                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
             )
     ) {
         Column {
@@ -638,17 +671,36 @@ private fun SettingsSectionCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = expandVertically(
-                    expandFrom = Alignment.Top,
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                ) + fadeIn(tween(durationMillis = 160, delayMillis = 35)),
-                exit = shrinkVertically(
-                    shrinkTowards = Alignment.Top,
-                    animationSpec = tween(240, easing = FastOutSlowInEasing)
-                ) + fadeOut(tween(durationMillis = 120))
+                enter = fadeIn(tween(durationMillis = 150, delayMillis = 25, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ) { it / 5 } +
+                        expandVertically(
+                            expandFrom = Alignment.Top,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ),
+                exit = fadeOut(tween(durationMillis = 95, easing = FastOutSlowInEasing)) +
+                        slideOutVertically(
+                            animationSpec = tween(125, easing = FastOutSlowInEasing)
+                        ) { it / 7 } +
+                        shrinkVertically(
+                            shrinkTowards = Alignment.Top,
+                            animationSpec = tween(175, easing = FastOutSlowInEasing)
+                        )
             ) {
                 Column(
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier
+                        .padding(bottom = 8.dp)
+                        .graphicsLayer {
+                            alpha = detailAlpha
+                            translationY = detailOffset
+                        },
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                     content = content
                 )

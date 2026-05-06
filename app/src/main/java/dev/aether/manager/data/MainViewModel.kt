@@ -143,19 +143,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ── Init ──────────────────────────────────────────────────────────────────
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            // Selalu start monitor & apply worker lebih dulu agar CPU/RAM/Battery
-            // terbaca bahkan sebelum status root diketahui.
-            startMonitorLoop()
-            startApplyWorker()
+        startMonitorLoop()
+        startApplyWorker()
 
+        loadTweaksInstant()
+        _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
+
+        viewModelScope.launch(Dispatchers.IO) {
             if (ensureRootReady(requestIfNeeded = false)) {
-                _deviceInfo.value = UiState.Loading
                 loadAll()
-            } else {
-                // Root belum ready — tampilkan fallback info dulu.
-                // onRootGranted() akan dipanggil dari luar setelah user grant.
-                _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
             }
         }
     }
@@ -217,23 +213,45 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun loadAll() {
+        loadTweaks(syncRoot = false)
         try {
             val info = RootEngine.getDeviceInfo()
             _deviceInfo.value = UiState.Success(info)
-            loadTweaks()
+            loadTweaks(syncRoot = true)
         } catch (_: Exception) {
             _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
         }
     }
 
-    private suspend fun loadTweaks() {
-        val rootMap = RootEngine.readTweaksConf()
+    private fun loadTweaksInstant() {
         val localMap = readLocalTweaks()
-        val merged = if (rootMap.isEmpty()) localMap else localMap + rootMap
-        if (rootMap.isEmpty() && merged.isNotEmpty() && RootManager.isRootGranted) {
-            TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, merged)
+        if (localMap.isNotEmpty()) {
+            _tweaks.value = mapToTweaksState(localMap)
         }
-        _tweaks.value = mapToTweaksState(merged)
+    }
+
+    private suspend fun loadTweaks(syncRoot: Boolean = true) {
+        val localMap = readLocalTweaks()
+        if (localMap.isNotEmpty()) {
+            _tweaks.value = mapToTweaksState(localMap)
+        }
+
+        if (!syncRoot) return
+
+        val rootReady = RootManager.isRootGranted || RootManager.ensureRootShellSync(requestIfNeeded = false)
+        if (!rootReady) return
+
+        val rootMap = runCatching { RootEngine.readTweaksConf() }.getOrDefault(emptyMap())
+        val merged = when {
+            rootMap.isEmpty() -> localMap
+            localMap.isEmpty() -> rootMap
+            else -> localMap + rootMap
+        }
+
+        if (merged.isNotEmpty()) {
+            _tweaks.value = mapToTweaksState(merged)
+            saveLocalTweaks(merged)
+        }
     }
 
     private fun localPrefs() = getApplication<Application>()
@@ -252,7 +270,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val text = map.entries.joinToString("\n") { (k, v) ->
             "${k}=${v.replace("\n", " ").replace("\r", " ")}"
         }
-        localPrefs().edit().putString("saved_tweaks_conf", text).apply()
+        localPrefs().edit()
+            .putString("saved_tweaks_conf", text)
+            .putLong("saved_tweaks_at", System.currentTimeMillis())
+            .apply()
+    }
+
+    private fun clearLocalTweaks() {
+        localPrefs().edit()
+            .remove("saved_tweaks_conf")
+            .remove("saved_tweaks_at")
+            .apply()
     }
 
     private fun startApplyWorker() {
@@ -323,6 +351,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             saveLocalTweaks(map)
+            RootEngine.writeFile(RootEngine.PROFILE_FILE, map["profile"] ?: _tweaks.value.profile)
             val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
 
             _applyingTweak.value = false
@@ -350,45 +379,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setProfile(profile: String) = viewModelScope.launch(Dispatchers.IO) {
-        _applyingTweak.value = true
-        _applyStatus.value = ApplyStatus(running = true)
-
-        try {
-            if (!ensureRootReady()) {
-                _applyingTweak.value = false
-                _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Root belum aktif")
-                snack("Root belum aktif — grant root dulu")
-                return@launch
-            }
-
-            RootEngine.writeFile(RootEngine.PROFILE_FILE, profile)
-
-            val newState = _tweaks.value.copy(profile = profile)
-            val map = tweaksStateToMap(newState).toMutableMap()
-            map["profile"] = profile
-            saveLocalTweaks(map)
-            val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
-
-            _tweaks.value = mapToTweaksState(map)
-            saveLocalTweaks(map)
-
-            _applyingTweak.value = false
-            _applyStatus.value = ApplyStatus(
-                running = false,
-                lastOk  = result.success,
-                summary = result.summary,
-                totalMs = result.totalMs,
-            )
-
-            val info = RootEngine.getDeviceInfo()
-            _deviceInfo.value = UiState.Success(info)
-            _monitorState.value = RootEngine.getMonitorState()
-
-        } catch (e: Exception) {
-            _applyingTweak.value = false
-            _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = e.message ?: "error")
-        }
+    fun setProfile(profile: String) {
+        val newState = _tweaks.value.copy(profile = profile)
+        _tweaks.value = newState
+        saveLocalTweaks(tweaksStateToMap(newState))
+        applyChannel.trySend(Unit)
     }
 
     fun applyAll() = viewModelScope.launch(Dispatchers.IO) {
@@ -607,8 +602,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun resetTweaks() = viewModelScope.launch(Dispatchers.IO) {
+        clearLocalTweaks()
+        _tweaks.value = TweaksState()
         RootEngine.resetTweaks()
-        loadTweaks()
     }
 
     private suspend fun autoBackupIfEnabled() {
@@ -680,8 +676,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun resetToDefaults() = viewModelScope.launch(Dispatchers.IO) {
+        clearLocalTweaks()
+        _tweaks.value = TweaksState()
         RootEngine.resetTweaks()
-        loadTweaks()
     }
 
     fun clearAppCache() = viewModelScope.launch(Dispatchers.IO) {

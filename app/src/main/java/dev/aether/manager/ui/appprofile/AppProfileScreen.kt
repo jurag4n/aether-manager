@@ -656,23 +656,49 @@ private fun AppListItem(
     )
     val arrowRotation by animateFloatAsState(
         if (expanded) 180f else 0f,
-        spring(Spring.DampingRatioNoBouncy, Spring.StiffnessHigh),
+        spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
         label = "app_card_arrow"
+    )
+    val cardScale by animateFloatAsState(
+        if (expanded) 1.012f else 1f,
+        spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "app_card_scale"
+    )
+    val detailAlpha by animateFloatAsState(
+        if (expanded) 1f else 0f,
+        tween(if (expanded) 180 else 100, easing = FastOutSlowInEasing),
+        label = "app_card_detail_alpha"
+    )
+    val detailOffset by animateFloatAsState(
+        if (expanded) 0f else 18f,
+        spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "app_card_detail_offset"
+    )
+    val detailScale by animateFloatAsState(
+        if (expanded) 1f else 0.97f,
+        spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "app_card_detail_scale"
     )
 
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(if (expanded) 28.dp else 24.dp),
         color = cardBg,
         border = BorderStroke(1.dp, cardBorder),
-        modifier = Modifier.fillMaxWidth()
+        tonalElevation = if (expanded) 2.dp else 0.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+            }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize(
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness    = Spring.StiffnessHigh
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness    = Spring.StiffnessLow
                     )
                 )
                 .padding(12.dp),
@@ -773,22 +799,38 @@ private fun AppListItem(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(tween(80)) + expandVertically(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness    = Spring.StiffnessHigh
-                    ),
-                    expandFrom = Alignment.Top
-                ),
-                exit = fadeOut(tween(70)) + shrinkVertically(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness    = Spring.StiffnessHigh
-                    ),
-                    shrinkTowards = Alignment.Top
-                )
+                enter = fadeIn(tween(145, delayMillis = 20, easing = FastOutSlowInEasing)) +
+                        slideInVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ) { it / 5 } +
+                        expandVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            expandFrom = Alignment.Top
+                        ),
+                exit = fadeOut(tween(95, easing = FastOutSlowInEasing)) +
+                        slideOutVertically(
+                            animationSpec = tween(125, easing = FastOutSlowInEasing)
+                        ) { it / 7 } +
+                        shrinkVertically(
+                            animationSpec = tween(175, easing = FastOutSlowInEasing),
+                            shrinkTowards = Alignment.Top
+                        )
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    modifier = Modifier.graphicsLayer {
+                        alpha = detailAlpha
+                        translationY = detailOffset
+                        scaleX = detailScale
+                        scaleY = detailScale
+                    },
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
