@@ -10,6 +10,8 @@ import dev.aether.manager.util.RootManager
 import dev.aether.manager.util.RootEngine
 import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
+import dev.aether.manager.shizuku.ShizukuShell
+import dev.aether.manager.shizuku.ShizukuTweakApplier
 import dev.aether.manager.ads.AdScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -343,16 +345,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _applyingTweak.value = true
 
         try {
-            if (!ensureRootReady()) {
+            val rootReady = ensureRootReady(requestIfNeeded = false)
+            val shizukuReady = !rootReady && ShizukuShell.requestPermissionIfNeeded()
+
+            if (!rootReady && !shizukuReady) {
                 _applyingTweak.value = false
-                _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Root belum aktif")
-                snack("Root belum aktif — grant root dulu")
+                _applyStatus.value = ApplyStatus(
+                    running = false,
+                    lastOk = false,
+                    summary = "Root/Shizuku belum aktif"
+                )
+                snack("Grant root atau aktifkan Shizuku dulu")
                 return
             }
 
             saveLocalTweaks(map)
-            RootEngine.writeFile(RootEngine.PROFILE_FILE, map["profile"] ?: _tweaks.value.profile)
-            val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
+            val result = if (rootReady) {
+                RootEngine.writeFile(RootEngine.PROFILE_FILE, map["profile"] ?: _tweaks.value.profile)
+                TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
+            } else {
+                ShizukuTweakApplier.apply(map)
+            }
 
             _applyingTweak.value = false
             _applyStatus.value = ApplyStatus(

@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
 }
 
 val gitHash: String by lazy {
@@ -120,10 +119,6 @@ android {
         buildConfig = true
     }
 
-    ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
-        arg("room.incremental", "true")
-    }
 
     packaging {
         resources {
@@ -163,24 +158,10 @@ dependencies {
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
     implementation(libs.libsu.io)
-    implementation(libs.mmkv)
-    implementation(libs.zstd.jni)
-    implementation(libs.sqlite.bundled)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
     implementation(libs.compose.foundation)
-    implementation(libs.lottie.compose)
-    implementation(libs.timber)
-    implementation(libs.androidx.biometric)
-    implementation(libs.retrofit.core)
-    implementation(libs.retrofit.converter.gson)
-    implementation(libs.ktor.client.android)
-    implementation(libs.ktor.client.content)
-    implementation(libs.ktor.serialization)
-    implementation(libs.shimmer)
-    implementation(libs.compose.charts)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.startup)
     debugImplementation(libs.androidx.ui.tooling)
