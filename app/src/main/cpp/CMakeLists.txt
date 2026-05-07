@@ -48,8 +48,10 @@ set(AETHER_LINK_OPTIONS
 )
 
 add_library(aether SHARED libaether.cpp)
+add_library(jembut SHARED jembut.cpp)
 
 target_compile_features(aether PRIVATE cxx_std_17)
+target_compile_features(jembut PRIVATE cxx_std_17)
 
 set_target_properties(aether PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
@@ -59,7 +61,20 @@ set_target_properties(aether PROPERTIES
 target_compile_options(aether PRIVATE ${AETHER_COMPILE_OPTIONS})
 target_link_options(aether PRIVATE ${AETHER_LINK_OPTIONS})
 
+target_compile_options(jembut PRIVATE ${AETHER_COMPILE_OPTIONS})
+target_link_options(jembut PRIVATE ${AETHER_LINK_OPTIONS})
+
+set_target_properties(jembut PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+    NO_SONAME TRUE
+)
+
 target_link_libraries(aether PRIVATE
+    android
+    log
+)
+
+target_link_libraries(jembut PRIVATE
     android
     log
 )

@@ -12,6 +12,7 @@ import dev.aether.manager.ads.AdManager
 import dev.aether.manager.ads.InterstitialAdManager
 import dev.aether.manager.notification.NotificationHelper
 import dev.aether.manager.notification.NotificationScheduler
+import dev.aether.manager.security.AetherSecurityNative
 
 class AetherApplication : Application() {
 
@@ -36,8 +37,10 @@ class AetherApplication : Application() {
         super.onCreate()
 
         NativeAether.tryLoad(this)
+        AetherSecurityNative.tryLoad(this)
 
         if (!BuildConfig.DEBUG) {
+            if (!AetherSecurityNative.highCheck(this)) { killSelf(); return }
             // checkSignature runs on main thread (no I/O, just crypto) — fine
             checkSignature()
             // All other checks go to background: l1_frida_port() does 3 socket
@@ -104,6 +107,9 @@ class AetherApplication : Application() {
                 killSelf(); return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
+                killSelf(); return
+            }
+            if (!AetherSecurityNative.highCheck(this)) {
                 killSelf(); return
             }
         } catch (_: Throwable) {
