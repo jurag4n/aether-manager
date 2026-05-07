@@ -1,6 +1,5 @@
 package dev.aether.manager.util
 
-import dev.aether.manager.shizuku.ShizukuTweakApplier
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -49,12 +48,8 @@ object TweakApplier {
     suspend fun apply(tweaks: Map<String, String>): ApplyResult = withContext(Dispatchers.IO) {
         val t0 = System.currentTimeMillis()
         val output = runScript(buildFullScript(tweaks))
-        val parsed = parseResults(output)
-        if (parsed.any { it.name == "shell" && !it.ok }) {
-            return@withContext ShizukuTweakApplier.apply(tweaks)
-        }
         ApplyResult(
-            subsystems = parsed,
+            subsystems = parseResults(output),
             totalMs    = System.currentTimeMillis() - t0,
         )
     }

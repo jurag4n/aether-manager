@@ -9,7 +9,6 @@ import android.content.Intent
 import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import dev.aether.manager.MainActivity
-import dev.aether.manager.i18n.*
 
 /**
  * NotificationHelper — sistem notifikasi terpusat untuk AE Manager.
@@ -48,10 +47,10 @@ object NotificationHelper {
         // Update channel — HIGH agar muncul di status bar + bunyi default
         val updateChannel = NotificationChannel(
             CHANNEL_UPDATE,
-            RuntimeUiText.updateChannelName(context),
+            "App Update",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description       = RuntimeUiText.updateChannelDesc(context)
+            description       = "Notifikasi saat ada versi baru Aether Manager"
             enableLights(true)
             enableVibration(true)
             setShowBadge(true)
@@ -60,10 +59,10 @@ object NotificationHelper {
         // License channel — HIGH
         val licenseChannel = NotificationChannel(
             CHANNEL_LICENSE,
-            RuntimeUiText.licenseChannelName(context),
+            "Lisensi Premium",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description       = RuntimeUiText.licenseChannelDesc(context)
+            description       = "Notifikasi lisensi expired atau hampir habis"
             enableLights(true)
             enableVibration(true)
             setShowBadge(true)
@@ -72,10 +71,10 @@ object NotificationHelper {
         // General channel — DEFAULT
         val generalChannel = NotificationChannel(
             CHANNEL_GENERAL,
-            RuntimeUiText.generalChannelName(context),
+            "Informasi Umum",
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description   = RuntimeUiText.generalChannelDesc(context)
+            description   = "Notifikasi umum Aether Manager"
             setShowBadge(false)
         }
 
@@ -104,16 +103,16 @@ object NotificationHelper {
         val shortNotes = if (releaseNotes.isNotBlank())
             releaseNotes.lines().take(3).joinToString("\n").trim()
         else
-            RuntimeUiText.updateShortNotes(context)
+            "Versi baru tersedia. Tap untuk mengunduh."
 
         val notification = NotificationCompat.Builder(context, CHANNEL_UPDATE)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(RuntimeUiText.updateTitle(context, versionName))
-            .setContentText(RuntimeUiText.updateContent(context))
+            .setContentTitle("Update Tersedia: $versionName")
+            .setContentText("Versi baru Aether Manager siap diunduh")
             .setStyle(
                 NotificationCompat.BigTextStyle()
                     .bigText(shortNotes)
-                    .setBigContentTitle(RuntimeUiText.updateBigTitle(context, versionName))
+                    .setBigContentTitle("Update $versionName Tersedia")
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
@@ -139,12 +138,14 @@ object NotificationHelper {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_LICENSE)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(RuntimeUiText.licenseExpiredTitle(context))
-            .setContentText(RuntimeUiText.licenseExpiredContent(context))
+            .setContentTitle("⚠️ Lisensi Premium Kamu Expired")
+            .setContentText("Perpanjang sekarang untuk tetap menikmati semua fitur Premium.")
             .setStyle(
                 NotificationCompat.BigTextStyle()
                     .bigText(
-                        RuntimeUiText.licenseExpiredBig(context)
+                        "Lisensi Premium kamu sudah berakhir.\n\n" +
+                        "Fitur Premium tidak lagi tersedia sampai kamu memperpanjang. " +
+                        "Tap untuk langsung ke halaman Lisensi."
                     )
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -178,12 +179,13 @@ object NotificationHelper {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_LICENSE)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(RuntimeUiText.licenseExpiringTitle(context, daysLeft))
-            .setContentText(RuntimeUiText.licenseExpiringContent(context, expiryDate))
+            .setContentTitle("⏳ Lisensi Hampir Berakhir ($daysLeft hari lagi)")
+            .setContentText("Perpanjang sebelum $expiryDate agar tidak terputus.")
             .setStyle(
                 NotificationCompat.BigTextStyle()
                     .bigText(
-                        RuntimeUiText.licenseExpiringBig(context, daysLeft, expiryDate)
+                        "Premium kamu akan berakhir dalam $daysLeft hari ($expiryDate).\n\n" +
+                        "Perpanjang sekarang agar semua fitur tetap aktif tanpa gangguan."
                     )
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -206,9 +208,9 @@ object NotificationHelper {
      */
     fun showTweakApplied(context: Context, profileName: String? = null) {
         val contentText = if (profileName != null)
-            RuntimeUiText.profileActive(context, profileName)
+            "Profil \"$profileName\" aktif"
         else
-            RuntimeUiText.tweakApplied(context)
+            "Semua tweak berhasil diterapkan"
 
         val notification = NotificationCompat.Builder(context, CHANNEL_GENERAL)
             .setSmallIcon(android.R.drawable.ic_dialog_info)

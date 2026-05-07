@@ -226,7 +226,3 @@
 -obfuscationdictionary      proguard-dictionary.txt
 -classobfuscationdictionary proguard-dictionary.txt
 -packageobfuscationdictionary proguard-dictionary.txt
-# =============================================================================
-# JNI — libjembut.so high security layer
-# =============================================================================
--keep class dev.aether.manager.security.AetherSecurityNative { *; }
