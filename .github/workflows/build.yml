@@ -103,7 +103,7 @@ jobs:
 
       - name: Locate APK
         run: |
-          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          RELEASE_APK=$(find app/build/outputs/apk/release -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-aligned.apk" | sort | head -1)
 
           if [ -z "$RELEASE_APK" ]; then
             echo "ERROR: APK tidak ditemukan"
@@ -120,17 +120,36 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          if [ -z "${STORE_PASSWORD}" ] || [ -z "${KEY_ALIAS}" ] || [ -z "${KEY_PASSWORD}" ]; then
+            echo "ERROR: Secret signing belum lengkap"
+            exit 1
+          fi
+
+          ALIGNED_APK="app/build/outputs/apk/release/${APK_BASENAME}-aligned.apk"
           SIGNED_APK="app/build/outputs/apk/release/${APK_BASENAME}-signed.apk"
+
+          rm -f "${ALIGNED_APK}" "${SIGNED_APK}"
+
+          zipalign -p -f 4 "${RELEASE_APK}" "${ALIGNED_APK}"
 
           apksigner sign \
             --ks aether.jks \
             --ks-pass "pass:${STORE_PASSWORD}" \
             --ks-key-alias "${KEY_ALIAS}" \
             --key-pass "pass:${KEY_PASSWORD}" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled false \
+            --v4-signing-enabled false \
             --out "${SIGNED_APK}" \
-            "${RELEASE_APK}"
+            "${ALIGNED_APK}"
 
-          apksigner verify --verbose "${SIGNED_APK}"
+          apksigner verify \
+            --verbose \
+            --min-sdk-version 26 \
+            "${SIGNED_APK}"
+
+          apksigner verify --print-certs "${SIGNED_APK}"
 
           echo "RELEASE_APK=${SIGNED_APK}" >> $GITHUB_ENV
           echo "APK_NAME=${APK_BASENAME}-signed" >> $GITHUB_ENV

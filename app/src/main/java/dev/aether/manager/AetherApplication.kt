@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.widget.Toast
 import com.topjohnwu.superuser.Shell
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
@@ -13,6 +14,7 @@ import dev.aether.manager.ads.InterstitialAdManager
 import dev.aether.manager.notification.NotificationHelper
 import dev.aether.manager.notification.NotificationScheduler
 import dev.aether.manager.security.AetherSecurityNative
+import java.util.concurrent.atomic.AtomicBoolean
 
 class AetherApplication : Application() {
 
@@ -32,6 +34,7 @@ class AetherApplication : Application() {
     }
 
     private val securityHandler = Handler(Looper.getMainLooper())
+    private val securityTerminating = AtomicBoolean(false)
 
     override fun onCreate() {
         super.onCreate()
@@ -40,7 +43,7 @@ class AetherApplication : Application() {
         AetherSecurityNative.tryLoad(this)
 
         if (!BuildConfig.DEBUG) {
-            if (!AetherSecurityNative.highCheck(this)) { killSelf(); return }
+            if (!AetherSecurityNative.highCheck(this)) { securityExit(AetherSecurityNative.tamperReason(this)); return }
             // checkSignature runs on main thread (no I/O, just crypto) — fine
             checkSignature()
             // All other checks go to background: l1_frida_port() does 3 socket
@@ -58,8 +61,41 @@ class AetherApplication : Application() {
         NotificationScheduler.schedule(this)
     }
 
-    private fun killSelf() {
-        android.os.Process.killProcess(android.os.Process.myPid())
+    private fun securityExit(reason: String) {
+        if (!securityTerminating.compareAndSet(false, true)) return
+
+        val cleanReason = reason.ifBlank { "security_violation" }
+        securityHandler.post {
+            Toast.makeText(
+                applicationContext,
+                securityMessage(cleanReason),
+                Toast.LENGTH_LONG
+            ).show()
+
+            securityHandler.postDelayed({
+                android.os.Process.killProcess(android.os.Process.myPid())
+                kotlin.system.exitProcess(0)
+            }, 1700L)
+        }
+    }
+
+    private fun securityMessage(reason: String): String {
+        return when (reason.lowercase()) {
+            "signature_mismatch" -> "Security blocked: signature mismatch"
+            "signature_missing" -> "Security blocked: app signature missing"
+            "native_not_loaded" -> "Security blocked: native library failed"
+            "native_tamper" -> "Security blocked: native tamper detected"
+            "package_repack" -> "Security blocked: package repack detected"
+            "apk_repack" -> "Security blocked: APK repack detected"
+            "loader_tamper" -> "Security blocked: custom loader detected"
+            "debugger", "debug_detected" -> "Security blocked: debugger detected"
+            "frida_port" -> "Security blocked: Frida detected"
+            "hook_framework", "hook_fd", "hook_detected" -> "Security blocked: LSPosed/Xposed hook detected"
+            "dump_tool", "dump_fd" -> "Security blocked: dump tool detected"
+            "patcher_files", "anti_patch_failed" -> "Security blocked: Lucky Patcher detected"
+            "unity_tamper" -> "Security blocked: ads component tampered"
+            else -> "Security blocked: $reason"
+        }
     }
 
     private fun checkSignature() {
@@ -68,7 +104,7 @@ class AetherApplication : Application() {
         // no real cert hash can ever match the placeholder string.
         if (EXPECTED_SIGNATURE == SIGNATURE_PLACEHOLDER) return
 
-        if (!NativeAether.isLoaded) { killSelf(); return }
+        if (!NativeAether.isLoaded) { securityExit("native_not_loaded"); return }
         try {
             @Suppress("DEPRECATION")
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
@@ -85,15 +121,15 @@ class AetherApplication : Application() {
                 info.signatures?.firstOrNull()?.toByteArray()
             }
 
-            if (sigBytes == null) { killSelf(); return }
+            if (sigBytes == null) { securityExit("signature_missing"); return }
 
             val hex = java.security.MessageDigest.getInstance("SHA-256")
                 .digest(sigBytes)
                 .joinToString("") { "%02x".format(it) }
 
-            if (hex != EXPECTED_SIGNATURE) killSelf()
+            if (hex != EXPECTED_SIGNATURE) securityExit("signature_mismatch")
         } catch (_: Throwable) {
-            killSelf()
+            securityExit("signature_mismatch")
         }
     }
 
@@ -101,19 +137,19 @@ class AetherApplication : Application() {
         if (!NativeAether.isLoaded) return
         try {
             if (NativeAether.nativeIsHooked()) {
-                killSelf(); return
+                securityExit("hook_detected"); return
             }
             if (NativeAether.nativeIsDebugged()) {
-                killSelf(); return
+                securityExit("debug_detected"); return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
-                killSelf(); return
+                securityExit("anti_patch_failed"); return
             }
             if (!AetherSecurityNative.highCheck(this)) {
-                killSelf(); return
+                securityExit(AetherSecurityNative.tamperReason(this)); return
             }
         } catch (_: Throwable) {
-            if (NativeAether.isLoaded) killSelf()
+            if (NativeAether.isLoaded) securityExit("security_violation")
         }
     }
 
@@ -164,7 +200,7 @@ class AetherApplication : Application() {
         try {
             NativeAether.nativeCheckUnityIntact()
         } catch (_: Exception) {
-            if (NativeAether.isLoaded) killSelf()
+            if (NativeAether.isLoaded) securityExit("unity_tamper")
         }
     }
 

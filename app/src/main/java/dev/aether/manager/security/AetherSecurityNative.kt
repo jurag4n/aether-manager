@@ -36,6 +36,7 @@ object AetherSecurityNative {
 
     fun tamperReason(context: Context): String {
         if (!isLoaded && !tryLoad(context)) return "native_not_loaded"
+        if (!verifyInstalledSignature(context)) return "signature_mismatch"
         return runCatching { nativeTamperReason(context.applicationContext) }.getOrDefault("unknown")
     }
 
