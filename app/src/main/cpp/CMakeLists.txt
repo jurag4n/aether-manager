@@ -42,7 +42,6 @@ target_link_options(aether PRIVATE
         -Wl,-z,relro
         -Wl,-z,now
         -Wl,-z,noexecstack
-        
 )
 
 target_link_options(jembut PRIVATE
