@@ -119,7 +119,6 @@ android {
         buildConfig = true
     }
 
-
     packaging {
         resources {
             excludes += setOf(
@@ -158,10 +157,21 @@ dependencies {
     implementation(libs.libsu.core)
     implementation(libs.libsu.service)
     implementation(libs.libsu.io)
+    implementation(libs.mmkv)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.compose.foundation)
+    implementation(libs.lottie.compose)
+    implementation(libs.timber)
+    implementation(libs.androidx.biometric)
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.content)
+    implementation(libs.ktor.serialization)
+    implementation(libs.shimmer)
+    implementation(libs.compose.charts)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.startup)
     debugImplementation(libs.androidx.ui.tooling)

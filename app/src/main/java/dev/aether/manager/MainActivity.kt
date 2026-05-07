@@ -44,13 +44,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import android.content.Intent
-import dev.aether.manager.ads.AdBlockMonitor
+import dev.aether.manager.ads.AdBlockChecker
 import dev.aether.manager.ads.AdBlockDetectedDialog
 import dev.aether.manager.ads.AdScheduler
 import dev.aether.manager.ads.InterstitialAdManager
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.flowOf
 import dev.aether.manager.data.AppProfileViewModel
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.i18n.LocalStrings
@@ -163,14 +163,18 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
         }
     }
 
-    var showAdBlockDialog by remember { mutableStateOf(false) }
-    val adBlockActive by remember(context, isPremium) {
-        if (isPremium) flowOf(false) else AdBlockMonitor.observe(context)
-    }.collectAsState(initial = false)
+    var showAdBlockDialog   by remember { mutableStateOf(false) }
+    var adBlockCheckTrigger by remember { mutableStateOf(0) }
 
-    LaunchedEffect(adBlockActive, isPremium) {
+    LaunchedEffect(adBlockCheckTrigger) {
+        if (isPremium) {
+            showAdBlockDialog = false
+            return@LaunchedEffect
+        }
+        delay(900L)
         NativeAether.tryLoad(context)
-        showAdBlockDialog = adBlockActive && !isPremium
+        val detected = AdBlockChecker.isAdblockActive(context)
+        showAdBlockDialog = detected
     }
 
     if (showAdBlockDialog && !isPremium) {
@@ -202,6 +206,7 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                     } else {
                         AdScheduler.stop()
                     }
+                    adBlockCheckTrigger++
                     premiumCheckTick++
                     LicenseNotificationChecker.check(activity)
                     // Refresh device info jika masih Loading (misal baru balik dari SetupActivity)

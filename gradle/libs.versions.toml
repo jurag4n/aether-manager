@@ -2,7 +2,6 @@
 # VERIFIED dari Maven Central — jangan diubah lagi
 agp    = "8.6.1"
 kotlin = "2.1.21"
-ksp    = "2.1.21-2.0.2"
 
 coreKtx          = "1.16.0"
 lifecycleRuntime = "2.9.0"
@@ -23,10 +22,7 @@ androidx-work-runtime-ktx = "2.9.1"
 workRuntimeKtx    = "2.9.1"
 libsu   = "5.3.0"
 mmkv    = "2.0.1"
-zstdJni = "1.5.5-11"
-sqliteBundled  = "2.5.1"
 kotlinxSerializationJson = "1.8.1"
-roomRuntime    = "2.7.1"
 composeFoundation = "1.8.0"
 lottie         = "6.6.6"
 timber         = "5.0.1"
@@ -70,12 +66,7 @@ libsu-core                           = { group = "com.github.topjohnwu.libsu",  
 libsu-service                        = { group = "com.github.topjohnwu.libsu",  name = "service",                        version.ref = "libsu" }
 libsu-io                             = { group = "com.github.topjohnwu.libsu",  name = "io",                             version.ref = "libsu" }
 mmkv                                 = { group = "com.tencent",                 name = "mmkv",                           version.ref = "mmkv" }
-zstd-jni                             = { group = "com.github.luben",            name = "zstd-jni",                       version.ref = "zstdJni" }
-sqlite-bundled                       = { group = "androidx.sqlite",             name = "sqlite-bundled",                  version.ref = "sqliteBundled" }
 kotlinx-serialization-json           = { group = "org.jetbrains.kotlinx",      name = "kotlinx-serialization-json",     version.ref = "kotlinxSerializationJson" }
-room-runtime                         = { group = "androidx.room",               name = "room-runtime",                   version.ref = "roomRuntime" }
-room-ktx                             = { group = "androidx.room",               name = "room-ktx",                       version.ref = "roomRuntime" }
-room-compiler                        = { group = "androidx.room",               name = "room-compiler",                  version.ref = "roomRuntime" }
 compose-foundation                   = { group = "androidx.compose.foundation", name = "foundation",                     version.ref = "composeFoundation" }
 lottie-compose                       = { group = "com.airbnb.android",          name = "lottie-compose",                 version.ref = "lottie" }
 timber                               = { group = "com.jakewharton.timber",      name = "timber",                         version.ref = "timber" }
@@ -98,4 +89,3 @@ android-application  = { id = "com.android.application",                  versio
 kotlin-android       = { id = "org.jetbrains.kotlin.android",             version.ref = "kotlin" }
 kotlin-compose       = { id = "org.jetbrains.kotlin.plugin.compose",      version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-ksp                  = { id = "com.google.devtools.ksp",                  version.ref = "ksp" }
