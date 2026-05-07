@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import dev.aether.manager.data.*
-import dev.aether.manager.i18n.LocalStrings
+import dev.aether.manager.i18n.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -160,8 +160,10 @@ private fun filterForProfile(profile: AppProfile?): ProfileFilter {
     }
 }
 
+@Composable
 private fun profileModeLabel(profile: AppProfile?): String {
-    if (profile == null) return "Not Set"
+    val s = LocalStrings.current
+    if (profile == null) return s.appProfileNotSet
     return filterForProfile(profile).label()
 }
 
@@ -195,6 +197,7 @@ private val refreshRateOptions = listOf(
 
 @Composable
 private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
+    val s = LocalStrings.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(ProfileFilter.ALL) }
     var expandedPackage by remember(state.apps) { mutableStateOf<String?>(null) }
@@ -258,14 +261,14 @@ private fun ReadyContent(state: AppsUiState.Ready, vm: AppProfileViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Daftar Aplikasi",
+                            text = s.appProfileListTitle,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(Modifier.weight(1f))
                         Text(
-                            text = "${filtered.size} apps",
+                            text = s.appProfileAppsVisible(filtered.size),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -332,6 +335,7 @@ private fun SearchAppField(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val s = LocalStrings.current
     var focused by remember { mutableStateOf(false) }
 
     val borderWidth by animateDpAsState(
@@ -381,7 +385,7 @@ private fun SearchAppField(
                     Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                         if (query.isEmpty()) {
                             Text(
-                                text = "Search App",
+                                text = s.appProfileSearchApp,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                                 maxLines = 1
@@ -561,14 +565,14 @@ private fun AppProfileStatusCard(
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
-                    text = "App Profile",
+                    text = s.appProfileCardTitle,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1
                 )
                 Text(
-                    text = if (enabled) "$activeCount active • $totalApps apps" else "Disabled • tap switch to enable",
+                    text = s.appProfileMonitorSummary(enabled, activeCount, totalApps),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -845,7 +849,7 @@ private fun AppListItem(
 
                     CompactProfileDropdown(
                         icon = Icons.Outlined.Speed,
-                        title = "Performance Profile",
+                        title = s.appProfileCpuGovernor,
                         selectedLabel = profileModeLabel(currentProfile),
                         options = profileOptions.map { option ->
                             DropOption(
@@ -861,7 +865,7 @@ private fun AppListItem(
 
                     CompactProfileDropdown(
                         icon = Icons.Outlined.DisplaySettings,
-                        title = "Refresh Rate",
+                        title = s.appProfileRefreshRate,
                         selectedLabel = refreshRateLabel(currentProfile.refreshRate),
                         options = refreshRateOptions.map { (key, label) ->
                             DropOption(
@@ -891,6 +895,7 @@ private fun ProfileSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val s = LocalStrings.current
     val accent by animateColorAsState(
         if (checked) MaterialTheme.colorScheme.primary
         else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -933,13 +938,13 @@ private fun ProfileSwitchRow(
                 verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 Text(
-                    text = "Enable Profile",
+                    text = s.appProfileEnableProfile,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = if (checked) "Aktif untuk aplikasi ini" else "Nonaktif untuk aplikasi ini",
+                    text = if (checked) s.appProfileEnabledForApp else s.appProfileDisabledForApp,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
