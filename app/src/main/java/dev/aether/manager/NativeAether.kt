@@ -44,25 +44,47 @@ object NativeAether {
     external fun nativeGetGameId(): String
     external fun nativeGetGithubApi(): String
 
-    /** https://aether-app-weld.vercel.app/api */
     external fun nativeGetVercelApi(): String
 
-    /** https://aether-app-weld.vercel.app/api/activate */
     external fun nativeGetActivateUrl(): String
 
-    /** https://aether-app-weld.vercel.app/api/payment/create-order */
     external fun nativeGetCreateOrderUrl(): String
 
-    /** https://aether-app-weld.vercel.app/api/payment/poll-order */
     external fun nativeGetPollOrderUrl(): String
 
-    /** https://github.com/aetherdev01/aether-manager */
     external fun nativeGetGithubRepo(): String
 
-    /** https://t.me/AetherDev22 */
     external fun nativeGetTelegram(): String
+
+    external fun nativeGetWhatsappUrl(): String
+    external fun nativeGetPaymentHolder(): String
+    external fun nativeGetDanaLabel(): String
+    external fun nativeGetGopayLabel(): String
+    external fun nativeGetPaypalLabel(): String
+    external fun nativeGetPaymentNumberLabel(): String
+    external fun nativeGetPaypalAccountLabel(): String
  
     external fun nativeGetAdblockDnsKeywords(): Array<String>
     external fun nativeGetHostsSignatures(): Array<String>
     external fun nativeGetPackageName(): String?
 }
+
+object NativeSecrets {
+    fun gameId() = NativeAether.safeString({ nativeGetGameId() }, "")
+    fun githubApi() = NativeAether.safeString({ nativeGetGithubApi() }, "")
+    fun vercelApi() = NativeAether.safeString({ nativeGetVercelApi() }, "")
+    fun activateUrl() = NativeAether.safeString({ nativeGetActivateUrl() }, "")
+    fun createOrderUrl() = NativeAether.safeString({ nativeGetCreateOrderUrl() }, "")
+    fun pollOrderUrl() = NativeAether.safeString({ nativeGetPollOrderUrl() }, "")
+    fun telegramUrl() = NativeAether.safeString({ nativeGetTelegram() }, "")
+    fun whatsappUrl() = NativeAether.safeString({ nativeGetWhatsappUrl() }, "")
+    fun holderName() = NativeAether.safeString({ nativeGetPaymentHolder() }, "")
+    fun danaLabel() = NativeAether.safeString({ nativeGetDanaLabel() }, "DANA")
+    fun gopayLabel() = NativeAether.safeString({ nativeGetGopayLabel() }, "GoPay")
+    fun paypalLabel() = NativeAether.safeString({ nativeGetPaypalLabel() }, "PayPal")
+    fun paymentNumberLabel() = NativeAether.safeString({ nativeGetPaymentNumberLabel() }, "Nomor tujuan")
+    fun paypalAccountLabel() = NativeAether.safeString({ nativeGetPaypalAccountLabel() }, "Akun PayPal")
+}
+
+private inline fun NativeAether.safeString(block: NativeAether.() -> String, fallback: String): String =
+    if (isLoaded) runCatching { block() }.getOrNull()?.takeIf { it.isNotBlank() } ?: fallback else fallback

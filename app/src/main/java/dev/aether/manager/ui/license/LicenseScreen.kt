@@ -37,6 +37,7 @@ import dev.aether.manager.license.LicensePrefs
 import dev.aether.manager.license.LicenseViewModel
 import dev.aether.manager.payment.InvoicePrefs
 import dev.aether.manager.payment.PaymentViewModel
+import dev.aether.manager.NativeSecrets
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.delay
@@ -494,8 +495,8 @@ private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
                     Icon(Icons.Outlined.WorkspacePremium, null, modifier = Modifier.padding(12.dp).size(24.dp), tint = MaterialTheme.colorScheme.primary)
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Aether Manager Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Lisensi resmi 1 bulan, diproses lewat invoice real dan konfirmasi admin.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(s.licenseUpgradeTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(s.licenseUpgradeDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -515,15 +516,15 @@ private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                CleanBenefitRow(Icons.Outlined.Block, s.licenseSuccessBenefits.getOrElse(0) { "Tanpa iklan" })
-                CleanBenefitRow(Icons.Outlined.Speed, s.licenseSuccessBenefits.getOrElse(1) { "Fitur tweak premium" })
+                CleanBenefitRow(Icons.Outlined.Block, s.licenseSuccessBenefits.getOrElse(0) { s.licenseSuccessBenefits.getOrNull(0) ?: "No Ads" })
+                CleanBenefitRow(Icons.Outlined.Speed, s.licenseSuccessBenefits.getOrElse(1) { s.licenseSuccessBenefits.getOrNull(1) ?: "Premium tweaks" })
                 CleanBenefitRow(Icons.Outlined.Devices, s.licenseBenefitDeviceLocked)
-                CleanBenefitRow(Icons.Outlined.SupportAgent, s.licenseSuccessBenefits.getOrElse(2) { "Support admin" })
+                CleanBenefitRow(Icons.Outlined.SupportAgent, s.licenseSuccessBenefits.getOrElse(2) { s.licenseSuccessBenefits.getOrNull(2) ?: "Admin support" })
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
 
-            Text("Metode pembayaran", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Text(s.licenseSelectPayMethod, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 PaymentPreviewChip("DANA", Icons.Outlined.AccountBalanceWallet, Modifier.weight(1f))
                 PaymentPreviewChip("GoPay", Icons.Outlined.Wallet, Modifier.weight(1f))
@@ -537,7 +538,7 @@ private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
                 } else {
                     Icon(Icons.Outlined.ShoppingCart, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Beli lisensi resmi", fontWeight = FontWeight.SemiBold)
+                    Text(s.licenseBuyBtn, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -570,6 +571,7 @@ private fun BuyFormContent(
     onNameChange: (String) -> Unit, onPhoneChange: (String) -> Unit,
     isLoading: Boolean, error: String?, onSubmit: () -> Unit,
 ) {
+    val s = LocalStrings.current
     val phoneError = remember(buyerPhone) {
         if (buyerPhone.isBlank()) null else PaymentViewModel.validatePhone(buyerPhone)
     }
@@ -579,7 +581,7 @@ private fun BuyFormContent(
     }
     val isFormValid = buyerName.isNotBlank() && isPhoneValid
 
-    val title = if (isInternational) "Create license invoice" else "Buat invoice lisensi"
+    val title = if (isInternational) "Create license invoice" else s.licenseBuySheetTitle
     val subtitle = if (isInternational) "Enter your buyer details. International users can use WhatsApp numbers with country code." else "Isi data pembeli untuk membuat order real. Nomor luar Indonesia juga didukung."
     val paymentHint = if (isInternational) "For international users, PayPal is recommended. Admin messages will use English." else "Untuk Indonesia gunakan DANA/GoPay. Untuk luar Indonesia gunakan PayPal dan nomor +kode negara."
 
@@ -606,7 +608,7 @@ private fun BuyFormContent(
         OutlinedTextField(
             value = buyerName,
             onValueChange = onNameChange,
-            label = { Text(if (isInternational) "Buyer name" else "Nama pembeli") },
+            label = { Text(if (isInternational) "Buyer name" else s.licenseBuySheetNameLabel) },
             leadingIcon = { Icon(Icons.Outlined.Person, null) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -617,7 +619,7 @@ private fun BuyFormContent(
         OutlinedTextField(
             value = buyerPhone,
             onValueChange = onPhoneChange,
-            label = { Text(if (isInternational) "WhatsApp number, example +14155552671" else "Nomor WhatsApp, contoh 08123456789 / +14155552671") },
+            label = { Text(if (isInternational) "WhatsApp number, example +14155552671" else s.licenseBuySheetPhoneHint) },
             leadingIcon = { Icon(Icons.Outlined.Phone, null) },
             trailingIcon = {
                 when {
@@ -669,7 +671,7 @@ private fun BuyFormContent(
             } else {
                 Icon(Icons.Outlined.ReceiptLong, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (isInternational) "Create invoice" else "Buat invoice", fontWeight = FontWeight.SemiBold)
+                Text(if (isInternational) s.licenseBuySheetCreateInvoiceBtn else s.licenseBuySheetCreateInvoiceBtn, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -681,6 +683,7 @@ private fun TransferInstructionContent(
     ctx: Context, buyerPhone: String,
     onConfirm: (selected: PaymentManager.PaymentMethod?) -> Unit, onCancel: () -> Unit,
 ) {
+    val s = LocalStrings.current
     val isInternational = remember(buyerPhone) { buyerPhone.isNotBlank() && PaymentViewModel.isInternationalBuyer(buyerPhone) }
     val fmt = NumberFormat.getNumberInstance(Locale("id", "ID"))
     val realMethods = remember(state.paymentMethods, isInternational) {
@@ -703,7 +706,7 @@ private fun TransferInstructionContent(
                 Icon(Icons.Outlined.Payments, null, modifier = Modifier.padding(12.dp).size(24.dp), tint = MaterialTheme.colorScheme.primary)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (isInternational) "Payment details" else "Detail pembayaran", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(if (isInternational) s.licensePayDetailTitle else s.licensePayDetailTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(if (isInternational) "Manual payment. Admin will activate the license after the payment is verified." else "Transfer manual, lalu admin mengaktifkan lisensi setelah pembayaran valid.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -712,22 +715,22 @@ private fun TransferInstructionContent(
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
-                        Text(if (isInternational) "Amount to pay" else "Total bayar", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (isInternational) s.licenseTotalLabel else s.licenseTotalLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Rp ${fmt.format(state.nominal)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                     Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)) {
-                        Text("1 Bulan", modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                        Text(s.licenseDuration1Month, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
-                CopyBox(ctx = ctx, label = "Order ID", value = state.orderId, toast = "Order ID disalin")
+                CopyBox(ctx = ctx, label = "Order ID", value = state.orderId, toast = s.licenseOrderIdCopied)
             }
         }
 
         Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)) {
             Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(if (isInternational) "Real process" else "Proses real", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                StepRow(1, if (isInternational) "Choose PayPal or another available method" else "Pilih metode pembayaran")
+                StepRow(1, if (isInternational) "Choose PayPal or another available method" else s.licenseSelectPayMethod)
                 StepRow(2, if (isInternational) "Pay exactly according to the invoice" else "Transfer tepat sesuai nominal invoice")
                 StepRow(3, if (isInternational) "Tap Confirm Payment" else "Tap Konfirmasi Pembayaran")
                 StepRow(4, if (isInternational) "Send payment screenshot to Telegram" else "Kirim screenshot bukti transfer ke Telegram")
@@ -736,7 +739,7 @@ private fun TransferInstructionContent(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(if (isInternational) "Choose payment method" else "Pilih metode pembayaran", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Text(if (isInternational) s.licenseSelectPayMethod else s.licenseSelectPayMethod, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             if (realMethods.isEmpty()) {
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)) {
                     Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
@@ -770,7 +773,7 @@ private fun TransferInstructionContent(
             Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Outlined.Send, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(if (isInternational) "Send payment proof" else "Kirim bukti transfer", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(if (isInternational) "Send payment proof" else s.licenseAfterTransferLabel, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     Text(if (isInternational) "After confirmation, Telegram admin will open. Paste the copied order message and attach your payment screenshot." else "Setelah konfirmasi, Telegram admin akan dibuka. Paste pesan order lalu lampirkan screenshot bukti transfer.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
@@ -784,11 +787,11 @@ private fun TransferInstructionContent(
         ) {
             Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text(if (isInternational) "Confirm payment" else "Konfirmasi pembayaran", fontWeight = FontWeight.SemiBold)
+            Text(if (isInternational) s.licenseVerifyNowBtn else s.licenseVerifyNowBtn, fontWeight = FontWeight.SemiBold)
         }
 
         TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
-            Text(if (isInternational) "Cancel invoice" else "Batalkan invoice", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(if (isInternational) s.licenseCancelBtn else s.licenseCancelBtn, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -873,7 +876,7 @@ private fun SelectedMethodDetail(method: PaymentManager.PaymentMethod, ctx: Cont
                 }
             }
 
-            CopyBox(ctx = ctx, label = if (method.isPayPalMethod()) "Akun PayPal" else "Nomor tujuan", value = method.number, toast = "Tujuan pembayaran disalin")
+            CopyBox(ctx = ctx, label = if (method.isPayPalMethod()) NativeSecrets.paypalAccountLabel() else NativeSecrets.paymentNumberLabel(), value = method.number, toast = "Tujuan pembayaran disalin")
 
             if (method.holderName.isNotBlank()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -993,7 +996,7 @@ private fun sendPaymentNotificationSilent(
     ).show()
 
     try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AetherDev22"))
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(NativeSecrets.telegramUrl()))
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         ctx.startActivity(intent)
     } catch (_: Exception) {
@@ -1013,7 +1016,7 @@ private fun ContactAdminRow(ctx: Context) {
         OutlinedButton(
             onClick  = {
                 val msg = "Halo Admin, saya ingin menanyakan status pembayaran Aether Manager Premium."
-                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/6285121390218?text=${Uri.encode(msg)}")))
+                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(NativeSecrets.whatsappUrl() + "?text=${Uri.encode(msg)}")))
             },
             modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)
         ) {
@@ -1022,7 +1025,7 @@ private fun ContactAdminRow(ctx: Context) {
             Text(s.licenseContactWhatsApp, style = MaterialTheme.typography.labelMedium)
         }
         OutlinedButton(
-            onClick  = { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AetherDev22"))) },
+            onClick  = { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(NativeSecrets.telegramUrl()))) },
             modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)
         ) {
             Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, modifier = Modifier.size(16.dp))

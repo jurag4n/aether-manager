@@ -1,6 +1,7 @@
 package dev.aether.manager.payment
 
 import android.content.Context
+import dev.aether.manager.NativeSecrets
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -47,14 +48,14 @@ object InvoicePrefs {
                             label      = m.optString("label", ""),
                             type       = m.optString("type", "ewallet"),
                             number     = m.optString("number", "-"),
-                            holderName = m.optString("holderName", "Al** A**** Kh****"),
+                            holderName = m.optString("holderName", NativeSecrets.holderName()),
                         )
                     }
                 } else {
                     val gopay = o.optString("gopay", "-")
                     val dana  = o.optString("dana", "-")
-                    if (gopay != "-") methods += PaymentManager.PaymentMethod("gopay", "GoPay", "ewallet", gopay, "Al** A**** Kh****")
-                    if (dana  != "-") methods += PaymentManager.PaymentMethod("dana",  "DANA",  "ewallet", dana,  "Al** A**** Kh****")
+                    if (gopay != "-") methods += PaymentManager.PaymentMethod("gopay", NativeSecrets.gopayLabel(), "ewallet", gopay, NativeSecrets.holderName())
+                    if (dana  != "-") methods += PaymentManager.PaymentMethod("dana",  NativeSecrets.danaLabel(),  "ewallet", dana,  NativeSecrets.holderName())
                 }
                 Invoice(
                     orderId        = o.getString("orderId"),

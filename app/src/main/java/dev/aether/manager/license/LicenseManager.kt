@@ -3,6 +3,7 @@ package dev.aether.manager.license
 import android.content.Context
 import android.provider.Settings
 import dev.aether.manager.NativeAether
+import dev.aether.manager.NativeSecrets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -16,11 +17,7 @@ object LicenseManager {
      * Kembalikan URL endpoint activate dari native layer.
      * Fallback ke hardcoded jika library belum ter-load (dev/test env).
      */
-    private fun activateUrl(): String =
-        if (NativeAether.isLoaded)
-            runCatching { NativeAether.nativeGetActivateUrl() }.getOrNull()
-                ?: "https://aether-app-weld.vercel.app/api/activate"
-        else "https://aether-app-weld.vercel.app/api/activate"
+    private fun activateUrl(): String = NativeSecrets.activateUrl()
 
     fun getDeviceId(ctx: Context): String {
         val androidId = Settings.Secure.getString(

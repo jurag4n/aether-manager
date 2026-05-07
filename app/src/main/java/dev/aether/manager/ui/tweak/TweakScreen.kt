@@ -613,24 +613,25 @@ private fun CpuCard(
     onMaxFreqChange: (String) -> Unit,
     onLockClick: () -> Unit
 ) {
+    val strings = rememberTweakI18n()
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.Terminal,
         title = "CPU",
-        subtitle = "Governor & frequency lock",
-        badge = if (locked) "Locked" else governor,
+        subtitle = strings.cpuSubtitle,
+        badge = if (locked) strings.commonLocked else governor,
         active = active,
         expanded = expanded,
         onClick = onClick
     ) {
         DropdownAction(
-            title = "CPU Governor",
+            title = strings.cpuGovTitle,
             value = governor,
             options = listOf("Schedutil", "Performance", "Battery", "Ondemand"),
             onSelect = onGovernorChange
         )
 
-        SubCard(title = "Lock Frequency CPU", subtitle = "Atur min dan max frequency") {
+        SubCard(title = strings.cpuLockTitle, subtitle = strings.cpuLockSubtitle) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -657,7 +658,7 @@ private fun CpuCard(
             ) {
                 Icon(Icons.Outlined.Lock, null, modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (locked) "CPU Frequency Locked" else "Lock CPU Frequency")
+                Text(if (locked) strings.cpuLocked else strings.cpuLockAction)
             }
         }
     }
@@ -680,24 +681,25 @@ private fun GpuCard(
     onLockClick: () -> Unit,
     onRendererClick: () -> Unit
 ) {
+    val strings = rememberTweakI18n()
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.Layers,
         title = "GPU",
-        subtitle = "Profile, frequency, renderer",
-        badge = if (locked) "Locked" else profile,
+        subtitle = strings.gpuSubtitle,
+        badge = if (locked) strings.commonLocked else profile,
         active = active || locked,
         expanded = expanded,
         onClick = onClick
     ) {
         DropdownAction(
-            title = "Governor Profile GPU",
+            title = strings.gpuProfileTitle,
             value = profile,
             options = listOf("Battery", "Balanced", "Performance"),
             onSelect = onProfileChange
         )
 
-        SubCard(title = "GPU Frequency Lock", subtitle = "Kunci batas frekuensi GPU") {
+        SubCard(title = strings.gpuLockTitle, subtitle = strings.gpuLockSubtitle) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -724,14 +726,14 @@ private fun GpuCard(
             ) {
                 Icon(Icons.Outlined.Lock, null, modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (locked) "GPU Frequency Locked" else "Lock GPU Frequency")
+                Text(if (locked) strings.gpuLocked else strings.gpuLockAction)
             }
         }
 
         CompactFeatureBlock(
             icon = Icons.Outlined.Tune,
-            title = "Renderer",
-            subtitle = "Select GPU Renderer",
+            title = strings.rendererTitle,
+            subtitle = strings.rendererSubtitle,
             trailing = renderer,
             onClick = onRendererClick
         )
@@ -759,7 +761,7 @@ private fun NetworkCard(
         icon = Icons.Outlined.NetworkCheck,
         title = strings.networkTitle,
         subtitle = strings.networkSubtitle,
-        badge = if (active) "Tuned" else "Off",
+        badge = if (active) strings.commonTuned else strings.commonOff,
         active = active,
         expanded = expanded,
         onClick = onClick
@@ -811,12 +813,13 @@ private fun MemoryCard(
     onSwapToggle: () -> Unit,
     onKillBackgroundClick: () -> Unit
 ) {
+    val strings = rememberTweakI18n()
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.Memory,
-        title = "Memory",
-        subtitle = "ZRAM, LMK, swap, cleaner",
-        badge = if (active) "Boost" else "Off",
+        title = strings.memoryTitle,
+        subtitle = strings.memorySubtitle,
+        badge = if (active) "Boost" else strings.commonOff,
         active = active,
         expanded = expanded,
         onClick = onClick
@@ -828,14 +831,14 @@ private fun MemoryCard(
             ToggleOption(
                 modifier = Modifier.weight(1f),
                 title = "ZRAM",
-                subtitle = "Kompresi RAM virtual",
+                subtitle = strings.memoryZramSubtitle,
                 checked = zram,
                 onClick = onZramToggle
             )
             ToggleOption(
                 modifier = Modifier.weight(1f),
                 title = "LMK",
-                subtitle = "Low memory killer agresif",
+                subtitle = strings.memoryLmkSubtitle,
                 checked = lmk,
                 onClick = onLmkToggle
             )
@@ -888,14 +891,14 @@ private fun MemoryCard(
             ToggleOption(
                 modifier = Modifier.weight(1f),
                 title = "Swap",
-                subtitle = "Bantu paging saat RAM penuh",
+                subtitle = strings.memorySwapSubtitle,
                 checked = swap,
                 onClick = onSwapToggle
             )
             ToggleOption(
                 modifier = Modifier.weight(1f),
                 title = "Kill Background",
-                subtitle = "Bersihkan proses latar",
+                subtitle = strings.memoryKillSubtitle,
                 checked = killBackground,
                 onClick = onKillBackgroundClick
             )
@@ -911,18 +914,19 @@ private fun IoSchedulerCard(
     onClick: () -> Unit,
     onSelect: (String) -> Unit
 ) {
+    val strings = rememberTweakI18n()
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.Storage,
-        title = "I/O Scheduler",
-        subtitle = "Disk read/write queue",
+        title = strings.ioTitle,
+        subtitle = strings.ioSubtitle,
         badge = selected,
         active = selected != "Auto",
         expanded = expanded,
         onClick = onClick
     ) {
         DropdownAction(
-            title = "I/O Scheduler",
+            title = strings.ioTitle,
             value = selected,
             options = listOf("Auto", "CFQ", "Deadline", "Noop", "BFQ", "Maple"),
             onSelect = onSelect
@@ -939,19 +943,20 @@ private fun SchedBoostCard(
     onClick: () -> Unit,
     onSelect: (String) -> Unit
 ) {
+    val strings = rememberTweakI18n()
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.RocketLaunch,
-        title = "Sched Boost",
-        subtitle = "Game booster scheduler",
-        badge = if (active) mode else "Off",
+        title = strings.schedTitle,
+        subtitle = strings.schedSubtitle,
+        badge = if (active) mode else strings.commonOff,
         active = active,
         expanded = expanded,
         onClick = onClick
     ) {
         Speedometer(active = active, mode = mode)
         DropdownAction(
-            title = "Sched Boost Mode",
+            title = strings.schedModeTitle,
             value = mode,
             options = listOf("Off", "Auto", "Balanced", "Game", "Extreme"),
             onSelect = onSelect
@@ -966,11 +971,12 @@ private fun ThermalProfileCard(
     onClick: () -> Unit,
     onSelect: (String) -> Unit
 ) {
+    val strings = rememberTweakI18n()
     ExpandableTweakCard(
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Outlined.Thermostat,
-        title = "Thermal Profile",
-        subtitle = "Thermal tweak terpisah",
+        title = strings.thermalTitle,
+        subtitle = strings.thermalSubtitle,
         badge = thermalLabel(current),
         active = current != "default",
         expanded = expanded,
@@ -2021,13 +2027,13 @@ private fun RendererDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select GPU Renderer", fontWeight = FontWeight.Bold) },
+        title = { Text(rememberTweakI18n().rendererSubtitle, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 renderers.forEach { item ->
                     ToggleOption(
                         title = item,
-                        subtitle = if (item == current) "Sedang dipilih" else "Tap untuk memilih",
+                        subtitle = if (item == current) if (LocalLanguage.current == AppLanguage.INDONESIAN) "Sedang dipilih" else "Selected" else if (LocalLanguage.current == AppLanguage.INDONESIAN) "Ketuk untuk memilih" else "Tap to select",
                         checked = item == current,
                         onClick = { onSelect(item) }
                     )
@@ -2035,7 +2041,7 @@ private fun RendererDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Tutup") }
+            TextButton(onClick = onDismiss) { Text(rememberTweakI18n().commonClose) }
         }
     )
 }
@@ -2127,6 +2133,40 @@ private class TweakI18n(private val isId: Boolean) {
 
     val appProfileCardTitle: String get() = if (isId) "Profil Aplikasi" else "App Profile"
     val appProfileCardSubtitle: String get() = if (isId) "Kelola profil aplikasi" else "Manage app profiles"
+
+    val cpuSubtitle: String get() = if (isId) "Governor & kunci frekuensi" else "Governor & frequency lock"
+    val cpuGovTitle: String get() = "CPU Governor"
+    val cpuLockTitle: String get() = if (isId) "Kunci Frekuensi CPU" else "CPU Frequency Lock"
+    val cpuLockSubtitle: String get() = if (isId) "Atur batas minimum dan maksimum" else "Set minimum and maximum limits"
+    val cpuLocked: String get() = if (isId) "CPU Terkunci" else "CPU Locked"
+    val cpuLockAction: String get() = if (isId) "Kunci CPU" else "Lock CPU"
+
+    val gpuSubtitle: String get() = if (isId) "Profil, frekuensi, renderer" else "Profile, frequency, renderer"
+    val gpuProfileTitle: String get() = if (isId) "Profil Governor GPU" else "GPU Governor Profile"
+    val gpuLockTitle: String get() = if (isId) "Kunci Frekuensi GPU" else "GPU Frequency Lock"
+    val gpuLockSubtitle: String get() = if (isId) "Kunci batas frekuensi GPU" else "Lock GPU frequency limit"
+    val gpuLocked: String get() = if (isId) "GPU Terkunci" else "GPU Locked"
+    val gpuLockAction: String get() = if (isId) "Kunci GPU" else "Lock GPU"
+    val rendererTitle: String get() = "Renderer"
+    val rendererSubtitle: String get() = if (isId) "Pilih renderer GPU" else "Select GPU renderer"
+
+    val memoryTitle: String get() = if (isId) "Memori" else "Memory"
+    val memorySubtitle: String get() = if (isId) "ZRAM, LMK, swap, cleaner" else "ZRAM, LMK, swap, cleaner"
+    val memoryZramSubtitle: String get() = if (isId) "Kompresi RAM virtual" else "Compressed virtual RAM"
+    val memoryLmkSubtitle: String get() = if (isId) "Low memory killer agresif" else "Aggressive low memory killer"
+    val memorySwapSubtitle: String get() = if (isId) "Bantu paging saat RAM penuh" else "Help paging when RAM is full"
+    val memoryKillSubtitle: String get() = if (isId) "Bersihkan proses latar" else "Clean background processes"
+
+    val ioTitle: String get() = "I/O Scheduler"
+    val ioSubtitle: String get() = if (isId) "Antrian baca/tulis disk" else "Disk read/write queue"
+    val schedTitle: String get() = "Sched Boost"
+    val schedSubtitle: String get() = if (isId) "Booster scheduler game" else "Game scheduler booster"
+    val schedModeTitle: String get() = if (isId) "Mode Sched Boost" else "Sched Boost Mode"
+    val thermalTitle: String get() = if (isId) "Profil Thermal" else "Thermal Profile"
+    val thermalSubtitle: String get() = if (isId) "Tweak thermal terpisah" else "Separate thermal tweak"
+    val commonOff: String get() = "Off"
+    val commonTuned: String get() = if (isId) "Aktif" else "Tuned"
+    val commonLocked: String get() = if (isId) "Terkunci" else "Locked"
 
     val commonOpen: String get() = if (isId) "Buka" else "Open"
     val commonClose: String get() = if (isId) "Tutup" else "Close"

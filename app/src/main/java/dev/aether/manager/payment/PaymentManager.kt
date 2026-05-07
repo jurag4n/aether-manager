@@ -2,6 +2,7 @@ package dev.aether.manager.payment
 
 import android.content.Context
 import dev.aether.manager.NativeAether
+import dev.aether.manager.NativeSecrets
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.license.LicensePrefs
 import kotlinx.coroutines.Dispatchers
@@ -19,17 +20,9 @@ object PaymentManager {
 
     // ── Endpoint URL getters (dari native layer, dengan hardcoded fallback) ───
 
-    private fun createOrderUrl(): String =
-        if (NativeAether.isLoaded)
-            runCatching { NativeAether.nativeGetCreateOrderUrl() }.getOrNull()
-                ?: "https://aether-app-weld.vercel.app/api/payment/create-order"
-        else "https://aether-app-weld.vercel.app/api/payment/create-order"
+    private fun createOrderUrl(): String = NativeSecrets.createOrderUrl()
 
-    private fun pollOrderUrl(): String =
-        if (NativeAether.isLoaded)
-            runCatching { NativeAether.nativeGetPollOrderUrl() }.getOrNull()
-                ?: "https://aether-app-weld.vercel.app/api/payment/poll-order"
-        else "https://aether-app-weld.vercel.app/api/payment/poll-order"
+    private fun pollOrderUrl(): String = NativeSecrets.pollOrderUrl()
 
     // ── Data classes ──────────────────────────────────────────────────────────
 
@@ -96,15 +89,15 @@ object PaymentManager {
                             label      = m.optString("label", ""),
                             type       = m.optString("type", "ewallet"),
                             number     = m.optString("number", "-"),
-                            holderName = m.optString("holderName", "Al** A**** Kh****"),
+                            holderName = m.optString("holderName", NativeSecrets.holderName()),
                         )
                     }
                 } else {
                     // backward-compat: server lama hanya kirim gopay & dana
                     val gopay = json.optString("gopay", "-")
                     val dana  = json.optString("dana", "-")
-                    if (gopay != "-") methods += PaymentMethod("gopay", "GoPay", "ewallet", gopay, "Al** A**** Kh****")
-                    if (dana  != "-") methods += PaymentMethod("dana",  "DANA",  "ewallet", dana,  "Al** A**** Kh****")
+                    if (gopay != "-") methods += PaymentMethod("gopay", NativeSecrets.gopayLabel(), "ewallet", gopay, NativeSecrets.holderName())
+                    if (dana  != "-") methods += PaymentMethod("dana",  NativeSecrets.danaLabel(),  "ewallet", dana,  NativeSecrets.holderName())
                 }
 
                 CreateOrderResult.Success(
