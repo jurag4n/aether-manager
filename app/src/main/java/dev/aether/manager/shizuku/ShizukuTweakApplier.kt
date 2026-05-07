@@ -34,7 +34,7 @@ _ok=0; _skip=0; _fail=0
 mark_ok(){ _ok=$((_ok+1)); }
 mark_skip(){ _skip=$((_skip+1)); }
 mark_fail(){ _fail=$((_fail+1)); }
-finish(){ echo "RESULT:$1:$2:a=$_ok:s=$_skip:f=$_fail"; _ok=0; _skip=0; _fail=0; }
+finish(){ echo "RESULT:$1:$2:a=${'$'}_ok:s=${'$'}_skip:f=${'$'}_fail"; _ok=0; _skip=0; _fail=0; }
 """.trimIndent()).append('\n')
 
         append("# ui animation\n")

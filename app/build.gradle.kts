@@ -119,7 +119,6 @@ android {
         buildConfig = true
     }
 
-
     packaging {
         resources {
             excludes += setOf(
@@ -159,9 +158,9 @@ dependencies {
     implementation(libs.libsu.service)
     implementation(libs.libsu.io)
     implementation(libs.mmkv)
-    implementation(libs.zstd.jni)
-    implementation(libs.sqlite.bundled)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     implementation(libs.compose.foundation)
     implementation(libs.lottie.compose)
     implementation(libs.timber)

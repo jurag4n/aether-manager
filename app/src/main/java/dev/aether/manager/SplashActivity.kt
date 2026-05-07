@@ -60,7 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.aether.manager.i18n.ProvideStrings
+import dev.aether.manager.i18n.*
 import dev.aether.manager.ui.AetherTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -121,6 +121,7 @@ fun SplashScreen(onFinished: () -> Unit) {
     val surface = MaterialTheme.colorScheme.surface
     val onSurface = MaterialTheme.colorScheme.onSurface
     val density = LocalDensity.current
+    val s = LocalStrings.current
 
     val backgroundAlpha = remember { Animatable(0f) }
     val logoAlpha = remember { Animatable(0f) }
@@ -336,7 +337,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Smart Control • Clean Boost • Premium Tools",
+                text = s.splashSubtitle,
                 modifier = Modifier.graphicsLayer {
                     alpha = subtitleAlpha.value
                     translationY = with(density) { subtitleOffset.value.dp.toPx() }
@@ -360,7 +361,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Preparing your workspace",
+                    text = s.splashPreparing,
                     color = primary.copy(alpha = 0.92f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,

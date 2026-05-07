@@ -20,9 +20,22 @@ object PaymentManager {
 
     // ── Endpoint URL getters (dari native layer, dengan hardcoded fallback) ───
 
-    private fun createOrderUrl(): String = NativeSecrets.createOrderUrl()
+    private fun createOrderUrl(ctx: Context): String {
+        NativeAether.tryLoad(ctx.applicationContext)
+        return NativeSecrets.createOrderUrl().requireHttpUrl("createOrderUrl")
+    }
 
-    private fun pollOrderUrl(): String = NativeSecrets.pollOrderUrl()
+    private fun pollOrderUrl(ctx: Context): String {
+        NativeAether.tryLoad(ctx.applicationContext)
+        return NativeSecrets.pollOrderUrl().requireHttpUrl("pollOrderUrl")
+    }
+
+    private fun String.requireHttpUrl(name: String): String {
+        val value = trim()
+        if (value.startsWith("https://") || value.startsWith("http://")) return value
+        if (value.isBlank()) throw IllegalStateException("$name native URL empty")
+        throw IllegalStateException("$name invalid URL: missing protocol")
+    }
 
     // ── Data classes ──────────────────────────────────────────────────────────
 
@@ -61,7 +74,7 @@ object PaymentManager {
     ): CreateOrderResult = withContext(Dispatchers.IO) {
         try {
             val deviceId = LicenseManager.getDeviceId(ctx)
-            val conn = openPost(createOrderUrl())
+            val conn = openPost(createOrderUrl(ctx))
 
             val body = JSONObject().apply {
                 put("name",     name.trim())
@@ -132,7 +145,7 @@ object PaymentManager {
                 return@withContext r
             }
 
-            val result = checkOrder(orderId, deviceId)
+            val result = checkOrder(ctx, orderId, deviceId)
             onPoll(result)
 
             when (result) {
@@ -153,12 +166,12 @@ object PaymentManager {
 
     // ── Single poll ───────────────────────────────────────────────────────────
 
-    private suspend fun checkOrder(orderId: String, deviceId: String): PollResult =
+    private suspend fun checkOrder(ctx: Context, orderId: String, deviceId: String): PollResult =
         withContext(Dispatchers.IO) {
             try {
                 val oid  = java.net.URLEncoder.encode(orderId,  "UTF-8")
                 val did  = java.net.URLEncoder.encode(deviceId, "UTF-8")
-                val conn = (URL("${pollOrderUrl()}?orderId=$oid&deviceId=$did")
+                val conn = (URL("${pollOrderUrl(ctx)}?orderId=$oid&deviceId=$did")
                     .openConnection() as HttpURLConnection).apply {
                     requestMethod  = "GET"
                     connectTimeout = 8_000
