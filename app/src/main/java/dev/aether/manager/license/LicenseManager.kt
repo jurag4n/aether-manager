@@ -17,7 +17,17 @@ object LicenseManager {
      * Kembalikan URL endpoint activate dari native layer.
      * Fallback ke hardcoded jika library belum ter-load (dev/test env).
      */
-    private fun activateUrl(): String = NativeSecrets.activateUrl()
+    private fun activateUrl(ctx: Context): String {
+        NativeAether.tryLoad(ctx.applicationContext)
+        return NativeSecrets.activateUrl().requireHttpUrl("activateUrl")
+    }
+
+    private fun String.requireHttpUrl(name: String): String {
+        val value = trim()
+        if (value.startsWith("https://") || value.startsWith("http://")) return value
+        if (value.isBlank()) throw IllegalStateException("$name native URL empty")
+        throw IllegalStateException("$name invalid URL: missing protocol")
+    }
 
     fun getDeviceId(ctx: Context): String {
         val androidId = Settings.Secure.getString(
@@ -46,7 +56,7 @@ object LicenseManager {
         withContext(Dispatchers.IO) {
             try {
                 val deviceId = getDeviceId(ctx)
-                val url  = URL(activateUrl())
+                val url  = URL(activateUrl(ctx))
                 val conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json")

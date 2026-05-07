@@ -37,6 +37,7 @@ import dev.aether.manager.license.LicensePrefs
 import dev.aether.manager.license.LicenseViewModel
 import dev.aether.manager.payment.InvoicePrefs
 import dev.aether.manager.payment.PaymentViewModel
+import dev.aether.manager.NativeAether
 import dev.aether.manager.NativeSecrets
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.window.Dialog
@@ -996,9 +997,7 @@ private fun sendPaymentNotificationSilent(
     ).show()
 
     try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(NativeSecrets.telegramUrl()))
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(intent)
+        openExternalUrl(ctx, NativeSecrets.telegramUrl())
     } catch (_: Exception) {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -1016,7 +1015,7 @@ private fun ContactAdminRow(ctx: Context) {
         OutlinedButton(
             onClick  = {
                 val msg = "Halo Admin, saya ingin menanyakan status pembayaran Aether Manager Premium."
-                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(NativeSecrets.whatsappUrl() + "?text=${Uri.encode(msg)}")))
+                openExternalUrl(ctx, NativeSecrets.whatsappUrl(), "text" to msg)
             },
             modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)
         ) {
@@ -1025,7 +1024,7 @@ private fun ContactAdminRow(ctx: Context) {
             Text(s.licenseContactWhatsApp, style = MaterialTheme.typography.labelMedium)
         }
         OutlinedButton(
-            onClick  = { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(NativeSecrets.telegramUrl()))) },
+            onClick  = { openExternalUrl(ctx, NativeSecrets.telegramUrl()) },
             modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)
         ) {
             Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, modifier = Modifier.size(16.dp))
@@ -1033,6 +1032,22 @@ private fun ContactAdminRow(ctx: Context) {
             Text(s.licenseContactTelegram, style = MaterialTheme.typography.labelMedium)
         }
     }
+}
+
+private fun openExternalUrl(ctx: Context, rawUrl: String, vararg query: Pair<String, String>) {
+    NativeAether.tryLoad(ctx.applicationContext)
+    val base = rawUrl.trim()
+    val normalized = when {
+        base.startsWith("https://") || base.startsWith("http://") || base.startsWith("tg://") || base.startsWith("whatsapp://") -> base
+        base.startsWith("t.me/") || base.startsWith("wa.me/") -> "https://$base"
+        base.startsWith("@") -> "https://t.me/${base.removePrefix("@")}"
+        base.isBlank() -> return
+        else -> "https://$base"
+    }
+    val uri = Uri.parse(normalized).buildUpon().apply {
+        query.forEach { (key, value) -> appendQueryParameter(key, value) }
+    }.build()
+    ctx.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
 @Composable

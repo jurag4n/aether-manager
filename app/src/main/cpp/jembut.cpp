@@ -321,7 +321,7 @@ Java_dev_aether_manager_security_AetherSecurityNative_nativeVerifySignature(JNIE
     got[len] = '\0';
 
     int ok;
-    if (strcmp(expected, "b8d371c1a06f445e278c66722903f1b8c21d61e7d427fff5550b3ba06e4cec58") == 0) {
+    if (strcmp(expected, "GANTI_DENGAN_SHA256_SIGNING_CERT_KAMU") == 0) {
         ok = (len == 64);
     } else {
         lower_ascii(expected);
