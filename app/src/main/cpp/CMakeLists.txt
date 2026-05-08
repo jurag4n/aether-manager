@@ -33,7 +33,8 @@ set(COMMON_LINK_OPTIONS
     -Wl,-z,noexecstack
     -Wl,-z,relro
     -Wl,-z,now
-    -Wl,-z,notext
+    # REMOVED: -Wl,-z,notext  <-- ini yang bikin text relocation lolos tapi justru
+    #                              menyebabkan dlopen gagal di Android API 23+
     -Wl,--no-undefined
     -Wl,--hash-style=gnu
     -Wl,--discard-all
@@ -47,6 +48,7 @@ set(AETHER_LINK_OPTIONS
     ${COMMON_LINK_OPTIONS}
 )
 
+# ─── libaether.so ────────────────────────────────────────────────────────────
 add_library(aether SHARED libaether.cpp)
 
 target_compile_features(aether PRIVATE cxx_std_17)
@@ -60,6 +62,26 @@ target_compile_options(aether PRIVATE ${AETHER_COMPILE_OPTIONS})
 target_link_options(aether PRIVATE ${AETHER_LINK_OPTIONS})
 
 target_link_libraries(aether PRIVATE
+    android
+    log
+)
+
+# ─── libjembut.so ────────────────────────────────────────────────────────────
+# FIX: target ini sebelumnya tidak ada → libjembut.so tidak pernah di-compile
+#      → dlopen "library not found" → AetherSecurityNative.tryLoad() = false → FC
+add_library(jembut SHARED jembut.cpp)
+
+target_compile_features(jembut PRIVATE cxx_std_17)
+
+set_target_properties(jembut PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+    NO_SONAME TRUE
+)
+
+target_compile_options(jembut PRIVATE ${COMMON_COMPILE_OPTIONS})
+target_link_options(jembut PRIVATE ${COMMON_LINK_OPTIONS})
+
+target_link_libraries(jembut PRIVATE
     android
     log
 )
