@@ -64,11 +64,12 @@ static const uint8_t PLACEHOLDER_SIG[] = {
 
 static const char *hook_needles[] = {
     "frida", "gum-js-loop", "gmain", "gdbus", "frida-agent", "frida-gadget", "linjector", "re.frida",
-    "objection", "xposed", "lsposed", "edxposed", "virtualxposed", "taichi", "zygisk", "riru",
+    "objection", "xposed", "edxposed", "virtualxposed", "taichi",
     "substrate", "epic", "sandhook", "whale", "yahfa", "pine", "legend", "dexposed", "cydia"
 };
 
 static const char *patch_needles[] = {
+    "lspatch", "lspatch-loader", "lspatch manager", "org.lsposed.lspatch", "lspatchmodule", "lspatch_module",
     "luckypatcher", "lucky patcher", "chelpus", "lpatcher", "lp.lock", "lp.db",
     "apktool", "apktool.yml", "smali", "baksmali", "apktool-m", "apktool m",
     "jadx", "jadx-gui", "dex2jar", "jd-gui", "bytecode-viewer",
@@ -290,11 +291,15 @@ static int suspicious_task_names() {
 static int sdcard_name_is_high_confidence(const char *name) {
     if (!name || !name[0]) return 0;
 
+    if (strstr(name, "lspatch") || strstr(name, "org.lsposed.lspatch")) {
+        return 1;
+    }
+
     if (strstr(name, "base.apk") || strstr(name, "classes.dex") || strstr(name, ".apk") || strstr(name, ".dex") ||
         strstr(name, "mt manager") || strstr(name, "mtmanager") ||
         strstr(name, "np manager") || strstr(name, "npmanager") ||
         strstr(name, "zygisk") || strstr(name, "riru") || strstr(name, "lsposed") || strstr(name, "xposed") ||
-        strstr(name, "lspatch") || strstr(name, "magisk")) {
+        strstr(name, "magisk")) {
         return 0;
     }
 
