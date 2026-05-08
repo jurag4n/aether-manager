@@ -50,7 +50,6 @@ import dev.aether.manager.ads.AdScheduler
 import dev.aether.manager.ads.InterstitialAdManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import dev.aether.manager.shizuku.ShizukuShell
 import kotlinx.coroutines.withContext
 import dev.aether.manager.data.AppProfileViewModel
 import dev.aether.manager.data.MainViewModel
@@ -65,7 +64,6 @@ import dev.aether.manager.ui.components.RebootBottomSheet
 import dev.aether.manager.ui.home.HomeScreen
 import dev.aether.manager.ui.settings.SettingsScreen
 import dev.aether.manager.ui.tweak.TweakScreen
-import dev.aether.manager.ui.tweak.NoRootTweakScreen
 import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
 import dev.aether.manager.util.RootEngine
@@ -152,12 +150,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
         LicenseManager.isActive(context)
     }
 
-    val setupPrefs = remember { context.getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE) }
-    var setupModeTick by remember { mutableIntStateOf(0) }
-    val noRootMode = remember(setupModeTick) {
-        setupPrefs.getBoolean("no_root_mode", false) || setupPrefs.getString("setup_mode", "") == "shizuku"
-    }
-
     val updateState by updateVm.state.collectAsState()
     LaunchedEffect(Unit) { updateVm.checkUpdate() }
     LaunchedEffect(updateState) {
@@ -216,13 +208,12 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                     }
                     adBlockCheckTrigger++
                     premiumCheckTick++
-                    setupModeTick++
                     LicenseNotificationChecker.check(activity)
                     // Refresh device info jika masih Loading (misal baru balik dari SetupActivity)
                     // atau jika root belum pernah dicek. Ini fix untuk Home stuck di skeleton.
                     vm.refreshIfNeeded()
-                    // App Profile is root-only. Do not load it for no-root/Shizuku users.
-                    if (!noRootMode) apVm.loadIfNeeded()
+                    // Reload app profiles jika belum siap (root mungkin baru granted)
+                    apVm.loadIfNeeded()
 
                     // Trigger update check on resume so users get update notifications without reopening the app
                     updateVm.checkUpdate()
@@ -246,13 +237,11 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
         }
     }
 
-    val navItems = buildList {
-        add(NavItem(Screen.HOME, s.navHome, Icons.Filled.Home, Icons.Outlined.Home))
-        add(NavItem(Screen.TWEAK, if (noRootMode) "No Root" else s.navTweak, Icons.Filled.Tune, Icons.Outlined.Tune))
-        if (!noRootMode) {
-            add(NavItem(Screen.APPS, s.navApps, Icons.Filled.Apps, Icons.Outlined.Apps))
-        }
-    }
+    val navItems = listOf(
+        NavItem(Screen.HOME,  s.navHome,  Icons.Filled.Home,  Icons.Outlined.Home),
+        NavItem(Screen.TWEAK, s.navTweak, Icons.Filled.Tune,  Icons.Outlined.Tune),
+        NavItem(Screen.APPS,  s.navApps,  Icons.Filled.Apps,  Icons.Outlined.Apps),
+    )
 
     var bottomNavVisible by remember { mutableStateOf(true) }
     val scrollAwareNavConnection = remember {
@@ -283,10 +272,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                 return Offset.Zero
             }
         }
-    }
-
-    LaunchedEffect(noRootMode, currentScreen) {
-        if (noRootMode && currentScreen == Screen.APPS) currentScreen = Screen.TWEAK
     }
 
     LaunchedEffect(currentScreen) {
@@ -345,12 +330,8 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
             ) { screen ->
                 when (screen) {
                     Screen.HOME -> HomeScreen(vm)
-                    Screen.TWEAK -> if (noRootMode) {
-                        NoRootTweakScreen(vm)
-                    } else {
-                        TweakScreen(vm, onOpenAppProfile = { currentScreen = Screen.APPS })
-                    }
-                    Screen.APPS -> if (!noRootMode) AppProfileScreen(apVm) else NoRootTweakScreen(vm)
+                    Screen.TWEAK -> TweakScreen(vm, onOpenAppProfile = { currentScreen = Screen.APPS })
+                    Screen.APPS -> AppProfileScreen(apVm)
                 }
             }
 

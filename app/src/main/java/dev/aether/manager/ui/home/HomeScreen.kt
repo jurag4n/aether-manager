@@ -144,7 +144,7 @@ private fun InfoDeviceError(msg: String, onRetry: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Outlined.Refresh, null, tint = MaterialTheme.colorScheme.onError, modifier = Modifier.size(16.dp))
-                    Text(dev.aether.manager.i18n.LocalStrings.current.homeRetry, color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
+                    Text("Refresh", color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -168,8 +168,8 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
     val cpuFreq = normalizeCpuFreq(state.cpuFreq)
-    // Display CPU usage gracefully for no-root devices too.
-    val cpuUsageLabel = if (state.cpuUsage > 0) "${state.cpuUsage}%" else "0–1%"
+    // Display CPU usage gracefully: show dash if zero or negative
+    val cpuUsageLabel = if (state.cpuUsage > 0) "${state.cpuUsage}%" else "—%"
     val freqSize = when {
         cpuFreq.length >= 10 -> 23.sp
         cpuFreq.length >= 8 -> 25.sp
@@ -227,7 +227,7 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
         TempItem("CPU", state.cpuTemp, Icons.Outlined.Memory),
         TempItem("GPU", state.gpuTemp, Icons.Outlined.GridView),
         TempItem("Thermal", state.thermalTemp, Icons.Outlined.Thermostat),
-        TempItem(dev.aether.manager.i18n.LocalStrings.current.homeTempBat, state.batTemp, Icons.Outlined.BatteryFull)
+        TempItem("Baterai", state.batTemp, Icons.Outlined.BatteryFull)
     )
     val pager = rememberPagerState(pageCount = { temps.size })
     val accent = Color(0xFFFF9CAF)
@@ -241,7 +241,7 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconBadge(Icons.Outlined.Thermostat, accent)
-                    Text(dev.aether.manager.i18n.LocalStrings.current.homeMonitor, fontSize = 17.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Suhu", fontSize = 17.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -326,8 +326,8 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                val gpuUsageLabel = if (state.gpuUsage > 0) "${state.gpuUsage}%" else "No root"
-                InfoTile(Icons.Outlined.Thermostat, gpuUsageLabel, "GPU Load", accent, Modifier.weight(1f))
+                val gpuUsageLabel = if (state.gpuUsage > 0) "${state.gpuUsage}%" else "—%"
+                InfoTile(Icons.Outlined.Thermostat, gpuUsageLabel, "Beban GPU", accent, Modifier.weight(1f))
                 InfoTile(Icons.Outlined.GridView, gpuShortName, "GPU", accent, Modifier.weight(1f))
             }
         }
@@ -345,7 +345,7 @@ private fun MemoryInfoCard(state: MonitorState) {
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconBadge(Icons.Outlined.Dns, MaterialTheme.colorScheme.primary)
-                    Text(dev.aether.manager.i18n.LocalStrings.current.tweakSectionMemory, fontSize = 21.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Memori", fontSize = 21.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -356,7 +356,7 @@ private fun MemoryInfoCard(state: MonitorState) {
             MemoryDivider()
             MemoryMetricRow(
                 Icons.Outlined.Storage,
-                "Storage",
+                "Penyimpanan Internal",
                 "%.1f GB".format(state.storageUsedGb),
                 advertisedStorageLabel(state.storageTotalGb),
                 ratio(state.storageUsedGb, advertisedStorageGb(state.storageTotalGb)),

@@ -2,7 +2,6 @@ package dev.aether.manager.update
 
 import android.util.Log
 import dev.aether.manager.NativeAether
-import dev.aether.manager.NativeSecrets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
@@ -48,12 +47,12 @@ sealed class UpdateResult {
 object UpdateChecker {
 
     private const val TAG           = "UpdateChecker"
-    private const val FALLBACK_API  = ""
+    private const val FALLBACK_API  = "https://api.github.com/repos/aetherdev01/aether-manager/releases/latest"
 
     // Full API URL diambil dari native layer (XOR-encoded di libaether.so).
     // Fallback ke konstanta hardcode jika library belum dimuat.
     private val API: String
-        get() = NativeSecrets.githubApi().ifBlank { FALLBACK_API }
+        get() = if (NativeAether.isLoaded) NativeAether.nativeGetGithubApi() else FALLBACK_API
 
     private val client by lazy {
         OkHttpClient.Builder()

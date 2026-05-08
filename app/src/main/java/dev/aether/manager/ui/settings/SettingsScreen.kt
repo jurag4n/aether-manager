@@ -61,10 +61,6 @@ fun SettingsScreen(
 ) {
     val s   = LocalStrings.current
     val ctx = LocalContext.current
-    val noRootMode = remember {
-        val p = ctx.getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
-        p.getBoolean("no_root_mode", false) || p.getString("setup_mode", "") == "shizuku"
-    }
 
     BackHandler(onBack = onBack)
 
@@ -197,16 +193,14 @@ fun SettingsScreen(
                 expanded = generalExpanded,
                 onToggle = { generalExpanded = !generalExpanded }
             ) {
-                if (!noRootMode) {
-                    SettingsRowSwitch(
-                        icon = Icons.Outlined.CloudUpload,
-                        title = s.settingsAutoBackup,
-                        subtitle = s.settingsAutoBackupDesc,
-                        checked = autoBackup,
-                        onCheckedChange = { vm.setAutoBackup(it) }
-                    )
-                    SettingsDivider()
-                }
+                SettingsRowSwitch(
+                    icon = Icons.Outlined.CloudUpload,
+                    title = s.settingsAutoBackup,
+                    subtitle = s.settingsAutoBackupDesc,
+                    checked = autoBackup,
+                    onCheckedChange = { vm.setAutoBackup(it) }
+                )
+                SettingsDivider()
                 SettingsRowSwitch(
                     icon = Icons.Outlined.FlashOn,
                     title = s.settingsApplyOnBoot,
@@ -231,8 +225,7 @@ fun SettingsScreen(
                 )
             }
 
-            if (!noRootMode) {
-                SettingsSectionCard(
+            SettingsSectionCard(
                 icon = Icons.Outlined.Archive,
                 title = "Backup & Reset",
                 subtitle = if (backupList.isEmpty()) s.settingsNoBackup else "${backupList.size} backup tersimpan",
@@ -314,7 +307,6 @@ fun SettingsScreen(
                         }
                     }
                 }
-            }
             }
         }
     }

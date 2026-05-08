@@ -2,7 +2,6 @@ package dev.aether.manager.payment
 
 import android.content.Context
 import dev.aether.manager.NativeAether
-import dev.aether.manager.NativeSecrets
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.license.LicensePrefs
 import kotlinx.coroutines.Dispatchers
@@ -20,22 +19,17 @@ object PaymentManager {
 
     // ── Endpoint URL getters (dari native layer, dengan hardcoded fallback) ───
 
-    private fun createOrderUrl(ctx: Context): String {
-        NativeAether.tryLoad(ctx.applicationContext)
-        return NativeSecrets.createOrderUrl().requireHttpUrl("createOrderUrl")
-    }
+    private fun createOrderUrl(): String =
+        if (NativeAether.isLoaded)
+            runCatching { NativeAether.nativeGetCreateOrderUrl() }.getOrNull()
+                ?: "https://aether-app-weld.vercel.app/api/payment/create-order"
+        else "https://aether-app-weld.vercel.app/api/payment/create-order"
 
-    private fun pollOrderUrl(ctx: Context): String {
-        NativeAether.tryLoad(ctx.applicationContext)
-        return NativeSecrets.pollOrderUrl().requireHttpUrl("pollOrderUrl")
-    }
-
-    private fun String.requireHttpUrl(name: String): String {
-        val value = trim()
-        if (value.startsWith("https://") || value.startsWith("http://")) return value
-        if (value.isBlank()) throw IllegalStateException("$name native URL empty")
-        throw IllegalStateException("$name invalid URL: missing protocol")
-    }
+    private fun pollOrderUrl(): String =
+        if (NativeAether.isLoaded)
+            runCatching { NativeAether.nativeGetPollOrderUrl() }.getOrNull()
+                ?: "https://aether-app-weld.vercel.app/api/payment/poll-order"
+        else "https://aether-app-weld.vercel.app/api/payment/poll-order"
 
     // ── Data classes ──────────────────────────────────────────────────────────
 
@@ -74,7 +68,7 @@ object PaymentManager {
     ): CreateOrderResult = withContext(Dispatchers.IO) {
         try {
             val deviceId = LicenseManager.getDeviceId(ctx)
-            val conn = openPost(createOrderUrl(ctx))
+            val conn = openPost(createOrderUrl())
 
             val body = JSONObject().apply {
                 put("name",     name.trim())
@@ -102,15 +96,15 @@ object PaymentManager {
                             label      = m.optString("label", ""),
                             type       = m.optString("type", "ewallet"),
                             number     = m.optString("number", "-"),
-                            holderName = m.optString("holderName", NativeSecrets.holderName()),
+                            holderName = m.optString("holderName", "Al** A**** Kh****"),
                         )
                     }
                 } else {
                     // backward-compat: server lama hanya kirim gopay & dana
                     val gopay = json.optString("gopay", "-")
                     val dana  = json.optString("dana", "-")
-                    if (gopay != "-") methods += PaymentMethod("gopay", NativeSecrets.gopayLabel(), "ewallet", gopay, NativeSecrets.holderName())
-                    if (dana  != "-") methods += PaymentMethod("dana",  NativeSecrets.danaLabel(),  "ewallet", dana,  NativeSecrets.holderName())
+                    if (gopay != "-") methods += PaymentMethod("gopay", "GoPay", "ewallet", gopay, "Al** A**** Kh****")
+                    if (dana  != "-") methods += PaymentMethod("dana",  "DANA",  "ewallet", dana,  "Al** A**** Kh****")
                 }
 
                 CreateOrderResult.Success(
@@ -145,7 +139,7 @@ object PaymentManager {
                 return@withContext r
             }
 
-            val result = checkOrder(ctx, orderId, deviceId)
+            val result = checkOrder(orderId, deviceId)
             onPoll(result)
 
             when (result) {
@@ -166,12 +160,12 @@ object PaymentManager {
 
     // ── Single poll ───────────────────────────────────────────────────────────
 
-    private suspend fun checkOrder(ctx: Context, orderId: String, deviceId: String): PollResult =
+    private suspend fun checkOrder(orderId: String, deviceId: String): PollResult =
         withContext(Dispatchers.IO) {
             try {
                 val oid  = java.net.URLEncoder.encode(orderId,  "UTF-8")
                 val did  = java.net.URLEncoder.encode(deviceId, "UTF-8")
-                val conn = (URL("${pollOrderUrl(ctx)}?orderId=$oid&deviceId=$did")
+                val conn = (URL("${pollOrderUrl()}?orderId=$oid&deviceId=$did")
                     .openConnection() as HttpURLConnection).apply {
                     requestMethod  = "GET"
                     connectTimeout = 8_000

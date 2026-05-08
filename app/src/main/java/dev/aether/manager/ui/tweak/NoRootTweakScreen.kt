@@ -243,7 +243,7 @@ private fun NoRootHeader(
             }
 
             Text(
-                "CPU/GPU/kernel/root-only features are hidden in this mode. Use Root Mode if you need App Profile, governor, scheduler, thermal, or GPU controls.",
+                "Mode ini hanya menyediakan fitur aman tanpa root. Untuk fitur kernel, gunakan Root Mode.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -436,13 +436,13 @@ private fun RootLockedCard() {
                 Text("Root Features Hidden", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
             }
             Text(
-                "App Profile, CPU governor, GPU frequency, thermal profile, I/O scheduler, ZRAM, LMK, and boot persistence are root-only. They are intentionally not shown for no-root users.",
+                "Fitur kernel tidak ditampilkan di mode no-root agar UI tetap bersih dan tidak membingungkan.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
             Text(
-                "Switch to Root Mode from Setup/Settings to unlock full kernel manager features.",
+                "Gunakan Root Mode untuk kontrol kernel penuh.",
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodySmall
             )

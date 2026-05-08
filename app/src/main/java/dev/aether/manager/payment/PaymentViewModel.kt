@@ -7,7 +7,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import dev.aether.manager.i18n.RuntimeUiText
 
 class PaymentViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -44,15 +43,13 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
          * - Indonesia: 08xxxxxxxxxx, 62xxxxxxxxxx, +62xxxxxxxxxx
          * - International: +<country-code><number>, 8-15 digit sesuai gaya E.164
          */
-        fun validatePhone(phone: String): String? = validatePhone(null, phone)
-
-        fun validatePhone(context: android.content.Context?, phone: String): String? {
+        fun validatePhone(phone: String): String? {
             val raw = phone.trim()
-            if (raw.isBlank()) return context?.let { RuntimeUiText.phoneRequired(it) } ?: "WhatsApp number is required"
+            if (raw.isBlank()) return "Nomor WhatsApp wajib diisi"
 
             val compact = raw.replace(Regex("[\\s\\-()]"), "")
             if (!compact.matches(Regex("^\\+?\\d+$"))) {
-                return context?.let { RuntimeUiText.phoneInvalid(it) } ?: "Invalid number format. Example: 08123456789 or +14155552671"
+                return "Format nomor tidak valid. Contoh: 08123456789 atau +14155552671"
             }
 
             val internationalDigits = when {
@@ -63,8 +60,8 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
                 else -> compact
             }
 
-            if (internationalDigits.length < 8) return context?.let { RuntimeUiText.phoneTooShort(it) } ?: "Number is too short"
-            if (internationalDigits.length > 15) return context?.let { RuntimeUiText.phoneTooLong(it) } ?: "Number is too long"
+            if (internationalDigits.length < 8) return "Nomor terlalu pendek"
+            if (internationalDigits.length > 15) return "Nomor terlalu panjang"
             return null
         }
 
@@ -86,8 +83,8 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun createOrder(name: String, phone: String) {
-        if (name.isBlank()) { _uiState.value = UiState.Failure(RuntimeUiText.nameRequired(ctx)); return }
-        val phoneError = validatePhone(ctx, phone)
+        if (name.isBlank()) { _uiState.value = UiState.Failure("Nama harus diisi"); return }
+        val phoneError = validatePhone(phone)
         if (phoneError != null) { _uiState.value = UiState.Failure(phoneError); return }
         viewModelScope.launch {
             _uiState.value = UiState.CreatingOrder
@@ -133,11 +130,11 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
                 is PaymentManager.PollResult.Completed ->
                     UiState.Success(licenseKey = result.licenseKey, orderId = orderId)
                 is PaymentManager.PollResult.Failed ->
-                    UiState.Failure(RuntimeUiText.paymentFailed(ctx, result.status))
+                    UiState.Failure("Pembayaran ${result.status}. Hubungi admin.")
                 is PaymentManager.PollResult.Error ->
                     UiState.Failure(result.message)
                 is PaymentManager.PollResult.Pending ->
-                    UiState.Failure(RuntimeUiText.paymentTimeout(ctx))
+                    UiState.Failure("Timeout – belum ada konfirmasi")
             }
         }
     }

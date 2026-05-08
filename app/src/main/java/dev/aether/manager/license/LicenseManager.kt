@@ -3,7 +3,6 @@ package dev.aether.manager.license
 import android.content.Context
 import android.provider.Settings
 import dev.aether.manager.NativeAether
-import dev.aether.manager.NativeSecrets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -17,17 +16,11 @@ object LicenseManager {
      * Kembalikan URL endpoint activate dari native layer.
      * Fallback ke hardcoded jika library belum ter-load (dev/test env).
      */
-    private fun activateUrl(ctx: Context): String {
-        NativeAether.tryLoad(ctx.applicationContext)
-        return NativeSecrets.activateUrl().requireHttpUrl("activateUrl")
-    }
-
-    private fun String.requireHttpUrl(name: String): String {
-        val value = trim()
-        if (value.startsWith("https://") || value.startsWith("http://")) return value
-        if (value.isBlank()) throw IllegalStateException("$name native URL empty")
-        throw IllegalStateException("$name invalid URL: missing protocol")
-    }
+    private fun activateUrl(): String =
+        if (NativeAether.isLoaded)
+            runCatching { NativeAether.nativeGetActivateUrl() }.getOrNull()
+                ?: "https://aether-app-weld.vercel.app/api/activate"
+        else "https://aether-app-weld.vercel.app/api/activate"
 
     fun getDeviceId(ctx: Context): String {
         val androidId = Settings.Secure.getString(
@@ -56,7 +49,7 @@ object LicenseManager {
         withContext(Dispatchers.IO) {
             try {
                 val deviceId = getDeviceId(ctx)
-                val url  = URL(activateUrl(ctx))
+                val url  = URL(activateUrl())
                 val conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json")

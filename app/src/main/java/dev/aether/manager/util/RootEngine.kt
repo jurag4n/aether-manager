@@ -299,18 +299,11 @@ object RootEngine {
                 dt=${'$'}((total2-total1)); di=${'$'}((idle2-idle1))
                 [ ${'$'}dt -gt 0 ] && echo cpu_usage=${'$'}(((dt-di)*100/dt)) || echo cpu_usage=0
                 total_freq=0; core_count=0
-                for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq; do
+                for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq; do
                   [ -f "${'$'}f" ] || continue
-                  v=${'$'}(cat "${'$'}f" 2>/dev/null | tr -cd '0-9')
+                  v=${'$'}(cat "${'$'}f" 2>/dev/null)
                   [ -n "${'$'}v" ] && [ "${'$'}v" -gt 0 ] 2>/dev/null && { total_freq=${'$'}((total_freq+v)); core_count=${'$'}((core_count+1)); }
                 done
-                if [ ${'$'}core_count -eq 0 ]; then
-                  for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/cpuinfo_cur_freq /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_cur_freq; do
-                    [ -f "${'$'}f" ] || continue
-                    v=${'$'}(cat "${'$'}f" 2>/dev/null | tr -cd '0-9')
-                    [ -n "${'$'}v" ] && [ "${'$'}v" -gt 0 ] 2>/dev/null && { total_freq=${'$'}((total_freq+v)); core_count=${'$'}((core_count+1)); }
-                  done
-                fi
                 [ ${'$'}core_count -gt 0 ] && echo cpu_freq=${'$'}((total_freq/core_count/1000)) || echo cpu_freq=0
                 echo cpu_gov=${'$'}(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
                 cpu_temp_raw=0
@@ -357,7 +350,7 @@ object RootEngine {
                   val=${'$'}(cat /sys/kernel/gpu/gpu_busy 2>/dev/null | tr -cd '0-9' | cut -c1-3)
                   [ -n "${'$'}val" ] && gpu_usage=${'$'}val
                 else
-                  for _u in /sys/class/devfreq/*gpu*/load /sys/class/devfreq/*mali*/load /sys/class/devfreq/*g3d*/load /sys/devices/platform/*mali*/utilization /sys/devices/platform/*gpu*/utilization /sys/kernel/gpu/gpu_utilization /sys/kernel/gpu/gpu_busy; do
+                  for _u in /sys/class/devfreq/*gpu*/load /sys/class/devfreq/*mali*/load /sys/devices/platform/*mali*/utilization /sys/kernel/gpu/gpu_utilization; do
                     [ -f "${'$'}_u" ] || continue
                     val=${'$'}(cat "${'$'}_u" 2>/dev/null | tr -cd '0-9 ' | awk '{print ${'$'}1}' | cut -c1-3)
                     [ -n "${'$'}val" ] && { gpu_usage=${'$'}val; break; }
@@ -377,14 +370,6 @@ object RootEngine {
                   if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
                 elif [ -f /sys/kernel/gpu/gpu_clock ]; then
                   gpu_freq=${'$'}(cat /sys/kernel/gpu/gpu_clock 2>/dev/null | tr -cd '0-9')
-                else
-                  for _f in /sys/class/devfreq/*gpu*/cur_freq /sys/class/devfreq/*mali*/cur_freq /sys/class/devfreq/*g3d*/cur_freq /sys/devices/platform/*gpu*/devfreq/*/cur_freq /sys/devices/platform/*mali*/devfreq/*/cur_freq; do
-                    [ -f "${'$'}_f" ] || continue
-                    val=${'$'}(cat "${'$'}_f" 2>/dev/null | tr -cd '0-9' | head -c 12)
-                    [ -n "${'$'}val" ] || continue
-                    if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
-                    [ "${'$'}gpu_freq" -gt 0 ] 2>/dev/null && break
-                  done
                 fi
                 echo gpu_freq=${'$'}gpu_freq
                 gpu_temp_raw=0
@@ -421,10 +406,10 @@ object RootEngine {
 
             // Banyak node GPU (KGSL/Mali/GED) butuh root read di beberapa ROM.
             // Fallback ini tidak memunculkan prompt root; hanya dipakai kalau shell root sudah granted/cached.
-            if (gpuUsage <= 0 || gpuFreqMhz <= 0L || gpuName.isBlank()) {
+            if (gpuFreqMhz <= 0L || gpuName.isBlank()) {
                 val rootGpuR = shRootCached("""
                     gpu_usage=0
-                    for _u in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/class/kgsl/kgsl-3d0/gpubusy /sys/kernel/ged/hal/gpu_utilization /sys/kernel/gpu/gpu_utilization /sys/kernel/gpu/gpu_busy /sys/class/misc/mali0/device/utilisation /proc/gpufreq/gpufreq_power_dump /sys/class/devfreq/*gpu*/load /sys/class/devfreq/*mali*/load /sys/class/devfreq/*g3d*/load; do
+                    for _u in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/ged/hal/gpu_utilization /sys/kernel/gpu/gpu_utilization /sys/class/misc/mali0/device/utilisation /proc/gpufreq/gpufreq_power_dump; do
                       [ -f "${'$'}_u" ] || continue
                       val=${'$'}(cat "${'$'}_u" 2>/dev/null | tr -cd '0-9 ' | awk '{print ${'$'}1}' | cut -c1-3)
                       [ -n "${'$'}val" ] && { gpu_usage=${'$'}val; break; }

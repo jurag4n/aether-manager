@@ -11,8 +11,6 @@ import dev.aether.manager.util.RootEngine
 import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
 import dev.aether.manager.ads.AdScheduler
-import dev.aether.manager.shizuku.ShizukuShell
-import dev.aether.manager.shizuku.ShizukuTweakApplier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -182,7 +180,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshIfNeeded() {
         val current = (_deviceInfo.value as? UiState.Success)?.data
-        if (_deviceInfo.value is UiState.Loading || isNoRootMode() || (RootManager.isRootGranted && current?.rootType == "Unknown")) {
+        if (_deviceInfo.value is UiState.Loading || (RootManager.isRootGranted && current?.rootType == "Unknown")) {
             refresh()
         }
     }
@@ -258,9 +256,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun localPrefs() = getApplication<Application>()
         .getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
-
-    private fun isNoRootMode(): Boolean =
-        localPrefs().getBoolean("no_root_mode", false) || localPrefs().getString("setup_mode", "") == "shizuku"
 
     private fun readLocalTweaks(): Map<String, String> =
         localPrefs().getString("saved_tweaks_conf", "").orEmpty()
@@ -348,42 +343,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _applyingTweak.value = true
 
         try {
-            val prefs = localPrefs()
-            val noRootMode = prefs.getBoolean("no_root_mode", false) || prefs.getString("setup_mode", "") == "shizuku"
-            val rootReady = if (noRootMode) ensureRootReady(requestIfNeeded = false) else ensureRootReady(requestIfNeeded = true)
-
-            if (!rootReady && noRootMode) {
-                if (!ShizukuShell.isAvailable()) {
-                    _applyingTweak.value = false
-                    _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Shizuku belum running")
-                    snack("Shizuku belum running — pair/start ulang Shizuku")
-                    return
-                }
-                if (!ShizukuShell.hasPermission()) {
-                    ShizukuShell.requestPermissionIfNeeded()
-                    _applyingTweak.value = false
-                    _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Izin Shizuku belum aktif")
-                    snack("Grant izin Shizuku dulu")
-                    return
-                }
-
-                saveLocalTweaks(map)
-                val result = ShizukuTweakApplier.apply(map)
-                val ok = result.subsystems.any { it.ok } && result.subsystems.none { it.failed > 0 && it.applied == 0 }
-
-                _applyingTweak.value = false
-                _applyStatus.value = ApplyStatus(
-                    running = false,
-                    lastOk = ok,
-                    summary = result.summary.ifBlank { "No-root tweak applied via Shizuku" },
-                    totalMs = result.totalMs,
-                )
-                if (ok) AdScheduler.tryShowAfterAction()
-                runCatching { _monitorState.value = RootEngine.getMonitorState() }
-                return
-            }
-
-            if (!rootReady) {
+            if (!ensureRootReady()) {
                 _applyingTweak.value = false
                 _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = "Root belum aktif")
                 snack("Root belum aktif — grant root dulu")
@@ -406,6 +366,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 AdScheduler.tryShowAfterAction()
             }
 
+            // Refresh ringan setelah apply agar Home monitor langsung sinkron, bukan menunggu loop.
             runCatching { _monitorState.value = RootEngine.getMonitorState() }
 
             viewModelScope.launch {
