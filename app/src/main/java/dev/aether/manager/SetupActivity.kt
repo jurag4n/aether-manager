@@ -200,6 +200,8 @@ fun SetupScreen(onDone: (mode: SetupMode, rootGranted: Boolean, shizukuGranted: 
     var batteryState by remember { mutableStateOf(PermState.IDLE) }
     var usageState by remember { mutableStateOf(PermState.IDLE) }
     var busy by remember { mutableStateOf(false) }
+    var shizukuRunning by remember { mutableStateOf(false) }
+    var shizukuGrantedLive by remember { mutableStateOf(false) }
 
     val includeStorage = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
 
@@ -229,10 +231,30 @@ fun SetupScreen(onDone: (mode: SetupMode, rootGranted: Boolean, shizukuGranted: 
         if (includeStorage && ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             storageState = PermState.GRANTED
         }
-        if (ShizukuShell.hasPermission()) shizukuState = PermState.GRANTED
+        shizukuRunning = ShizukuShell.isAvailable()
+        shizukuGrantedLive = ShizukuShell.hasPermission()
+        shizukuState = when {
+            shizukuGrantedLive -> PermState.GRANTED
+            shizukuRunning -> if (shizukuState == PermState.CHECKING) PermState.CHECKING else PermState.IDLE
+            else -> PermState.DENIED
+        }
     }
 
     LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(mode) {
+        while (true) {
+            shizukuRunning = ShizukuShell.isAvailable()
+            shizukuGrantedLive = ShizukuShell.hasPermission()
+            if (mode == SetupMode.SHIZUKU) {
+                shizukuState = when {
+                    shizukuGrantedLive -> PermState.GRANTED
+                    shizukuRunning -> if (shizukuState == PermState.CHECKING) PermState.CHECKING else PermState.IDLE
+                    else -> PermState.DENIED
+                }
+            }
+            delay(1200L)
+        }
+    }
     OnLifecycleResume { refresh() }
 
     val modeReady = when (mode) {
@@ -314,6 +336,15 @@ fun SetupScreen(onDone: (mode: SetupMode, rootGranted: Boolean, shizukuGranted: 
                 }
 
                 ModeInfoCard(mode = mode)
+
+                if (mode == SetupMode.SHIZUKU) {
+                    ShizukuLiveStatusCard(
+                        running = shizukuRunning,
+                        granted = shizukuGrantedLive,
+                        onOpen = { openShizuku(ctx) },
+                        onGrant = { ShizukuShell.requestPermissionIfNeeded() }
+                    )
+                }
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     permissions.forEach { item ->
@@ -508,6 +539,72 @@ private fun ModeInfoCard(mode: SetupMode) {
         }
     }
 }
+
+
+@Composable
+private fun ShizukuLiveStatusCard(
+    running: Boolean,
+    granted: Boolean,
+    onOpen: () -> Unit,
+    onGrant: () -> Unit
+) {
+    val statusColor = when {
+        running && granted -> MaterialTheme.colorScheme.primary
+        running -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.error
+    }
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+        border = BorderStroke(1.dp, statusColor.copy(alpha = 0.25f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(statusColor.copy(alpha = 0.13f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (running && granted) Icons.Outlined.CheckCircle else Icons.Outlined.Security,
+                        contentDescription = null,
+                        tint = statusColor
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Shizuku Status", fontWeight = FontWeight.Bold)
+                    Text(
+                        when {
+                            running && granted -> "Running · permission granted"
+                            running -> "Running · grant permission"
+                            else -> "Not running · pair/start again"
+                        },
+                        color = statusColor,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            Text(
+                "Status updates in realtime. If Shizuku is not running, pair/start Shizuku again, then return here.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onOpen, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) {
+                    Text(if (running) "Open Shizuku" else "Pair Again")
+                }
+                FilledTonalButton(onClick = onGrant, enabled = running && !granted, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) {
+                    Text("Grant")
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun PermissionRow(item: SetupPermission, state: PermState, onClick: () -> Unit) {

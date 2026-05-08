@@ -68,7 +68,7 @@ static const char *hook_needles[] = {
 };
 
 static const char *patch_needles[] = {
-    "luckypatcher", "lucky patcher", "chelpus", "lpatcher", "lucky", "lp.lock", "lp.db",
+    "luckypatcher", "lucky patcher", "Lucky Patcher", "LuckyPatcher", "chelpus", "lpatcher", "lucky", "lp.lock", "lp.db",
     "patcher.app", "lspatch", "rebuilt", "apkeditor", "apk editor"
 };
 
