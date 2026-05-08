@@ -10,6 +10,7 @@ import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import dev.aether.manager.R
+import dev.aether.manager.notification.NotificationHelper
 import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.getStringsForLanguage
 import dev.aether.manager.i18n.loadSavedLanguage
@@ -156,7 +157,11 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private suspend fun applyOnBoot(context: Context) {
-        if (!SettingsPrefs.getApplyOnBoot(context)) return
+        NotificationHelper.createChannels(context)
+        if (!SettingsPrefs.getApplyOnBoot(context)) {
+            NotificationHelper.showBootReapplyFinished(context, success = false)
+            return
+        }
 
         val prefs = context.getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
         val noRootMode = prefs.getBoolean("no_root_mode", false) || prefs.getString("setup_mode", "") == "shizuku"
@@ -170,7 +175,10 @@ class BootReceiver : BroadcastReceiver() {
                 }
                 .toMap()
             if (tweaks.isNotEmpty() && ShizukuShell.isAvailable() && ShizukuShell.hasPermission()) {
-                ShizukuTweakApplier.apply(tweaks)
+                val result = ShizukuTweakApplier.apply(tweaks)
+                NotificationHelper.showBootReapplyFinished(context, success = result.success)
+            } else {
+                NotificationHelper.showBootReapplyFinished(context, success = false)
             }
             return
         }
@@ -232,11 +240,13 @@ class BootReceiver : BroadcastReceiver() {
         try {
             // Cek safe mode
             if (RootEngine.fileExists(RootEngine.SAFE_MODE_FILE)) {
+                NotificationHelper.showBootReapplyFinished(context, success = false)
                 return
             }
 
             val tweaks = RootEngine.readTweaksConf()
             if (tweaks.isEmpty()) {
+                NotificationHelper.showBootReapplyFinished(context, success = false)
                 return
             }
 
@@ -244,10 +254,11 @@ class BootReceiver : BroadcastReceiver() {
 
             // Retry sekali kalau ada yang gagal — tunggu lebih lama agar
             // kernel/HAL sudah benar-benar stabil sebelum retry
-            if (!result.success) {
+            val finalResult = if (!result.success) {
                 delay(10_000)
                 TweakApplier.apply(tweaks)
-            }
+            } else result
+            NotificationHelper.showBootReapplyFinished(context, success = finalResult.success)
 
             // Restart app_monitor.sh jika script-nya ada (app profiles aktif)
             val monitorScript = "${RootEngine.CONF_DIR}/app_monitor.sh"

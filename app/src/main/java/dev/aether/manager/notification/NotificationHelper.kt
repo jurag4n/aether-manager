@@ -36,6 +36,7 @@ object NotificationHelper {
     const val NOTIF_LICENSE_EXPIRING = 2003
     const val NOTIF_GENERAL          = 2004
     const val NOTIF_TWEAK_APPLIED    = 2005
+    const val NOTIF_BOOT_REAPPLY     = 2006
 
     // ─── Channel setup ───────────────────────────────────────────────────────
 
@@ -221,6 +222,35 @@ object NotificationHelper {
             .build()
 
         notify(context, NOTIF_TWEAK_APPLIED, notification)
+    }
+
+
+    fun showBootReapplyFinished(context: Context, success: Boolean, profileName: String? = null) {
+        val title = if (success) "Aether Manager aktif setelah reboot" else "Aether Manager boot check"
+        val message = when {
+            success && !profileName.isNullOrBlank() -> "Tweak berhasil diterapkan ulang: $profileName"
+            success -> "Tweak aktif berhasil diterapkan ulang setelah reboot."
+            else -> "Reboot selesai, tapi tidak ada tweak aktif yang diterapkan ulang."
+        }
+
+        val pi = PendingIntent.getActivity(
+            context, NOTIF_BOOT_REAPPLY, mainActivityIntent(context),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_GENERAL)
+            .setSmallIcon(android.R.drawable.ic_menu_manage)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSilent(true)
+            .setAutoCancel(true)
+            .setTimeoutAfter(12_000L)
+            .setContentIntent(pi)
+            .build()
+
+        notify(context, NOTIF_BOOT_REAPPLY, notification)
     }
 
     // ─── Notifikasi: Umum / Custom ───────────────────────────────────────────

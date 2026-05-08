@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <limits.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <android/log.h>
@@ -62,19 +63,21 @@ static const uint8_t PLACEHOLDER_SIG[] = {
 };
 
 static const char *hook_needles[] = {
-    "frida", "gum-js-loop", "frida-agent", "frida-gadget", "linjector", "re.frida",
+    "frida", "gum-js-loop", "gmain", "gdbus", "frida-agent", "frida-gadget", "linjector", "re.frida",
     "xposed", "edxposed", "lsposed", "lspatch", "sandhook", "substrate", "epic", "riru",
-    "zygisk-lsposed", "libxposed", "liblspd", "libsubstrate"
+    "zygisk-lsposed", "libxposed", "liblspd", "libsubstrate", "whale", "yahfa", "taichi"
 };
 
 static const char *patch_needles[] = {
-    "luckypatcher", "lucky patcher", "chelpus", "lpatcher", "lucky", "lp.lock", "lp.db",
-    "patcher.app", "lspatch", "rebuilt", "apkeditor", "apk editor"
+    "luckypatcher", "lucky patcher", "chelpus", "lpatcher", "lp.lock", "lp.db",
+    "patcher.app", "lspatch", "rebuilt", "apkeditor", "apk editor", "mt manager",
+    "np manager", "apktool", "jadx", "dex editor", "classes.dex", "base.apk.bak",
+    "aether crack", "aether patched", "aether mod", "license bypass"
 };
 
 static const char *dump_needles[] = {
     "fridump", "dumpdex", "dexdump", "dexhunter", "drizzle", "objection", "r0capture",
-    "xposed", "lsposed", "lspatch", "substrate"
+    "xposed", "lsposed", "lspatch", "substrate", "memorydump", "unidbg", "jni trace"
 };
 
 static int tracer_pid_detected() {
@@ -174,6 +177,99 @@ static int suspicious_filesystem() {
     }
     closedir(d);
     return hit;
+}
+
+
+static int suspicious_env() {
+    const char *vars[] = {"LD_PRELOAD", "LD_LIBRARY_PATH", "CLASSPATH", "TMPDIR"};
+    for (size_t i = 0; i < sizeof(vars) / sizeof(vars[0]); ++i) {
+        const char *v = getenv(vars[i]);
+        if (!v || !v[0]) continue;
+        char low[1024];
+        strncpy(low, v, sizeof(low) - 1);
+        low[sizeof(low) - 1] = '\0';
+        lower_ascii(low);
+        if (contains_any_lower(low, hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0]))) ||
+            contains_any_lower(low, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0]))) ||
+            contains_any_lower(low, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int suspicious_task_names() {
+    DIR *d = opendir("/proc/self/task");
+    if (!d) return 0;
+    struct dirent *e;
+    int hit = 0;
+    while ((e = readdir(d)) != nullptr && !hit) {
+        if (e->d_name[0] == '.') continue;
+        char p[128];
+        snprintf(p, sizeof(p), "/proc/self/task/%s/comm", e->d_name);
+        FILE *f = fopen(p, "r");
+        if (!f) continue;
+        char line[256] = {0};
+        if (fgets(line, sizeof(line), f)) {
+            lower_ascii(line);
+            if (contains_any_lower(line, hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0]))) ||
+                contains_any_lower(line, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) {
+                hit = 1;
+            }
+        }
+        fclose(f);
+    }
+    closedir(d);
+    return hit;
+}
+
+static int scan_dir_names_once(const char *base, int max_items) {
+    DIR *d = opendir(base);
+    if (!d) return 0;
+    struct dirent *e;
+    int hit = 0;
+    int count = 0;
+    while ((e = readdir(d)) != nullptr && !hit && count < max_items) {
+        if (e->d_name[0] == '.') continue;
+        ++count;
+        char name[512];
+        snprintf(name, sizeof(name), "%s", e->d_name);
+        lower_ascii(name);
+        if (contains_any_lower(name, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0]))) ||
+            contains_any_lower(name, hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0]))) ||
+            contains_any_lower(name, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) {
+            hit = 1;
+            break;
+        }
+    }
+    closedir(d);
+    return hit;
+}
+
+static int suspicious_sdcard_paths() {
+    const char *roots[] = {
+        "/sdcard", "/sdcard/Download", "/sdcard/Android/data", "/sdcard/Android/obb",
+        "/storage/emulated/0", "/storage/emulated/0/Download", "/storage/emulated/0/Android/data"
+    };
+    for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); ++i) {
+        if (scan_dir_names_once(roots[i], 256)) return 1;
+    }
+    return 0;
+}
+
+static int suspicious_proc_cmdline() {
+    FILE *f = fopen("/proc/self/cmdline", "r");
+    if (!f) return 0;
+    char buf[512] = {0};
+    size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+    if (n == 0) return 0;
+    for (size_t i = 0; i < n; ++i) if (buf[i] == '\0') buf[i] = ' ';
+    lower_ascii(buf);
+    if (contains_any_lower(buf, hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0]))) ||
+        contains_any_lower(buf, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0]))) ||
+        contains_any_lower(buf, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) return 1;
+    return 0;
 }
 
 static jstring call_string(JNIEnv *env, jobject obj, const char *method) {
@@ -297,11 +393,15 @@ static const char *reason_for(JNIEnv *env, jobject ctx) {
     if (!apk_basic_integrity(env, ctx)) return "apk_repack";
     if (!class_loader_check(env, ctx)) return "loader_tamper";
     if (tracer_pid_detected()) return "debugger";
+    if (suspicious_env()) return "suspicious_env";
+    if (suspicious_proc_cmdline()) return "proc_tamper";
+    if (suspicious_task_names()) return "hook_thread";
     if (suspicious_tcp_ports()) return "frida_port";
     if (scan_maps_for(hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])), 0)) return "hook_framework";
     if (scan_maps_for(dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])), 1)) return "dump_tool";
     if (scan_fd_for(hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])))) return "hook_fd";
     if (scan_fd_for(dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) return "dump_fd";
+    if (suspicious_sdcard_paths()) return "sdcard_tamper_path";
     if (suspicious_filesystem()) return "patcher_files";
     return "ok";
 }

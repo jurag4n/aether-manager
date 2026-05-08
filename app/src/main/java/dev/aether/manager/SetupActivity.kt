@@ -54,6 +54,7 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.ButtonDefaults
@@ -304,35 +305,49 @@ fun SetupScreen(onDone: (mode: SetupMode, rootGranted: Boolean, shizukuGranted: 
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SetupHeader()
-                Text(
-                    text = "Choose Setup Mode",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Use Root Mode for full control, or No Root / Shizuku Mode for limited tweaks without root.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 20.sp
-                )
+                Surface(
+                    shape = RoundedCornerShape(30.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Root Setup",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Aether Manager berjalan sebagai kernel manager penuh. Mode No Root dikunci agar tidak ada fitur kernel yang terlihat aktif tapi tidak bekerja.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     ModeCard(
                         title = "Root Mode",
-                        desc = "Full control",
+                        desc = "Full kernel control",
                         icon = Icons.Outlined.AdminPanelSettings,
                         selected = mode == SetupMode.ROOT,
+                        enabled = true,
                         modifier = Modifier.weight(1f),
                         onClick = { mode = SetupMode.ROOT }
                     )
                     ModeCard(
                         title = "No Root",
-                        desc = "Limited safe tweaks",
-                        icon = Icons.Outlined.Security,
-                        selected = mode == SetupMode.SHIZUKU,
+                        desc = "Locked",
+                        icon = Icons.Outlined.Lock,
+                        selected = false,
+                        enabled = false,
                         modifier = Modifier.weight(1f),
-                        onClick = { mode = SetupMode.SHIZUKU }
+                        onClick = { }
                     )
                 }
 
@@ -465,6 +480,7 @@ private fun ModeCard(
     desc: String,
     icon: ImageVector,
     selected: Boolean,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -479,10 +495,15 @@ private fun ModeCard(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
+                enabled = enabled,
                 onClick = onClick
             ),
         shape = RoundedCornerShape(24.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+        color = when {
+            selected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f)
+            enabled -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f)
+            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)
+        },
         border = BorderStroke(1.4.dp, borderColor)
     ) {
         Column(
@@ -496,10 +517,30 @@ private fun ModeCard(
                 modifier = Modifier.size(42.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f)
+                )
             }
-            Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(
+                title,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+            )
             Text(desc, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            if (!enabled) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+                    Text(
+                        "Unavailable",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             if (selected) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
@@ -520,13 +561,13 @@ private fun ModeInfoCard(mode: SetupMode) {
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                if (isRoot) "Root setup is for full kernel control" else "No Root setup is limited by Android/Shizuku permission",
+                if (isRoot) "Root setup is required for full kernel control" else "No Root setup is currently locked",
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 if (isRoot) "CPU, GPU, governor, scheduler, thermal profile, root apply engine, and boot persistence can be enabled."
-                else "Only safe no-root tweaks are enabled. CPU/GPU/kernel tweaks stay disabled until Root Mode is granted.",
+                else "No Root mode is hidden from setup so users do not enable limited features by mistake.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 19.sp,
                 style = MaterialTheme.typography.bodySmall
@@ -691,7 +732,7 @@ private fun SetupSummary(modeReady: Boolean, optionalReady: Boolean, mode: Setup
             Text(
                 when {
                     !modeReady && mode == SetupMode.ROOT -> "Grant root access to continue with full tweak mode."
-                    !modeReady && mode == SetupMode.SHIZUKU -> "Start Shizuku service and grant permission to continue with no-root mode."
+                    !modeReady && mode == SetupMode.SHIZUKU -> "No Root mode is locked in this build."
                     optionalReady -> "All optional permissions are ready."
                     else -> "Optional permissions can be completed now or later from Settings."
                 },
