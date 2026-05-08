@@ -85,3 +85,47 @@ target_link_libraries(jembut PRIVATE
     android
     log
 )
+
+
+# ─── libaetherui.so ──────────────────────────────────────────────────────────
+# Native helper ringan untuk warm-up JNI/linker dan low-level timing agar UI
+# Compose lebih stabil saat first launch/first interaction.
+add_library(aetherui SHARED aetherui.cpp)
+
+target_compile_features(aetherui PRIVATE cxx_std_17)
+
+set_target_properties(aetherui PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+    NO_SONAME TRUE
+)
+
+target_compile_options(aetherui PRIVATE
+    -O2
+    -flto=thin
+    -fstack-protector-strong
+    -fPIC
+    -fvisibility=hidden
+    -ffunction-sections
+    -fdata-sections
+    -fno-exceptions
+    -fno-rtti
+    -D_FORTIFY_SOURCE=2
+    -DANDROID
+    $<$<CONFIG:Release>:-DNDEBUG>
+)
+
+target_link_options(aetherui PRIVATE
+    -flto=thin
+    -Wl,--gc-sections
+    -Wl,--strip-all
+    -Wl,--exclude-libs,ALL
+    -Wl,-z,noexecstack
+    -Wl,-z,relro
+    -Wl,-z,now
+    -Wl,--no-undefined
+)
+
+target_link_libraries(aetherui PRIVATE
+    android
+    log
+)

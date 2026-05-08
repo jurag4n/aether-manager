@@ -14,6 +14,8 @@ import dev.aether.manager.notification.NotificationHelper
 import dev.aether.manager.notification.NotificationScheduler
 import dev.aether.manager.security.AetherSecurityNative
 import dev.aether.manager.security.SecurityBlockActivity
+import dev.aether.manager.util.UiNativeBoost
+import dev.aether.manager.util.UiPerformanceMonitor
 import kotlin.system.exitProcess
 
 class AetherApplication : Application() {
@@ -39,6 +41,9 @@ class AetherApplication : Application() {
         super.onCreate()
 
         NativeAether.tryLoad(this)
+        UiNativeBoost.init(this)
+        if (BuildConfig.DEBUG) timber.log.Timber.plant(timber.log.Timber.DebugTree())
+        UiPerformanceMonitor.install(this)
 
         if (!BuildConfig.DEBUG) {
             // checkSignature runs on main thread (no I/O, just crypto) — fine
