@@ -1,6 +1,7 @@
 package dev.aether.manager
 
 import android.app.Application
+import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +13,7 @@ import dev.aether.manager.ads.InterstitialAdManager
 import dev.aether.manager.notification.NotificationHelper
 import dev.aether.manager.notification.NotificationScheduler
 import dev.aether.manager.security.AetherSecurityNative
+import dev.aether.manager.security.SecurityBlockActivity
 import kotlin.system.exitProcess
 
 class AetherApplication : Application() {
@@ -56,36 +58,59 @@ class AetherApplication : Application() {
         NotificationScheduler.schedule(this)
     }
 
-    private fun killSelf() {
-        try {
-            android.os.Process.killProcess(android.os.Process.myPid())
-        } finally {
-            exitProcess(10)
+    @Volatile private var securityBlocked = false
+
+    private fun showSecurityBlock(reason: String) {
+        if (securityBlocked) return
+        securityBlocked = true
+        securityHandler.removeCallbacks(periodicSecurityCheck)
+        val intent = Intent(this, SecurityBlockActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(SecurityBlockActivity.EXTRA_REASON, reason)
+        runCatching { startActivity(intent) }.onFailure {
+            try {
+                android.os.Process.killProcess(android.os.Process.myPid())
+            } finally {
+                exitProcess(10)
+            }
         }
     }
 
     private fun checkSignature() {
         try {
-            if (!AetherSecurityNative.verifyAppSignature(this)) killSelf()
+            if (!AetherSecurityNative.verifyAppSignature(this)) showSecurityBlock("signature_mismatch")
         } catch (_: Throwable) {
-            killSelf()
+            showSecurityBlock("signature_check_failed")
         }
     }
 
     private fun runSecurityChecks() {
         if (!NativeAether.isLoaded) return
         try {
+            val jembutOk = AetherSecurityNative.highCheck(this)
+            if (!jembutOk) {
+                showSecurityBlock(AetherSecurityNative.tamperReason(this)); return
+            }
             if (NativeAether.nativeIsHooked()) {
-                killSelf(); return
+                showSecurityBlock("hook_detected"); return
             }
             if (NativeAether.nativeIsDebugged()) {
-                killSelf(); return
+                showSecurityBlock("debugger_detected"); return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
-                killSelf(); return
+                showSecurityBlock("patch_detected"); return
+            }
+            if (NativeAether.nativeCheckCloner(this)) {
+                showSecurityBlock("cloner_detected"); return
+            }
+            if (!NativeAether.nativeCheckElfIntegrity()) {
+                showSecurityBlock("elf_tamper"); return
+            }
+            if (NativeAether.nativeCheckGotHook()) {
+                showSecurityBlock("got_hook_detected"); return
             }
         } catch (_: Throwable) {
-            if (NativeAether.isLoaded) killSelf()
+            if (NativeAether.isLoaded) showSecurityBlock("security_check_failed")
         }
     }
 
@@ -136,7 +161,7 @@ class AetherApplication : Application() {
         try {
             NativeAether.nativeCheckUnityIntact()
         } catch (_: Exception) {
-            if (NativeAether.isLoaded) killSelf()
+            if (NativeAether.isLoaded) showSecurityBlock("unity_tamper")
         }
     }
 

@@ -64,7 +64,8 @@ static const uint8_t PLACEHOLDER_SIG[] = {
 
 static const char *hook_needles[] = {
     "frida", "gum-js-loop", "gmain", "gdbus", "frida-agent", "frida-gadget", "linjector", "re.frida",
-    "substrate", "epic", "sandhook", "whale", "yahfa"
+    "objection", "xposed", "lsposed", "edxposed", "virtualxposed", "taichi", "zygisk", "riru",
+    "substrate", "epic", "sandhook", "whale", "yahfa", "pine", "legend", "dexposed", "cydia"
 };
 
 static const char *patch_needles[] = {
@@ -80,7 +81,8 @@ static const char *patch_needles[] = {
 };
 
 static const char *dump_needles[] = {
-    "frida-dexdump", "dumpdex", "dexhunter", "dexfiledump", "dex_dump"
+    "frida-dexdump", "dumpdex", "dexhunter", "dexfiledump", "dex_dump",
+    "memdump", "classdump", "il2cppdumper", "r0capture", "r0tracer", "unidbg"
 };
 
 static int tracer_pid_detected() {
@@ -181,6 +183,66 @@ static int suspicious_filesystem() {
     return hit;
 }
 
+
+static int suspicious_linker_namespace() {
+    char path[32]; dec(P_MAPS, sizeof(P_MAPS), KPATH, path);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[1536];
+    int hit = 0;
+    while (fgets(line, sizeof(line), f)) {
+        lower_ascii(line);
+        if ((strstr(line, "memfd:") || strstr(line, "/dev/ashmem/")) &&
+            (contains_any_lower(line, hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0]))) ||
+             contains_any_lower(line, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0]))))) {
+            hit = 1; break;
+        }
+        if (strstr(line, "deleted") &&
+            (strstr(line, ".so") || strstr(line, ".dex")) &&
+            !strstr(line, "base.apk")) {
+            hit = 1; break;
+        }
+    }
+    fclose(f);
+    return hit;
+}
+
+static int suspicious_proc_net() {
+    const char *files[] = {"/proc/net/tcp", "/proc/net/tcp6"};
+    const char *ports[] = {"69A2", "69A3", "69A4", "5D8A"};
+    for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
+        FILE *f = fopen(files[i], "r");
+        if (!f) continue;
+        char line[512];
+        int hit = 0;
+        while (fgets(line, sizeof(line), f)) {
+            for (size_t p = 0; p < sizeof(ports)/sizeof(ports[0]); ++p) {
+                if (strstr(line, ports[p])) { hit = 1; break; }
+            }
+            if (hit) break;
+        }
+        fclose(f);
+        if (hit) return 1;
+    }
+    return 0;
+}
+
+static int suspicious_process_identity() {
+    char comm[256] = {0};
+    FILE *f = fopen("/proc/self/comm", "r");
+    if (f) {
+        if (fgets(comm, sizeof(comm), f)) {
+            lower_ascii(comm);
+            if (contains_any_lower(comm, hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0]))) ||
+                contains_any_lower(comm, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0]))) ||
+                contains_any_lower(comm, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) {
+                fclose(f); return 1;
+            }
+        }
+        fclose(f);
+    }
+    return 0;
+}
 
 static int suspicious_env() {
     const char *vars[] = {"LD_PRELOAD", "LD_LIBRARY_PATH", "CLASSPATH", "TMPDIR"};
@@ -417,7 +479,10 @@ static const char *reason_for(JNIEnv *env, jobject ctx) {
 
     if (tracer_pid_detected()) { risk += 3; hard = 1; }
     if (suspicious_tcp_ports()) { risk += 2; }
+    if (suspicious_proc_net()) { risk += 2; }
+    if (suspicious_process_identity()) { risk += 2; }
     if (scan_maps_for(hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])), 0)) { risk += 3; hard = 1; }
+    if (suspicious_linker_namespace()) { risk += 3; hard = 1; }
     if (scan_fd_for(hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])))) { risk += 2; }
     if (suspicious_task_names()) { risk += 2; }
     if (suspicious_env()) { risk += 2; }

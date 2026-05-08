@@ -6,6 +6,8 @@ import android.os.StatFs
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import kotlin.math.roundToInt
 
 object RootEngine {
     const val CONF_DIR        = "/data/adb/aether"
@@ -92,17 +94,17 @@ object RootEngine {
     }
 
     suspend fun readFile(path: String): String =
-        sh("cat $path 2>/dev/null").stdout
+        sh("cat ${'$'}path 2>/dev/null").stdout
 
     suspend fun writeFile(path: String, content: String): Boolean {
         val escaped = content.replace("'", "'\\''")
         val dir = path.substringBeforeLast('/', "")
         val mkdir = if (dir.isNotBlank()) "mkdir -p '$dir' && " else ""
-        return sh("${mkdir}printf '%s' '$escaped' > '$path'").exitCode == 0
+        return sh("${mkdir}printf '%s' '$escaped' > '${'$'}path'").exitCode == 0
     }
 
     suspend fun fileExists(path: String): Boolean =
-        sh("[ -f $path ] && echo yes").stdout.contains("yes")
+        sh("[ -f ${'$'}path ] && echo yes").stdout.contains("yes")
 
     // ── getprop — tidak butuh root ────────────────────────────────────────────
 
@@ -274,7 +276,24 @@ object RootEngine {
 
     enum class RebootMode { NORMAL, RECOVERY, BOOTLOADER }
 
-    // ── Monitor state (tidak butuh root — baca /proc & /sys langsung) ─────────
+    // ── Monitor state ───────────────────────────────────────────────────────────
+
+    @Volatile private var lastCpuTotal: Long = 0L
+    @Volatile private var lastCpuIdle: Long = 0L
+    @Volatile private var lastCpuUsage: Int = 0
+
+    private fun readTextFast(path: String): String = runCatching {
+        File(path).takeIf { it.canRead() }?.readText()?.trim().orEmpty()
+    }.getOrDefault("")
+
+    private fun readLongFast(path: String): Long = readTextFast(path).filter { it.isDigit() || it == '-' }.toLongOrNull() ?: 0L
+
+    private fun glob(prefix: String, suffix: String = ""): List<File> = runCatching {
+        val root = File(prefix.substringBefore('*').ifBlank { "/" })
+        val parent = if (prefix.contains('*')) root.parentFile ?: File("/") else File(prefix)
+        val namePrefix = prefix.substringAfterLast('/').substringBefore('*')
+        parent.listFiles()?.filter { it.name.startsWith(namePrefix) && (suffix.isBlank() || it.path.endsWith(suffix)) }.orEmpty()
+    }.getOrDefault(emptyList())
 
     private fun normRaw(raw: Long): Float {
         if (raw <= 0L) return 0f
@@ -286,283 +305,254 @@ object RootEngine {
 
     private fun validTemp(v: Float) = v in 15f..125f
 
-    suspend fun getMonitorState(): dev.aether.manager.data.MonitorState =
-        withContext(Dispatchers.IO) {
+    private fun readCpuUsage(): Int {
+        val parts = readTextFast("/proc/stat").lineSequence().firstOrNull { it.startsWith("cpu ") }
+            ?.trim()?.split(Regex("\\s+")) ?: return lastCpuUsage
+        if (parts.size < 8) return lastCpuUsage
+        val nums = parts.drop(1).map { it.toLongOrNull() ?: 0L }
+        val idle = nums.getOrElse(3) { 0L } + nums.getOrElse(4) { 0L }
+        val total = nums.sum()
+        val oldTotal = lastCpuTotal
+        val oldIdle = lastCpuIdle
+        lastCpuTotal = total
+        lastCpuIdle = idle
+        if (oldTotal <= 0L || total <= oldTotal) return lastCpuUsage
+        val dt = total - oldTotal
+        val di = idle - oldIdle
+        lastCpuUsage = (((dt - di).coerceAtLeast(0L) * 100L) / dt).toInt().coerceIn(0, 100)
+        return lastCpuUsage
+    }
 
-            // ── CPU ──────────────────────────────────────────────────────────
-            val cpuR = shLocal("""
-                line1=${'$'}(grep -m1 "^cpu " /proc/stat); sleep 0.5; line2=${'$'}(grep -m1 "^cpu " /proc/stat)
-                set -- ${'$'}line1; u1=$2;n1=$3;s1=$4;i1=$5;w1=$6;hi1=$7;si1=$8
-                total1=${'$'}((u1+n1+s1+i1+w1+hi1+si1)); idle1=${'$'}((i1+w1))
-                set -- ${'$'}line2; u2=$2;n2=$3;s2=$4;i2=$5;w2=$6;hi2=$7;si2=$8
-                total2=${'$'}((u2+n2+s2+i2+w2+hi2+si2)); idle2=${'$'}((i2+w2))
-                dt=${'$'}((total2-total1)); di=${'$'}((idle2-idle1))
-                [ ${'$'}dt -gt 0 ] && echo cpu_usage=${'$'}(((dt-di)*100/dt)) || echo cpu_usage=0
-                total_freq=0; core_count=0
-                for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq; do
-                  [ -f "${'$'}f" ] || continue
-                  v=${'$'}(cat "${'$'}f" 2>/dev/null)
-                  [ -n "${'$'}v" ] && [ "${'$'}v" -gt 0 ] 2>/dev/null && { total_freq=${'$'}((total_freq+v)); core_count=${'$'}((core_count+1)); }
-                done
-                [ ${'$'}core_count -gt 0 ] && echo cpu_freq=${'$'}((total_freq/core_count/1000)) || echo cpu_freq=0
-                echo cpu_gov=${'$'}(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
-                cpu_temp_raw=0
-                for _z in /sys/class/thermal/thermal_zone*; do
-                  [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
-                  _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                  case "${'$'}_n" in *cpu*|*tsens*|*apc*|*cluster*|*big*|*little*|*silver*|*gold*)
-                    _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null); [ -n "${'$'}_v" ] && { cpu_temp_raw=${'$'}_v; break; }
-                  esac
-                done
-                if [ "${'$'}cpu_temp_raw" = "0" ]; then
-                  for _z in /sys/class/thermal/thermal_zone*; do
-                    [ -r "${'$'}_z/temp" ] || continue
-                    _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                    case "${'$'}_n" in *battery*|*batt*|*charger*|*usb*) continue;; esac
-                    _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null | tr -cd '0-9')
-                    [ -n "${'$'}_v" ] && [ "${'$'}_v" -gt "${'$'}cpu_temp_raw" ] 2>/dev/null && cpu_temp_raw=${'$'}_v
-                  done
-                fi
-                echo cpu_temp=${'$'}cpu_temp_raw
-            """.trimIndent())
-            val cpuM        = parseKv(cpuR.stdout)
-            val cpuUsage    = cpuM["cpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0
-            val cpuFreqMhz  = cpuM["cpu_freq"]?.toLongOrNull() ?: 0L
-            val cpuGovernor = cpuM["cpu_gov"] ?: ""
-            val cpuTempC    = normRaw(cpuM["cpu_temp"]?.toLongOrNull() ?: 0L)
+    private fun readCpuFreqMhz(): Long {
+        val freqs = File("/sys/devices/system/cpu").listFiles()
+            ?.filter { it.name.matches(Regex("cpu[0-9]+")) }
+            ?.mapNotNull { cpu ->
+                val cur = readLongFast("${cpu.path}/cpufreq/scaling_cur_freq")
+                    .takeIf { it > 0L } ?: readLongFast("${cpu.path}/cpufreq/cpuinfo_cur_freq")
+                cur.takeIf { it > 0L }
+            }.orEmpty()
+        if (freqs.isEmpty()) return 0L
+        val active = freqs.filter { it > 0L }
+        val valueKhz = if (active.isNotEmpty()) active.average().roundToInt().toLong() else freqs.maxOrNull() ?: 0L
+        return when {
+            valueKhz > 1_000_000L -> valueKhz / 1000L
+            valueKhz > 10_000L -> valueKhz / 1000L
+            else -> valueKhz
+        }
+    }
 
-            // ── GPU ──────────────────────────────────────────────────────────
-            val gpuR = shLocal("""
+    private fun readCpuGovernor(): String = File("/sys/devices/system/cpu").listFiles()
+        ?.firstOrNull { it.name.matches(Regex("cpu[0-9]+")) && File(it, "cpufreq/scaling_governor").canRead() }
+        ?.let { readTextFast("${it.path}/cpufreq/scaling_governor") }.orEmpty()
+
+    private fun readThermalByName(vararg keys: String, excludeBattery: Boolean = false): Float {
+        val zones = File("/sys/class/thermal").listFiles()?.filter { it.name.startsWith("thermal_zone") }.orEmpty()
+        var best = 0f
+        for (z in zones) {
+            val type = readTextFast("${z.path}/type").lowercase()
+            if (type.isBlank()) continue
+            if (excludeBattery && listOf("battery", "batt", "charger", "usb").any { type.contains(it) }) continue
+            if (keys.any { type.contains(it) }) {
+                val t = normRaw(readLongFast("${z.path}/temp"))
+                if (validTemp(t)) return t
+            }
+        }
+        for (z in zones) {
+            val type = readTextFast("${z.path}/type").lowercase()
+            if (excludeBattery && listOf("battery", "batt", "charger", "usb").any { type.contains(it) }) continue
+            val t = normRaw(readLongFast("${z.path}/temp"))
+            if (validTemp(t) && t > best) best = t
+        }
+        return best
+    }
+
+    private fun normalizeFreqToMhz(raw: Long): Long = when {
+        raw <= 0L -> 0L
+        raw > 100_000_000L -> raw / 1_000_000L
+        raw > 100_000L -> raw / 1_000L
+        else -> raw
+    }
+
+    private fun readGpuLocal(): Triple<Int, Long, String> {
+        var usage = 0
+        val busyPct = readTextFast("/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage").filter(Char::isDigit).toIntOrNull()
+        usage = busyPct ?: run {
+            val busy = readTextFast("/sys/class/kgsl/kgsl-3d0/gpubusy").split(Regex("\\s+"))
+            val used = busy.getOrNull(0)?.toLongOrNull() ?: 0L
+            val total = busy.getOrNull(1)?.toLongOrNull() ?: 0L
+            if (used > 0L && total > 0L) ((used * 100L) / total).toInt() else 0
+        }
+        if (usage <= 0) {
+            val paths = listOf(
+                "/sys/kernel/ged/hal/gpu_utilization",
+                "/sys/class/misc/mali0/device/utilisation",
+                "/sys/kernel/gpu/gpu_busy",
+                "/sys/kernel/gpu/gpu_utilization"
+            )
+            usage = paths.firstNotNullOfOrNull { readTextFast(it).split(Regex("\\s+|%|,")) .firstOrNull()?.filter(Char::isDigit)?.toIntOrNull() } ?: 0
+        }
+        var freq = listOf(
+            "/sys/class/kgsl/kgsl-3d0/gpuclk",
+            "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
+            "/sys/kernel/ged/hal/current_freqency",
+            "/sys/kernel/gpu/gpu_clock"
+        ).firstNotNullOfOrNull { readLongFast(it).takeIf { v -> v > 0L } } ?: 0L
+        if (freq <= 0L) {
+            freq = File("/sys/class/devfreq").listFiles()?.firstNotNullOfOrNull { d ->
+                if (d.name.contains("gpu", true) || d.name.contains("mali", true) || d.name.contains("kgsl", true)) readLongFast("${d.path}/cur_freq").takeIf { it > 0L } else null
+            } ?: 0L
+        }
+        val name = listOf(
+            "/sys/class/kgsl/kgsl-3d0/gpu_model",
+            "/sys/class/kgsl/kgsl-3d0/gpu_tbl_name",
+            "/proc/gpuinfo"
+        ).firstNotNullOfOrNull { readTextFast(it).takeIf { v -> v.isNotBlank() } } ?: when {
+            File("/sys/class/kgsl/kgsl-3d0").exists() -> "Adreno GPU"
+            File("/sys/class/misc/mali0").exists() || File("/sys/class/misc/g3d").exists() -> "Mali GPU"
+            else -> ""
+        }
+        return Triple(usage.coerceIn(0, 100), normalizeFreqToMhz(freq), name.lineSequence().firstOrNull().orEmpty().take(48))
+    }
+
+    suspend fun getMonitorState(): dev.aether.manager.data.MonitorState = withContext(Dispatchers.IO) {
+        val cpuUsage = readCpuUsage()
+        var cpuFreqMhz = readCpuFreqMhz()
+        val cpuGovernor = readCpuGovernor()
+        var cpuTempC = readThermalByName("cpu", "tsens", "apc", "cluster", "big", "little", "silver", "gold", excludeBattery = true)
+
+        var (gpuUsage, gpuFreqMhz, gpuName) = readGpuLocal()
+        var gpuTempC = readThermalByName("gpu", "adreno", "mali", "g3d", "mfg", "ged", excludeBattery = true)
+
+        if ((gpuUsage <= 0 || gpuFreqMhz <= 0L || gpuName.isBlank() || !validTemp(gpuTempC)) && RootManager.isRootGranted) {
+            val rootGpuR = shRootCached("""
                 gpu_usage=0
-                if [ -f /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage ]; then
-                  val=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null | tr -cd '0-9' | cut -c1-3)
-                  [ -n "${'$'}val" ] && gpu_usage=${'$'}val
-                elif [ -f /sys/class/kgsl/kgsl-3d0/gpubusy ]; then
-                  read -r used total < /sys/class/kgsl/kgsl-3d0/gpubusy 2>/dev/null
-                  [ -n "${'$'}used" ] && [ "${'$'}total" -gt 0 ] 2>/dev/null && gpu_usage=${'$'}((used*100/total))
-                elif [ -f /sys/kernel/ged/hal/gpu_utilization ]; then
-                  val=${'$'}(cat /sys/kernel/ged/hal/gpu_utilization 2>/dev/null | awk '{print $1}' | tr -cd '0-9')
-                  [ -n "${'$'}val" ] && gpu_usage=${'$'}val
-                elif [ -f /sys/class/misc/mali0/device/utilisation ]; then
-                  val=${'$'}(cat /sys/class/misc/mali0/device/utilisation 2>/dev/null | tr -cd '0-9' | cut -c1-3)
-                  [ -n "${'$'}val" ] && gpu_usage=${'$'}val
-                elif [ -f /sys/kernel/gpu/gpu_busy ]; then
-                  val=${'$'}(cat /sys/kernel/gpu/gpu_busy 2>/dev/null | tr -cd '0-9' | cut -c1-3)
-                  [ -n "${'$'}val" ] && gpu_usage=${'$'}val
-                else
-                  for _u in /sys/class/devfreq/*gpu*/load /sys/class/devfreq/*mali*/load /sys/devices/platform/*mali*/utilization /sys/kernel/gpu/gpu_utilization; do
-                    [ -f "${'$'}_u" ] || continue
-                    val=${'$'}(cat "${'$'}_u" 2>/dev/null | tr -cd '0-9 ' | awk '{print ${'$'}1}' | cut -c1-3)
-                    [ -n "${'$'}val" ] && { gpu_usage=${'$'}val; break; }
-                  done
-                fi
+                for p in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/ged/hal/gpu_utilization /sys/class/misc/mali0/device/utilisation /sys/kernel/gpu/gpu_busy /sys/kernel/gpu/gpu_utilization; do
+                  [ -r "${'$'}p" ] || continue
+                  v=${'$'}(cat "${'$'}p" 2>/dev/null | tr -cd '0-9 ' | awk '{print $1}' | cut -c1-3)
+                  [ -n "${'$'}v" ] && { gpu_usage=${'$'}v; break; }
+                done
                 [ "${'$'}gpu_usage" -gt 100 ] 2>/dev/null && gpu_usage=100
                 echo gpu_usage=${'$'}gpu_usage
                 gpu_freq=0
-                if [ -f /sys/class/kgsl/kgsl-3d0/gpuclk ]; then
-                  val=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpuclk 2>/dev/null | tr -cd '0-9')
-                  if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
-                elif [ -f /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq ]; then
-                  val=${'$'}(cat /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq 2>/dev/null | tr -cd '0-9')
-                  if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
-                elif [ -f /sys/kernel/ged/hal/current_freqency ]; then
-                  val=${'$'}(cat /sys/kernel/ged/hal/current_freqency 2>/dev/null | tr -cd '0-9')
-                  if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
-                elif [ -f /sys/kernel/gpu/gpu_clock ]; then
-                  gpu_freq=${'$'}(cat /sys/kernel/gpu/gpu_clock 2>/dev/null | tr -cd '0-9')
-                fi
-                echo gpu_freq=${'$'}gpu_freq
-                gpu_temp_raw=0
-                for _z in /sys/class/thermal/thermal_zone*; do
-                  [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
-                  _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                  case "${'$'}_n" in *gpu*|*adreno*|*mali*|*g3d*|*mfg*|*ged*)
-                    _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null); [ -n "${'$'}_v" ] && { gpu_temp_raw=${'$'}_v; break; }
-                  esac
+                for p in /sys/class/kgsl/kgsl-3d0/gpuclk /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq /sys/kernel/ged/hal/current_freqency /sys/kernel/gpu/gpu_clock /sys/class/devfreq/*gpu*/cur_freq /sys/class/devfreq/*mali*/cur_freq /sys/class/devfreq/*kgsl*/cur_freq; do
+                  [ -r "${'$'}p" ] || continue
+                  v=${'$'}(cat "${'$'}p" 2>/dev/null | tr -cd '0-9')
+                  [ -n "${'$'}v" ] && { gpu_freq=${'$'}v; break; }
                 done
-                echo gpu_temp=${'$'}gpu_temp_raw
+                echo gpu_freq=${'$'}gpu_freq
+                gpu_temp=0
+                for z in /sys/class/thermal/thermal_zone*; do
+                  [ -r "${'$'}z/type" ] && [ -r "${'$'}z/temp" ] || continue
+                  n=${'$'}(cat "${'$'}z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                  case "${'$'}n" in *gpu*|*adreno*|*mali*|*g3d*|*mfg*|*ged*) gpu_temp=${'$'}(cat "${'$'}z/temp" 2>/dev/null); break;; esac
+                done
+                echo gpu_temp=${'$'}gpu_temp
                 gpu_name=""
-                if [ -f /sys/class/kgsl/kgsl-3d0/gpu_model ]; then
-                  gpu_name=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpu_model 2>/dev/null | tr -d '\n')
-                elif [ -f /sys/class/kgsl/kgsl-3d0/gpu_tbl_name ]; then
-                  gpu_name=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpu_tbl_name 2>/dev/null | tr -d '\n')
-                elif [ -f /sys/class/misc/mali0/device/gpu_id ]; then
-                  _id=${'$'}(cat /sys/class/misc/mali0/device/gpu_id 2>/dev/null | tr -cd '0-9')
-                  [ -n "${'$'}_id" ] && gpu_name="Mali-G${'$'}_id"
-                elif [ -d /sys/class/misc/mali0 ] || [ -d /sys/class/misc/g3d ]; then
-                  gpu_name="Mali GPU"
-                fi
-                if [ -z "${'$'}gpu_name" ]; then
-                  _vk=${'$'}(getprop ro.hardware.vulkan 2>/dev/null)
-                  case "${'$'}_vk" in *adreno*) gpu_name="Adreno GPU";; *mali*) gpu_name="Mali GPU";; esac
-                fi
+                for p in /sys/class/kgsl/kgsl-3d0/gpu_model /sys/class/kgsl/kgsl-3d0/gpu_tbl_name /proc/gpuinfo; do
+                  [ -r "${'$'}p" ] || continue
+                  gpu_name=${'$'}(cat "${'$'}p" 2>/dev/null | head -n1 | tr -d '\r')
+                  [ -n "${'$'}gpu_name" ] && break
+                done
                 echo gpu_name=${'$'}gpu_name
             """.trimIndent())
-            val gpuM       = parseKv(gpuR.stdout)
-            var gpuUsage   = gpuM["gpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0
-            var gpuFreqMhz = gpuM["gpu_freq"]?.toLongOrNull() ?: 0L
-            var gpuTempC   = normRaw(gpuM["gpu_temp"]?.toLongOrNull() ?: 0L)
-            var gpuName    = gpuM["gpu_name"] ?: ""
-
-            // Banyak node GPU (KGSL/Mali/GED) butuh root read di beberapa ROM.
-            // Fallback ini tidak memunculkan prompt root; hanya dipakai kalau shell root sudah granted/cached.
-            if (gpuFreqMhz <= 0L || gpuName.isBlank()) {
-                val rootGpuR = shRootCached("""
-                    gpu_usage=0
-                    for _u in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/ged/hal/gpu_utilization /sys/kernel/gpu/gpu_utilization /sys/class/misc/mali0/device/utilisation /proc/gpufreq/gpufreq_power_dump; do
-                      [ -f "${'$'}_u" ] || continue
-                      val=${'$'}(cat "${'$'}_u" 2>/dev/null | tr -cd '0-9 ' | awk '{print ${'$'}1}' | cut -c1-3)
-                      [ -n "${'$'}val" ] && { gpu_usage=${'$'}val; break; }
-                    done
-                    [ "${'$'}gpu_usage" -gt 100 ] 2>/dev/null && gpu_usage=100
-                    echo gpu_usage=${'$'}gpu_usage
-                    gpu_freq=0
-                    for _f in /sys/class/kgsl/kgsl-3d0/gpuclk /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq /sys/kernel/ged/hal/current_freqency /sys/kernel/ged/hal/current_freq /proc/gpufreq/gpufreq_opp_freq /proc/gpufreqv2/gpu_working_opp_table /sys/class/devfreq/*gpu*/cur_freq /sys/class/devfreq/*mali*/cur_freq /sys/class/devfreq/*g3d*/cur_freq; do
-                      [ -f "${'$'}_f" ] || continue
-                      val=${'$'}(cat "${'$'}_f" 2>/dev/null | tr -cd '0-9' | head -c 12)
-                      [ -n "${'$'}val" ] || continue
-                      if [ "${'$'}val" -gt 100000000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000000)); elif [ "${'$'}val" -gt 100000 ] 2>/dev/null; then gpu_freq=${'$'}((val/1000)); else gpu_freq=${'$'}val; fi
-                      [ "${'$'}gpu_freq" -gt 0 ] 2>/dev/null && break
-                    done
-                    echo gpu_freq=${'$'}gpu_freq
-                    gpu_temp_raw=0
-                    for _z in /sys/class/thermal/thermal_zone*; do
-                      [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
-                      _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                      case "${'$'}_n" in *gpu*|*adreno*|*mali*|*g3d*|*mfg*|*ged*) _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null); [ -n "${'$'}_v" ] && { gpu_temp_raw=${'$'}_v; break; };; esac
-                    done
-                    echo gpu_temp=${'$'}gpu_temp_raw
-                    gpu_name=""
-                    [ -f /sys/class/kgsl/kgsl-3d0/gpu_model ] && gpu_name=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpu_model 2>/dev/null | tr -d '\n')
-                    [ -z "${'$'}gpu_name" ] && [ -d /sys/class/kgsl/kgsl-3d0 ] && gpu_name="Adreno GPU"
-                    [ -z "${'$'}gpu_name" ] && { [ -d /sys/class/misc/mali0 ] || ls /sys/class/devfreq/*mali* >/dev/null 2>&1; } && gpu_name="Mali GPU"
-                    echo gpu_name=${'$'}gpu_name
-                """.trimIndent())
-                val rootGpuM = parseKv(rootGpuR.stdout)
-                gpuUsage = maxOf(gpuUsage, rootGpuM["gpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0)
-                if (gpuFreqMhz <= 0L) gpuFreqMhz = rootGpuM["gpu_freq"]?.toLongOrNull() ?: 0L
-                if (!validTemp(gpuTempC)) gpuTempC = normRaw(rootGpuM["gpu_temp"]?.toLongOrNull() ?: 0L)
-                if (gpuName.isBlank()) gpuName = rootGpuM["gpu_name"] ?: ""
-            }
-
-            // ── Memory ───────────────────────────────────────────────────────
-            val memR = shLocal("""
-                mt=${'$'}(awk '/^MemTotal:/{print $2}' /proc/meminfo)
-                ma=${'$'}(awk '/^MemAvailable:/{print $2}' /proc/meminfo)
-                st=${'$'}(awk '/^SwapTotal:/{print $2}' /proc/meminfo)
-                sf=${'$'}(awk '/^SwapFree:/{print $2}' /proc/meminfo)
-                echo ram_total_mb=${'$'}((mt/1024))
-                echo ram_used_mb=${'$'}(((mt-ma)/1024))
-                echo swap_total_mb=${'$'}((st/1024))
-                echo swap_used_mb=${'$'}(((st-sf)/1024))
-            """.trimIndent())
-            val memM        = parseKv(memR.stdout)
-            val ramTotalMb  = memM["ram_total_mb"]?.toLongOrNull()  ?: 0L
-            val ramUsedMb   = memM["ram_used_mb"]?.toLongOrNull()   ?: 0L
-            val swapTotalMb = memM["swap_total_mb"]?.toLongOrNull() ?: 0L
-            val swapUsedMb  = memM["swap_used_mb"]?.toLongOrNull()  ?: 0L
-
-            // ── Battery ──────────────────────────────────────────────────────
-            val batR = shLocal("""
-                echo bat_level=${'$'}(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 0)
-                bat_temp=0
-                for _p in /sys/class/power_supply/battery/temp /sys/class/power_supply/Battery/temp /sys/class/power_supply/bms/temp /sys/class/power_supply/usb/temp /sys/class/power_supply/battery/batt_temp; do
-                  [ -f "${'$'}_p" ] || continue; _v=${'$'}(cat "${'$'}_p" 2>/dev/null | tr -cd '0-9'); [ -n "${'$'}_v" ] && { bat_temp=${'$'}_v; break; }
-                done
-                if [ "${'$'}bat_temp" = "0" ]; then
-                  for _z in /sys/class/thermal/thermal_zone*; do
-                    [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
-                    _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                    case "${'$'}_n" in *battery*|*batt*) _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null | tr -cd '0-9'); [ -n "${'$'}_v" ] && { bat_temp=${'$'}_v; break; };; esac
-                  done
-                fi
-                echo bat_temp=${'$'}bat_temp
-                bat_ua=0
-                for _p in /sys/class/power_supply/battery/current_now /sys/class/power_supply/Battery/current_now /sys/class/power_supply/bms/current_now; do
-                  [ -f "${'$'}_p" ] || continue; _v=${'$'}(cat "${'$'}_p" 2>/dev/null | tr -cd '\-0-9'); [ -n "${'$'}_v" ] && { bat_ua=${'$'}_v; break; }
-                done
-                echo bat_ua=${'$'}bat_ua
-                bat_uv=0
-                for _p in /sys/class/power_supply/battery/voltage_now /sys/class/power_supply/Battery/voltage_now /sys/class/power_supply/bms/voltage_now; do
-                  [ -f "${'$'}_p" ] || continue; _v=${'$'}(cat "${'$'}_p" 2>/dev/null | tr -cd '0-9'); [ -n "${'$'}_v" ] && { bat_uv=${'$'}_v; break; }
-                done
-                echo bat_uv=${'$'}bat_uv
-                echo bat_status=${'$'}(cat /sys/class/power_supply/battery/status 2>/dev/null || echo Unknown)
-            """.trimIndent())
-            val batM        = parseKv(batR.stdout)
-            val batLevel    = batM["bat_level"]?.toIntOrNull()?.coerceIn(0, 100) ?: 0
-            val batTempC    = normRaw(batM["bat_temp"]?.toLongOrNull() ?: 0L)
-            val rawUa       = batM["bat_ua"]?.toLongOrNull() ?: 0L
-            val batCurrentMa = if (rawUa > 30_000L || rawUa < -30_000L) rawUa / 1000L else rawUa
-            val rawUv       = batM["bat_uv"]?.toLongOrNull() ?: 0L
-            val batVoltage  = if (rawUv > 1_000_000L) rawUv / 1000L else rawUv
-            val batStatus   = batM["bat_status"] ?: "Unknown"
-
-            // ── Thermal ──────────────────────────────────────────────────────
-            val thermalR = shLocal("""
-                for _z in /sys/class/thermal/thermal_zone*; do
-                  [ -r "${'$'}_z/type" ] && [ -r "${'$'}_z/temp" ] || continue
-                  _n=${'$'}(cat "${'$'}_z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-                  case "${'$'}_n" in
-                    *battery*|*batt*|*charger*|*usb*|*pa_therm*|*quiet_therm*) continue;;
-                    *soc*|*xo*|*skin*|*shell*|*board*|*ambient*|*pmic*|*modem*)
-                      _v=${'$'}(cat "${'$'}_z/temp" 2>/dev/null); [ -n "${'$'}_v" ] && { echo thermal_temp=${'$'}_v; exit 0; }
-                  esac
-                done
-                echo thermal_temp=0
-            """.trimIndent())
-            val thermalRaw  = parseKv(thermalR.stdout)["thermal_temp"]?.toLongOrNull() ?: 0L
-            val thermalTempC = normRaw(thermalRaw).takeIf(::validTemp) ?: cpuTempC.takeIf(::validTemp) ?: 0f
-
-            // ── Storage (Kotlin StatFs — reliable, tidak butuh root) ──────────
-            val (storageTotalKb, storageUsedKb) = runCatching {
-                val dataFs     = StatFs(Environment.getDataDirectory().absolutePath)
-                val blockSize  = dataFs.blockSizeLong
-                val total      = dataFs.blockCountLong
-                val free       = dataFs.availableBlocksLong
-                Pair((blockSize * total) / 1024L, (blockSize * (total - free)) / 1024L)
-            }.getOrElse {
-                runCatching {
-                    val fs = StatFs("/data/data")
-                    val bs = fs.blockSizeLong
-                    Pair(
-                        (bs * fs.blockCountLong) / 1024L,
-                        (bs * (fs.blockCountLong - fs.availableBlocksLong)) / 1024L
-                    )
-                }.getOrElse { Pair(0L, 0L) }
-            }
-
-            // ── Uptime ────────────────────────────────────────────────────────
-            val uptimeR = shLocal("""
-                up=${'$'}(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)
-                echo uptime=${'$'}(printf "%dd_%dh_%dm" ${'$'}((up/86400)) ${'$'}(((up%86400)/3600)) ${'$'}(((up%3600)/60)))
-            """.trimIndent())
-            val sm = parseKv(uptimeR.stdout)
-
-            dev.aether.manager.data.MonitorState(
-                cpuUsage       = cpuUsage,
-                cpuFreq        = if (cpuFreqMhz > 0) "$cpuFreqMhz MHz" else "",
-                gpuUsage       = gpuUsage,
-                gpuFreq        = if (gpuFreqMhz > 0) "$gpuFreqMhz MHz" else "",
-                gpuName        = gpuName,
-                ramUsedMb      = ramUsedMb,
-                ramTotalMb     = ramTotalMb,
-                cpuTemp        = cpuTempC,
-                gpuTemp        = gpuTempC,
-                thermalTemp    = thermalTempC,
-                batTemp        = batTempC,
-                storageUsedGb  = storageUsedKb  / 1_048_576f,
-                storageTotalGb = storageTotalKb / 1_048_576f,
-                uptime         = (sm["uptime"] ?: "").replace("_", " "),
-                batLevel       = batLevel,
-                cpuGovernor    = cpuGovernor,
-                swapUsedMb     = swapUsedMb,
-                swapTotalMb    = swapTotalMb,
-                batCurrentMa   = batCurrentMa,
-                batVoltage     = batVoltage,
-                batStatus      = batStatus,
-            )
+            val rootGpuM = parseKv(rootGpuR.stdout)
+            if (gpuUsage <= 0) gpuUsage = rootGpuM["gpu_usage"]?.toIntOrNull()?.coerceIn(0, 100) ?: gpuUsage
+            if (gpuFreqMhz <= 0L) gpuFreqMhz = normalizeFreqToMhz(rootGpuM["gpu_freq"]?.toLongOrNull() ?: 0L)
+            if (!validTemp(gpuTempC)) gpuTempC = normRaw(rootGpuM["gpu_temp"]?.toLongOrNull() ?: 0L)
+            if (gpuName.isBlank()) gpuName = rootGpuM["gpu_name"].orEmpty()
         }
+
+        if ((cpuFreqMhz <= 0L || !validTemp(cpuTempC)) && RootManager.isRootGranted) {
+            val rootCpuR = shRootCached("""
+                total=0; count=0
+                for p in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq /sys/devices/system/cpu/cpu[0-9]*/cpufreq/cpuinfo_cur_freq; do
+                  [ -r "${'$'}p" ] || continue
+                  v=${'$'}(cat "${'$'}p" 2>/dev/null | tr -cd '0-9')
+                  [ -n "${'$'}v" ] && [ "${'$'}v" -gt 0 ] 2>/dev/null && { total=${'$'}((total+v)); count=${'$'}((count+1)); }
+                done
+                [ "${'$'}count" -gt 0 ] && echo cpu_freq=${'$'}((total/count/1000)) || echo cpu_freq=0
+                cpu_temp=0
+                for z in /sys/class/thermal/thermal_zone*; do
+                  [ -r "${'$'}z/type" ] && [ -r "${'$'}z/temp" ] || continue
+                  n=${'$'}(cat "${'$'}z/type" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                  case "${'$'}n" in *cpu*|*tsens*|*apc*|*cluster*|*big*|*little*|*silver*|*gold*) cpu_temp=${'$'}(cat "${'$'}z/temp" 2>/dev/null); break;; esac
+                done
+                echo cpu_temp=${'$'}cpu_temp
+            """.trimIndent())
+            val rootCpuM = parseKv(rootCpuR.stdout)
+            if (cpuFreqMhz <= 0L) cpuFreqMhz = rootCpuM["cpu_freq"]?.toLongOrNull() ?: 0L
+            if (!validTemp(cpuTempC)) cpuTempC = normRaw(rootCpuM["cpu_temp"]?.toLongOrNull() ?: 0L)
+        }
+
+        val memInfo = readTextFast("/proc/meminfo").lines().associate { line ->
+            val key = line.substringBefore(':', "")
+            val value = line.substringAfter(':', "0").trim().substringBefore(' ').toLongOrNull() ?: 0L
+            key to value
+        }
+        val ramTotalMb = (memInfo["MemTotal"] ?: 0L) / 1024L
+        val ramUsedMb = (((memInfo["MemTotal"] ?: 0L) - (memInfo["MemAvailable"] ?: 0L)).coerceAtLeast(0L)) / 1024L
+        val swapTotalMb = (memInfo["SwapTotal"] ?: 0L) / 1024L
+        val swapUsedMb = (((memInfo["SwapTotal"] ?: 0L) - (memInfo["SwapFree"] ?: 0L)).coerceAtLeast(0L)) / 1024L
+
+        val batLevel = readLongFast("/sys/class/power_supply/battery/capacity").toInt().coerceIn(0, 100)
+        val batTempC = listOf(
+            "/sys/class/power_supply/battery/temp",
+            "/sys/class/power_supply/Battery/temp",
+            "/sys/class/power_supply/bms/temp",
+            "/sys/class/power_supply/battery/batt_temp"
+        ).firstNotNullOfOrNull { normRaw(readLongFast(it)).takeIf(::validTemp) } ?: readThermalByName("battery", "batt")
+        val rawUa = listOf(
+            "/sys/class/power_supply/battery/current_now",
+            "/sys/class/power_supply/Battery/current_now",
+            "/sys/class/power_supply/bms/current_now"
+        ).firstNotNullOfOrNull { readLongFast(it).takeIf { v -> v != 0L } } ?: 0L
+        val batCurrentMa = if (rawUa > 30_000L || rawUa < -30_000L) rawUa / 1000L else rawUa
+        val rawUv = listOf(
+            "/sys/class/power_supply/battery/voltage_now",
+            "/sys/class/power_supply/Battery/voltage_now",
+            "/sys/class/power_supply/bms/voltage_now"
+        ).firstNotNullOfOrNull { readLongFast(it).takeIf { v -> v > 0L } } ?: 0L
+        val batVoltage = if (rawUv > 1_000_000L) rawUv / 1000L else rawUv
+        val batStatus = readTextFast("/sys/class/power_supply/battery/status").ifBlank { "Unknown" }
+
+        val thermalTempC = readThermalByName("soc", "xo", "skin", "shell", "board", "ambient", "pmic", "modem", excludeBattery = true)
+            .takeIf(::validTemp) ?: cpuTempC.takeIf(::validTemp) ?: 0f
+
+        val (storageTotalKb, storageUsedKb) = runCatching {
+            val dataFs = StatFs(Environment.getDataDirectory().absolutePath)
+            val blockSize = dataFs.blockSizeLong
+            val total = dataFs.blockCountLong
+            val free = dataFs.availableBlocksLong
+            Pair((blockSize * total) / 1024L, (blockSize * (total - free)) / 1024L)
+        }.getOrElse { Pair(0L, 0L) }
+
+        val upSec = readTextFast("/proc/uptime").substringBefore(' ').toLongOrNull() ?: 0L
+        val uptime = "%dd %dh %dm".format(upSec / 86400L, (upSec % 86400L) / 3600L, (upSec % 3600L) / 60L)
+
+        dev.aether.manager.data.MonitorState(
+            cpuUsage = cpuUsage,
+            cpuFreq = if (cpuFreqMhz > 0L) "$cpuFreqMhz MHz" else "",
+            gpuUsage = gpuUsage,
+            gpuFreq = if (gpuFreqMhz > 0L) "$gpuFreqMhz MHz" else "",
+            gpuName = gpuName.trim(),
+            ramUsedMb = ramUsedMb,
+            ramTotalMb = ramTotalMb,
+            cpuTemp = cpuTempC,
+            gpuTemp = gpuTempC,
+            thermalTemp = thermalTempC,
+            batTemp = batTempC,
+            storageUsedGb = storageUsedKb / 1_048_576f,
+            storageTotalGb = storageTotalKb / 1_048_576f,
+            uptime = uptime,
+            batLevel = batLevel,
+            cpuGovernor = cpuGovernor,
+            swapUsedMb = swapUsedMb,
+            swapTotalMb = swapTotalMb,
+            batCurrentMa = batCurrentMa,
+            batVoltage = batVoltage,
+            batStatus = batStatus,
+        )
+    }
 
     private fun parseKv(raw: String): Map<String, String> =
         raw.lines().mapNotNull { line ->
