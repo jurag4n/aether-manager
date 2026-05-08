@@ -64,20 +64,24 @@ static const uint8_t PLACEHOLDER_SIG[] = {
 
 static const char *hook_needles[] = {
     "frida", "gum-js-loop", "gmain", "gdbus", "frida-agent", "frida-gadget", "linjector", "re.frida",
-    "xposed", "edxposed", "lsposed", "lspatch", "sandhook", "substrate", "epic", "riru",
-    "zygisk-lsposed", "libxposed", "liblspd", "libsubstrate", "whale", "yahfa", "taichi"
+    "substrate", "epic", "sandhook", "whale", "yahfa"
 };
 
 static const char *patch_needles[] = {
     "luckypatcher", "lucky patcher", "chelpus", "lpatcher", "lp.lock", "lp.db",
-    "patcher.app", "lspatch", "rebuilt", "apkeditor", "apk editor", "mt manager",
-    "np manager", "apktool", "jadx", "dex editor", "classes.dex", "base.apk.bak",
-    "aether crack", "aether patched", "aether mod", "license bypass"
+    "apktool", "apktool.yml", "smali", "baksmali", "apktool-m", "apktool m",
+    "jadx", "jadx-gui", "dex2jar", "jd-gui", "bytecode-viewer",
+    "apklab", "apk lab", "apk-mitm", "android-unpinner", "patch-apk", "apkpatcher", "apk-patcher",
+    "revanced", "revanced-manager", "revanced manager", "revanced-patcher", "revanced-cli", "revanced-patches",
+    "reflutter", "uber-apk-signer", "apksigner", "zipalign", "signapk", "keytool-importkeypair",
+    "apk easy tool", "apktoolbox", "apk editor studio", "apktoolgui", "apk-decompiler",
+    "aether crack", "aether_crack", "aether patched", "aether_patched", "aether mod", "aether_mod",
+    "license bypass", "license_bypass", "signature bypass", "signature_bypass", "billing bypass", "billing_bypass"
 };
 
 static const char *dump_needles[] = {
     "fridump", "dumpdex", "dexdump", "dexhunter", "drizzle", "objection", "r0capture",
-    "xposed", "lsposed", "lspatch", "substrate", "memorydump", "unidbg", "jni trace"
+    "memorydump", "memory_dump", "unidbg", "jni trace", "jnitrace", "libdexfile", "dexfiledump", "dex_dump"
 };
 
 static int tracer_pid_detected() {
@@ -170,8 +174,7 @@ static int suspicious_filesystem() {
         char name[256];
         snprintf(name, sizeof(name), "%s", e->d_name);
         lower_ascii(name);
-        if (contains_any_lower(name, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0]))) ||
-            contains_any_lower(name, hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])))) {
+        if (contains_any_lower(name, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0])))) {
             hit = 1;
         }
     }
@@ -223,6 +226,25 @@ static int suspicious_task_names() {
     return hit;
 }
 
+static int sdcard_name_is_high_confidence(const char *name) {
+    if (!name || !name[0]) return 0;
+
+    if (strstr(name, "base.apk") || strstr(name, "classes.dex") || strstr(name, ".apk") || strstr(name, ".dex") ||
+        strstr(name, "mt manager") || strstr(name, "mtmanager") ||
+        strstr(name, "np manager") || strstr(name, "npmanager") ||
+        strstr(name, "zygisk") || strstr(name, "riru") || strstr(name, "lsposed") || strstr(name, "xposed") ||
+        strstr(name, "lspatch") || strstr(name, "magisk")) {
+        return 0;
+    }
+
+    if (contains_any_lower(name, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0]))) ||
+        contains_any_lower(name, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) {
+        return 1;
+    }
+
+    return 0;
+}
+
 static int scan_dir_names_once(const char *base, int max_items) {
     DIR *d = opendir(base);
     if (!d) return 0;
@@ -235,9 +257,7 @@ static int scan_dir_names_once(const char *base, int max_items) {
         char name[512];
         snprintf(name, sizeof(name), "%s", e->d_name);
         lower_ascii(name);
-        if (contains_any_lower(name, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0]))) ||
-            contains_any_lower(name, hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0]))) ||
-            contains_any_lower(name, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) {
+        if (sdcard_name_is_high_confidence(name)) {
             hit = 1;
             break;
         }
@@ -248,11 +268,12 @@ static int scan_dir_names_once(const char *base, int max_items) {
 
 static int suspicious_sdcard_paths() {
     const char *roots[] = {
-        "/sdcard", "/sdcard/Download", "/sdcard/Android/data", "/sdcard/Android/obb",
-        "/storage/emulated/0", "/storage/emulated/0/Download", "/storage/emulated/0/Android/data"
+        "/sdcard", "/sdcard/Download", "/sdcard/Documents", "/sdcard/Android/data",
+        "/storage/emulated/0", "/storage/emulated/0/Download", "/storage/emulated/0/Documents",
+        "/storage/emulated/0/Android/data"
     };
     for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); ++i) {
-        if (scan_dir_names_once(roots[i], 256)) return 1;
+        if (scan_dir_names_once(roots[i], 192)) return 1;
     }
     return 0;
 }
