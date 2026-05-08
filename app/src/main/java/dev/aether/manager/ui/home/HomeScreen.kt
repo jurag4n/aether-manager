@@ -168,8 +168,8 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
     val cpuFreq = normalizeCpuFreq(state.cpuFreq)
-    // Display CPU usage gracefully: show dash if zero or negative
-    val cpuUsageLabel = if (state.cpuUsage >= 0) "${state.cpuUsage}%" else "—%"
+    // Display CPU usage gracefully for no-root devices too.
+    val cpuUsageLabel = if (state.cpuUsage > 0) "${state.cpuUsage}%" else "0–1%"
     val freqSize = when {
         cpuFreq.length >= 10 -> 23.sp
         cpuFreq.length >= 8 -> 25.sp
@@ -326,7 +326,7 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                val gpuUsageLabel = if (state.gpuUsage >= 0) "${state.gpuUsage}%" else "—%"
+                val gpuUsageLabel = if (state.gpuUsage > 0) "${state.gpuUsage}%" else "No root"
                 InfoTile(Icons.Outlined.Thermostat, gpuUsageLabel, "GPU Load", accent, Modifier.weight(1f))
                 InfoTile(Icons.Outlined.GridView, gpuShortName, "GPU", accent, Modifier.weight(1f))
             }

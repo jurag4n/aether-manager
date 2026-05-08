@@ -16,6 +16,8 @@ import dev.aether.manager.i18n.loadSavedLanguage
 import dev.aether.manager.util.RootEngine
 import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
+import dev.aether.manager.shizuku.ShizukuShell
+import dev.aether.manager.shizuku.ShizukuTweakApplier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,13 +62,32 @@ class AetherService : Service() {
 
     @Volatile private var isReapplying = false
 
+    private fun isNoRootMode(): Boolean {
+        val p = getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
+        return p.getBoolean("no_root_mode", false) || p.getString("setup_mode", "") == "shizuku"
+    }
+
+    private fun readLocalTweaks(): Map<String, String> =
+        getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
+            .getString("saved_tweaks_conf", "").orEmpty()
+            .lineSequence()
+            .mapNotNull { line ->
+                val idx = line.indexOf('=')
+                if (idx <= 0) null else line.substring(0, idx) to line.substring(idx + 1)
+            }
+            .toMap()
+
     private suspend fun reapplyTweaks(reason: String) {
         if (isReapplying) return  // hindari concurrent shell execution
         isReapplying = true
         try {
-            val tweaks = RootEngine.readTweaksConf()
+            val tweaks = if (isNoRootMode()) readLocalTweaks() else RootEngine.readTweaksConf()
             if (tweaks.isEmpty()) return
-            TweakApplier.apply(tweaks)
+            if (isNoRootMode() && ShizukuShell.isAvailable() && ShizukuShell.hasPermission()) {
+                ShizukuTweakApplier.apply(tweaks)
+            } else {
+                TweakApplier.apply(tweaks)
+            }
         } catch (_: Exception) {
         } finally {
             isReapplying = false
@@ -136,6 +157,23 @@ class BootReceiver : BroadcastReceiver() {
 
     private suspend fun applyOnBoot(context: Context) {
         if (!SettingsPrefs.getApplyOnBoot(context)) return
+
+        val prefs = context.getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
+        val noRootMode = prefs.getBoolean("no_root_mode", false) || prefs.getString("setup_mode", "") == "shizuku"
+        if (noRootMode) {
+            delay(12_000L)
+            val tweaks = prefs.getString("saved_tweaks_conf", "").orEmpty()
+                .lineSequence()
+                .mapNotNull { line ->
+                    val idx = line.indexOf('=')
+                    if (idx <= 0) null else line.substring(0, idx) to line.substring(idx + 1)
+                }
+                .toMap()
+            if (tweaks.isNotEmpty() && ShizukuShell.isAvailable() && ShizukuShell.hasPermission()) {
+                ShizukuTweakApplier.apply(tweaks)
+            }
+            return
+        }
 
         // BootReceiver berjalan dalam proses terpisah dari Application — libsu belum di-init.
         // Inisialisasi builder root-only supaya tidak ter-cache sebagai non-root shell.

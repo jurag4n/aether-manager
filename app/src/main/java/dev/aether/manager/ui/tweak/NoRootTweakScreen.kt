@@ -36,7 +36,6 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +48,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,20 +65,28 @@ import kotlinx.coroutines.delay
 fun NoRootTweakScreen(vm: MainViewModel) {
     val tweaks by vm.tweaks.collectAsState()
     val applyStatus by vm.applyStatus.collectAsState()
-    val monitor by vm.monitorState.collectAsState()
 
     var shizukuRunning by remember { mutableStateOf(false) }
     var shizukuGranted by remember { mutableStateOf(false) }
-    var tick by remember { mutableIntStateOf(0) }
+    var dnsExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         while (true) {
             shizukuRunning = ShizukuShell.isAvailable()
             shizukuGranted = ShizukuShell.hasPermission()
-            tick++
             delay(1200L)
         }
     }
+
+    val canApply = shizukuRunning && shizukuGranted
+    val dnsOptions = listOf(
+        "Off" to "Off",
+        "Cloudflare" to "cloudflare",
+        "Google DNS" to "google",
+        "CleanBrowsing Family" to "cleanbrowsing"
+    )
+    val selectedDnsLabel = dnsOptions.firstOrNull { it.second.equals(tweaks.dnsProvider, true) }?.first
+        ?: if (tweaks.dnsProvider.isBlank()) "Off" else tweaks.dnsProvider
 
     Column(
         modifier = Modifier
@@ -97,23 +103,17 @@ fun NoRootTweakScreen(vm: MainViewModel) {
             onRequest = { ShizukuShell.requestPermissionIfNeeded() }
         )
 
-        NoRootMonitorCard(
-            cpu = monitor.cpuUsage,
-            ram = if (monitor.ramTotalMb > 0) "${monitor.ramUsedMb}/${monitor.ramTotalMb} MB" else "Detecting",
-            storage = if (monitor.storageTotalGb > 0f) "${monitor.storageUsedGb.toInt()}/${monitor.storageTotalGb.toInt()} GB" else "Detecting",
-            uptime = monitor.uptime.ifBlank { "Detecting" }
-        )
+        SectionTitle("No Root Tweaks", "Changes apply instantly when Shizuku is running.")
 
-        SectionTitle("No Root Tweaks", "Only safe settings that can run with Shizuku are shown here.")
-
-        NoRootToggleCard(
-            icon = Icons.Outlined.Dns,
-            title = "Private DNS",
-            subtitle = "Use system Private DNS without root.",
-            checked = tweaks.dnsProvider.equals("adguard", true) || tweaks.dnsProvider.equals("cloudflare", true) || tweaks.dnsProvider.equals("google", true),
-            enabled = shizukuRunning && shizukuGranted,
-            onChecked = { enabled ->
-                vm.setTweakStr("dns_provider", if (enabled) "adguard" else "Off")
+        DnsOptionCard(
+            selected = selectedDnsLabel,
+            expanded = dnsExpanded,
+            enabled = canApply,
+            options = dnsOptions,
+            onExpand = { dnsExpanded = !dnsExpanded },
+            onSelect = { value ->
+                dnsExpanded = false
+                vm.setTweakStr("dns_provider", value)
             }
         )
 
@@ -122,7 +122,7 @@ fun NoRootTweakScreen(vm: MainViewModel) {
             title = "Fast Animation",
             subtitle = "Set Android animation scale to 0.5x.",
             checked = tweaks.fastAnim,
-            enabled = shizukuRunning && shizukuGranted,
+            enabled = canApply,
             onChecked = { vm.setTweak("fast_anim", it) }
         )
 
@@ -131,7 +131,7 @@ fun NoRootTweakScreen(vm: MainViewModel) {
             title = "Doze Basic",
             subtitle = "Enable safe device idle doze command.",
             checked = tweaks.doze,
-            enabled = shizukuRunning && shizukuGranted,
+            enabled = canApply,
             onChecked = { vm.setTweak("doze", it) }
         )
 
@@ -140,7 +140,7 @@ fun NoRootTweakScreen(vm: MainViewModel) {
             title = "Trim Cache",
             subtitle = "Run package cache trim via Shizuku shell.",
             checked = tweaks.clearCache,
-            enabled = shizukuRunning && shizukuGranted,
+            enabled = canApply,
             onChecked = { vm.setTweak("clear_cache", it) }
         )
 
@@ -149,45 +149,46 @@ fun NoRootTweakScreen(vm: MainViewModel) {
             title = "Network Lite",
             subtitle = "Disable always-on Wi‑Fi/BLE scan where supported.",
             checked = tweaks.networkStable,
-            enabled = shizukuRunning && shizukuGranted,
+            enabled = canApply,
             onChecked = { vm.setTweak("network_stable", it) }
         )
 
         RootLockedCard()
 
-        FilledTonalButton(
-            onClick = { vm.applyAll() },
-            enabled = shizukuRunning && shizukuGranted && !applyStatus.running,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(18.dp)
-        ) {
-            AnimatedContent(
-                targetState = applyStatus.running,
-                transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(90)) },
-                label = "no_root_apply"
-            ) { running ->
-                if (running) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Apply No Root Tweaks", fontWeight = FontWeight.Bold)
+        if (applyStatus.running || applyStatus.summary.isNotBlank()) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (applyStatus.running) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            if (applyStatus.lastOk) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
+                            contentDescription = null,
+                            tint = if (applyStatus.lastOk) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Text(
+                        text = if (applyStatus.running) "Applying instantly…" else applyStatus.summary,
+                        color = if (applyStatus.lastOk) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
-        }
-
-        if (applyStatus.summary.isNotBlank()) {
-            Text(
-                text = applyStatus.summary,
-                color = if (applyStatus.lastOk) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold
-            )
         }
 
         Spacer(Modifier.height(18.dp))
     }
 }
+
 
 @Composable
 private fun NoRootHeader(
@@ -304,6 +305,76 @@ private fun SectionTitle(title: String, subtitle: String) {
         Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     }
 }
+
+
+@Composable
+private fun DnsOptionCard(
+    selected: String,
+    expanded: Boolean,
+    enabled: Boolean,
+    options: List<Pair<String, String>>,
+    onExpand: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .clickable(enabled = enabled) { onExpand() },
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.20f))
+    ) {
+        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Outlined.Dns, contentDescription = null, tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Private DNS", fontWeight = FontWeight.Bold, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline)
+                    Text(selected, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+                Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            AnimatedContent(targetState = expanded, label = "dns_expand") { open ->
+                if (open) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        options.forEach { (label, value) ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable { onSelect(value) },
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (label == selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.40f)
+                                else MaterialTheme.colorScheme.surfaceContainerLow
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        if (label == selected) Icons.Outlined.CheckCircle else Icons.Outlined.Dns,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = if (label == selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(label, fontWeight = if (label == selected) FontWeight.Bold else FontWeight.Medium)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun NoRootToggleCard(

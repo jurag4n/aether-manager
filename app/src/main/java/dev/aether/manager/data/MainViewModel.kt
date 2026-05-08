@@ -182,7 +182,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshIfNeeded() {
         val current = (_deviceInfo.value as? UiState.Success)?.data
-        if (_deviceInfo.value is UiState.Loading || (RootManager.isRootGranted && current?.rootType == "Unknown")) {
+        if (_deviceInfo.value is UiState.Loading || isNoRootMode() || (RootManager.isRootGranted && current?.rootType == "Unknown")) {
             refresh()
         }
     }
@@ -258,6 +258,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun localPrefs() = getApplication<Application>()
         .getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
+
+    private fun isNoRootMode(): Boolean =
+        localPrefs().getBoolean("no_root_mode", false) || localPrefs().getString("setup_mode", "") == "shizuku"
 
     private fun readLocalTweaks(): Map<String, String> =
         localPrefs().getString("saved_tweaks_conf", "").orEmpty()

@@ -31,6 +31,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -319,7 +320,7 @@ fun SetupScreen(onDone: (mode: SetupMode, rootGranted: Boolean, shizukuGranted: 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     ModeCard(
                         title = "Root Mode",
-                        desc = "Full tweak engine",
+                        desc = "Full control",
                         icon = Icons.Outlined.AdminPanelSettings,
                         selected = mode == SetupMode.ROOT,
                         modifier = Modifier.weight(1f),
@@ -327,7 +328,7 @@ fun SetupScreen(onDone: (mode: SetupMode, rootGranted: Boolean, shizukuGranted: 
                     )
                     ModeCard(
                         title = "No Root",
-                        desc = "Shizuku limited",
+                        desc = "Limited safe tweaks",
                         icon = Icons.Outlined.Security,
                         selected = mode == SetupMode.SHIZUKU,
                         modifier = Modifier.weight(1f),
@@ -433,16 +434,7 @@ fun SetupScreen(onDone: (mode: SetupMode, rootGranted: Boolean, shizukuGranted: 
                         else Text("Start Aether Manager", fontWeight = FontWeight.Bold)
                     }
                 }
-
-                OutlinedButton(
-                    onClick = { onDone(SetupMode.SHIZUKU, false, false) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Text("Skip for now")
-                }
-
-                Spacer(Modifier.height(16.dp))
+Spacer(Modifier.height(16.dp))
             }
         }
     }
@@ -481,11 +473,14 @@ private fun ModeCard(
         tween(220, easing = FastOutSlowInEasing),
         label = "mode_border"
     )
-    val scale by animateFloatAsState(if (selected) 1f else 0.985f, tween(180), label = "mode_scale")
     Surface(
         modifier = modifier
             .animateContentSize()
-            .clickable { onClick() },
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
         shape = RoundedCornerShape(24.dp),
         color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
         border = BorderStroke(1.4.dp, borderColor)
@@ -639,8 +634,21 @@ private fun PermissionRow(item: SetupPermission, state: PermState, onClick: () -
                 }
                 Text(
                     when (state) {
-                        PermState.GRANTED -> "Ready"
-                        PermState.DENIED -> "Not granted yet"
+                        PermState.GRANTED -> when (item.key) {
+                            "ROOT" -> "Root shell granted · full kernel tweaks unlocked"
+                            "SHIZUKU" -> "Shizuku permission granted · no-root tweaks unlocked"
+                            "NOTIFICATION" -> "Notifications enabled for license, update, and service status"
+                            "STORAGE" -> "Storage access granted for backups and config files"
+                            "BATTERY" -> "Battery optimization ignored · background service more stable"
+                            "USAGE" -> "Usage access granted · app/profile monitoring ready"
+                            "WRITE" -> "Write Settings granted · DNS and animation tweaks ready"
+                            else -> "Permission granted"
+                        }
+                        PermState.DENIED -> when (item.key) {
+                            "SHIZUKU" -> "Shizuku is not running or permission is missing"
+                            "ROOT" -> "Root is not granted yet"
+                            else -> "Not granted yet"
+                        }
                         PermState.CHECKING -> "Checking permission…"
                         else -> item.desc
                     },

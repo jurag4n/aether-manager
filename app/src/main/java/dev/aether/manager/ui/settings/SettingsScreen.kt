@@ -193,14 +193,16 @@ fun SettingsScreen(
                 expanded = generalExpanded,
                 onToggle = { generalExpanded = !generalExpanded }
             ) {
-                SettingsRowSwitch(
-                    icon = Icons.Outlined.CloudUpload,
-                    title = s.settingsAutoBackup,
-                    subtitle = s.settingsAutoBackupDesc,
-                    checked = autoBackup,
-                    onCheckedChange = { vm.setAutoBackup(it) }
-                )
-                SettingsDivider()
+                if (!noRootMode) {
+                    SettingsRowSwitch(
+                        icon = Icons.Outlined.CloudUpload,
+                        title = s.settingsAutoBackup,
+                        subtitle = s.settingsAutoBackupDesc,
+                        checked = autoBackup,
+                        onCheckedChange = { vm.setAutoBackup(it) }
+                    )
+                    SettingsDivider()
+                }
                 SettingsRowSwitch(
                     icon = Icons.Outlined.FlashOn,
                     title = s.settingsApplyOnBoot,
@@ -225,7 +227,8 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSectionCard(
+            if (!noRootMode) {
+                SettingsSectionCard(
                 icon = Icons.Outlined.Archive,
                 title = "Backup & Reset",
                 subtitle = if (backupList.isEmpty()) s.settingsNoBackup else "${backupList.size} backup tersimpan",
@@ -307,6 +310,7 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
             }
         }
     }
