@@ -30,17 +30,19 @@ object AetherSecurityNative {
         if (BuildConfig.DEBUG) return true
         if (!tryLoad(context)) return false
         return runCatching {
-            verifyInstalledSignature(context) && nativeHighCheck(context.applicationContext)
+            verifyAppSignature(context) && nativeHighCheck(context.applicationContext)
         }.getOrDefault(false)
     }
 
     fun tamperReason(context: Context): String {
         if (!isLoaded && !tryLoad(context)) return "native_not_loaded"
-        if (!verifyInstalledSignature(context)) return "signature_mismatch"
+        if (!verifyAppSignature(context)) return "signature_mismatch"
         return runCatching { nativeTamperReason(context.applicationContext) }.getOrDefault("unknown")
     }
 
-    private fun verifyInstalledSignature(context: Context): Boolean {
+    fun verifyAppSignature(context: Context): Boolean {
+        if (BuildConfig.DEBUG) return true
+        if (!tryLoad(context)) return false
         val digests = collectSigningSha256(context)
         if (digests.isEmpty()) return false
         return digests.any { nativeVerifySignature(it) }

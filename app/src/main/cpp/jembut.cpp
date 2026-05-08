@@ -451,9 +451,7 @@ Java_dev_aether_manager_security_AetherSecurityNative_nativeVerifySignature(JNIE
     got[len] = '\0';
 
     lower_ascii(expected);
-    const char *fallback = "b8d371c1a06f445e278c66722903f1b8c21d61e7d427fff5550b3ba06e4cec58";
-    const char *target = (strlen(expected) == 64) ? expected : fallback;
-    int ok = (len == 64 && strcmp(got, target) == 0);
+    int ok = (len == 64 && strlen(expected) == 64 && strcmp(got, expected) == 0);
     env->ReleaseStringUTFChars(shaJ, sha);
     return ok ? JNI_TRUE : JNI_FALSE;
 }

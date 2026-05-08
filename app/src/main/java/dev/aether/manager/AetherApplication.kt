@@ -1,7 +1,6 @@
 package dev.aether.manager
 
 import android.app.Application
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +11,7 @@ import dev.aether.manager.ads.AdManager
 import dev.aether.manager.ads.InterstitialAdManager
 import dev.aether.manager.notification.NotificationHelper
 import dev.aether.manager.notification.NotificationScheduler
+import dev.aether.manager.security.AetherSecurityNative
 import kotlin.system.exitProcess
 
 class AetherApplication : Application() {
@@ -65,39 +65,8 @@ class AetherApplication : Application() {
     }
 
     private fun checkSignature() {
-        // Safety guard: if EXPECTED_SIGNATURE is still the placeholder, skip the
-        // check entirely. Without this, every release build dies immediately because
-        // no real cert hash can ever match the placeholder string.
-        if (EXPECTED_SIGNATURE == SIGNATURE_PLACEHOLDER) return
-
-        if (!NativeAether.isLoaded) { killSelf(); return }
         try {
-            @Suppress("DEPRECATION")
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                PackageManager.GET_SIGNING_CERTIFICATES
-            else
-                PackageManager.GET_SIGNATURES
-
-            val info = packageManager.getPackageInfo(packageName, flags)
-
-            val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val current = info.signingInfo?.apkContentsSigners?.toList().orEmpty()
-                val history = info.signingInfo?.signingCertificateHistory?.toList().orEmpty()
-                current + history
-            } else {
-                @Suppress("DEPRECATION")
-                info.signatures?.toList().orEmpty()
-            }
-
-            if (signatures.isEmpty()) { killSelf(); return }
-
-            val digest = java.security.MessageDigest.getInstance("SHA-256")
-            val expected = EXPECTED_SIGNATURE.lowercase()
-            val matched = signatures.any { sig ->
-                digest.digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }.lowercase() == expected
-            }
-
-            if (!matched) killSelf()
+            if (!AetherSecurityNative.verifyAppSignature(this)) killSelf()
         } catch (_: Throwable) {
             killSelf()
         }
@@ -173,8 +142,5 @@ class AetherApplication : Application() {
 
     companion object {
         private const val SECURITY_INTERVAL_MS = 45_000L
-
-        private const val SIGNATURE_PLACEHOLDER = "GANTI_DENGAN_SHA256_SIGNING_CERT_KAMU"
-        private const val EXPECTED_SIGNATURE    = "b8d371c1a06f445e278c66722903f1b8c21d61e7d427fff5550b3ba06e4cec58"
     }
 }
