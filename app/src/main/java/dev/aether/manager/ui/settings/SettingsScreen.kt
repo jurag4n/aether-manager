@@ -61,6 +61,10 @@ fun SettingsScreen(
 ) {
     val s   = LocalStrings.current
     val ctx = LocalContext.current
+    val noRootMode = remember {
+        val p = ctx.getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
+        p.getBoolean("no_root_mode", false) || p.getString("setup_mode", "") == "shizuku"
+    }
 
     BackHandler(onBack = onBack)
 
