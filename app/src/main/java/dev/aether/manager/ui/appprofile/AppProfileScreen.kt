@@ -521,6 +521,7 @@ private fun AppProfileStatusCard(
     totalApps: Int,
     onToggle: () -> Unit
 ) {
+    val s = LocalStrings.current
     val bg by animateColorAsState(
         if (enabled) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.46f)
         else MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -634,6 +635,7 @@ private fun AppListItem(
     onClick: () -> Unit,
     onProfileChange: (AppProfile) -> Unit
 ) {
+    val s = LocalStrings.current
     val currentProfile = profile ?: defaultProfile(app.packageName)
     val isEnabled = currentProfile.enabled
 
