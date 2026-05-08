@@ -80,8 +80,7 @@ static const char *patch_needles[] = {
 };
 
 static const char *dump_needles[] = {
-    "fridump", "dumpdex", "dexdump", "dexhunter", "drizzle", "objection", "r0capture",
-    "memorydump", "memory_dump", "unidbg", "jni trace", "jnitrace", "libdexfile", "dexfiledump", "dex_dump"
+    "frida-dexdump", "dumpdex", "dexhunter", "dexfiledump", "dex_dump"
 };
 
 static int tracer_pid_detected() {
@@ -237,8 +236,7 @@ static int sdcard_name_is_high_confidence(const char *name) {
         return 0;
     }
 
-    if (contains_any_lower(name, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0]))) ||
-        contains_any_lower(name, dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) {
+    if (contains_any_lower(name, patch_needles, (int)(sizeof(patch_needles)/sizeof(patch_needles[0])))) {
         return 1;
     }
 
@@ -413,17 +411,27 @@ static const char *reason_for(JNIEnv *env, jobject ctx) {
     if (!package_check(env, ctx)) return "package_repack";
     if (!apk_basic_integrity(env, ctx)) return "apk_repack";
     if (!class_loader_check(env, ctx)) return "loader_tamper";
-    if (tracer_pid_detected()) return "debugger";
-    if (suspicious_env()) return "suspicious_env";
-    if (suspicious_proc_cmdline()) return "proc_tamper";
-    if (suspicious_task_names()) return "hook_thread";
-    if (suspicious_tcp_ports()) return "frida_port";
-    if (scan_maps_for(hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])), 0)) return "hook_framework";
-    if (scan_maps_for(dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])), 1)) return "dump_tool";
-    if (scan_fd_for(hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])))) return "hook_fd";
-    if (scan_fd_for(dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) return "dump_fd";
-    if (suspicious_sdcard_paths()) return "sdcard_tamper_path";
-    if (suspicious_filesystem()) return "patcher_files";
+
+    int risk = 0;
+    int hard = 0;
+
+    if (tracer_pid_detected()) { risk += 3; hard = 1; }
+    if (suspicious_tcp_ports()) { risk += 2; }
+    if (scan_maps_for(hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])), 0)) { risk += 3; hard = 1; }
+    if (scan_fd_for(hook_needles, (int)(sizeof(hook_needles)/sizeof(hook_needles[0])))) { risk += 2; }
+    if (suspicious_task_names()) { risk += 2; }
+    if (suspicious_env()) { risk += 2; }
+    if (suspicious_proc_cmdline()) { risk += 1; }
+
+    /* Soft checks: useful for signal, but never block alone. */
+    if (scan_maps_for(dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])), 1)) { risk += 1; }
+    if (scan_fd_for(dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) { risk += 1; }
+    if (suspicious_filesystem()) { risk += 1; }
+    if (suspicious_sdcard_paths()) { risk += 1; }
+
+    if (hard && risk >= 4) return "runtime_tamper";
+    if (risk >= 6) return "multi_signal_tamper";
+
     return "ok";
 }
 
