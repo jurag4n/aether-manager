@@ -340,6 +340,26 @@ private fun securityReasonUi(rawReason: String): SecurityReasonUi {
             title = "Validasi signature gagal",
             description = "Sistem tidak bisa menyelesaikan pengecekan signature aplikasi dengan benar."
         )
+        "lucky_patcher_detected" -> SecurityReasonUi(
+            title = "Terdeteksi Lucky Patcher",
+            description = "Aplikasi mendeteksi komponen, package, file, atau jejak Lucky Patcher/Chelpus yang bisa memodifikasi APK dan lisensi."
+        )
+        "lspatch_detected" -> SecurityReasonUi(
+            title = "Terdeteksi LSPatch",
+            description = "Aplikasi mendeteksi LSPatch atau loader LSPatch. LSPosed, Zygisk, dan Riru tetap diizinkan; yang diblokir adalah LSPatch."
+        )
+        "lucky_patcher_or_lspatch_detected" -> SecurityReasonUi(
+            title = "Terdeteksi Lucky Patcher / LSPatch",
+            description = "Ada indikasi patcher seperti Lucky Patcher, Chelpus, LSPatch, atau tool modifikasi APK yang mengubah keamanan aplikasi."
+        )
+        "frida_detected" -> SecurityReasonUi(
+            title = "Terdeteksi Frida / Injector",
+            description = "Aplikasi mendeteksi Frida, gadget, port Frida, atau injector runtime yang bisa melakukan hook saat aplikasi berjalan."
+        )
+        "native_hook_detected" -> SecurityReasonUi(
+            title = "Terdeteksi native hook",
+            description = "Ada indikasi hook pada fungsi native. LSPosed, Zygisk, dan Riru tidak otomatis diblokir, tetapi hook/injector berbahaya tetap ditolak."
+        )
         "runtime_tamper", "multi_signal_tamper", "native_tamper", "loader_tamper", "got_hook_detected", "hook_detected" -> SecurityReasonUi(
             title = "Modifikasi runtime terdeteksi",
             description = "Ada indikasi hooking, patching, atau injeksi yang mengubah perilaku asli aplikasi."

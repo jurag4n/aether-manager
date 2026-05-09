@@ -725,21 +725,9 @@ static int layer8_elf_self_integrity(void) {
 
 __attribute__((visibility("hidden")))
 static int layer9_got_hook_check(void) {
-    void *libc=dlopen("libc.so",RTLD_NOW|RTLD_NOLOAD);
-    if(!libc) libc=dlopen("libc.so.6",RTLD_NOW|RTLD_NOLOAD);
-    if(!libc) return 0;
-
-    void *sym_fopen = dlsym(libc,"fopen");
-    void *sym_read  = dlsym(libc,"read");
-    dlclose(libc);
-
-    Dl_info info_fopen, info_read;
-    if(sym_fopen && dladdr(sym_fopen,&info_fopen)) {
-        if(info_fopen.dli_fname && !strstr(info_fopen.dli_fname,"libc")) return 1;
-    }
-    if(sym_read && dladdr(sym_read,&info_read)) {
-        if(info_read.dli_fname && !strstr(info_read.dli_fname,"libc")) return 1;
-    }
+    // Generic GOT/libc hook checks cause false positives on allowed frameworks
+    // such as LSPosed, Zygisk, and Riru. Real blocking remains handled by
+    // Layer 1/4 keywords: Frida, LSPatch, Lucky Patcher, injector, etc.
     return 0;
 }
 

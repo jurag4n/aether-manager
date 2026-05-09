@@ -49,6 +49,25 @@ static int contains_any_lower(const char *hay, const char **needles, int count) 
     return 0;
 }
 
+static int contains_lspatch_lower(const char *s) {
+    return s && (strstr(s, "lspatch") || strstr(s, "org.lsposed.lspatch"));
+}
+
+static int contains_lucky_patcher_lower(const char *s) {
+    return s && (
+        strstr(s, "luckypatcher") || strstr(s, "lucky patcher") || strstr(s, "chelpus") ||
+        strstr(s, "lpatcher") || strstr(s, "lp.lock") || strstr(s, "lp.db") ||
+        strstr(s, "lucky.patcher") || strstr(s, "patcher.app")
+    );
+}
+
+static int contains_frida_lower(const char *s) {
+    return s && (
+        strstr(s, "frida") || strstr(s, "gum-js-loop") || strstr(s, "frida-agent") ||
+        strstr(s, "frida-gadget") || strstr(s, "re.frida") || strstr(s, "linjector")
+    );
+}
+
 static const uint8_t P_STATUS[] = {0x6B,0x34,0x36,0x2B,0x27,0x6B,0x37,0x21,0x28,0x22,0x6B,0x37,0x30,0x25,0x30,0x31,0x37};
 static const uint8_t P_MAPS[]   = {0x6B,0x34,0x36,0x2B,0x27,0x6B,0x37,0x21,0x28,0x22,0x6B,0x29,0x25,0x34,0x37};
 static const uint8_t P_FD[]     = {0x6B,0x34,0x36,0x2B,0x27,0x6B,0x37,0x21,0x28,0x22,0x6B,0x22,0x20};
@@ -64,7 +83,7 @@ static const uint8_t PLACEHOLDER_SIG[] = {
 
 static const char *hook_needles[] = {
     "frida", "gum-js-loop", "gmain", "gdbus", "frida-agent", "frida-gadget", "linjector", "re.frida",
-    "objection", "xposed", "edxposed", "virtualxposed", "taichi",
+    "objection",
     "substrate", "epic", "sandhook", "whale", "yahfa", "pine", "legend", "dexposed", "cydia"
 };
 
@@ -473,11 +492,68 @@ static int native_symbol_sanity() {
     return 1;
 }
 
+static const char *specific_runtime_reason() {
+    char path[32];
+    char line[1536];
+
+    dec(P_MAPS, sizeof(P_MAPS), KPATH, path);
+    FILE *maps = fopen(path, "r");
+    if (maps) {
+        while (fgets(line, sizeof(line), maps)) {
+            lower_ascii(line);
+            if (contains_lspatch_lower(line)) { fclose(maps); return "lspatch_detected"; }
+            if (contains_lucky_patcher_lower(line)) { fclose(maps); return "lucky_patcher_detected"; }
+            if (contains_frida_lower(line)) { fclose(maps); return "frida_detected"; }
+        }
+        fclose(maps);
+    }
+
+    FILE *cmd = fopen("/proc/self/cmdline", "r");
+    if (cmd) {
+        char buf[512] = {0};
+        size_t n = fread(buf, 1, sizeof(buf) - 1, cmd);
+        fclose(cmd);
+        for (size_t i = 0; i < n; ++i) if (buf[i] == '\0') buf[i] = ' ';
+        lower_ascii(buf);
+        if (contains_lspatch_lower(buf)) return "lspatch_detected";
+        if (contains_lucky_patcher_lower(buf)) return "lucky_patcher_detected";
+        if (contains_frida_lower(buf)) return "frida_detected";
+    }
+
+    const char *roots[] = {
+        "/sdcard", "/sdcard/Download", "/sdcard/Documents", "/sdcard/Android/data",
+        "/storage/emulated/0", "/storage/emulated/0/Download", "/storage/emulated/0/Documents",
+        "/storage/emulated/0/Android/data", "/data/local/tmp"
+    };
+    for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); ++i) {
+        DIR *d = opendir(roots[i]);
+        if (!d) continue;
+        struct dirent *e;
+        int count = 0;
+        while ((e = readdir(d)) != nullptr && count < 192) {
+            if (e->d_name[0] == '.') continue;
+            ++count;
+            char name[512];
+            snprintf(name, sizeof(name), "%s", e->d_name);
+            lower_ascii(name);
+            if (contains_lspatch_lower(name)) { closedir(d); return "lspatch_detected"; }
+            if (contains_lucky_patcher_lower(name)) { closedir(d); return "lucky_patcher_detected"; }
+            if (contains_frida_lower(name)) { closedir(d); return "frida_detected"; }
+        }
+        closedir(d);
+    }
+
+    return nullptr;
+}
+
 static const char *reason_for(JNIEnv *env, jobject ctx) {
     if (!native_symbol_sanity()) return "native_tamper";
     if (!package_check(env, ctx)) return "package_repack";
     if (!apk_basic_integrity(env, ctx)) return "apk_repack";
     if (!class_loader_check(env, ctx)) return "loader_tamper";
+
+    const char *specific = specific_runtime_reason();
+    if (specific) return specific;
 
     int risk = 0;
     int hard = 0;
@@ -498,6 +574,9 @@ static const char *reason_for(JNIEnv *env, jobject ctx) {
     if (scan_fd_for(dump_needles, (int)(sizeof(dump_needles)/sizeof(dump_needles[0])))) { risk += 1; }
     if (suspicious_filesystem()) { risk += 1; }
     if (suspicious_sdcard_paths()) { risk += 1; }
+
+    specific = specific_runtime_reason();
+    if (specific) return specific;
 
     if (hard && risk >= 4) return "runtime_tamper";
     if (risk >= 6) return "multi_signal_tamper";

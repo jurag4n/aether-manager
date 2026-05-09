@@ -97,13 +97,13 @@ class AetherApplication : Application() {
                 showSecurityBlock(AetherSecurityNative.tamperReason(this)); return
             }
             if (NativeAether.nativeIsHooked()) {
-                showSecurityBlock("hook_detected"); return
+                showSecurityBlock("frida_detected"); return
             }
             if (NativeAether.nativeIsDebugged()) {
                 showSecurityBlock("debugger_detected"); return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
-                showSecurityBlock("patch_detected"); return
+                showSecurityBlock("lucky_patcher_or_lspatch_detected"); return
             }
             if (NativeAether.nativeCheckCloner(this)) {
                 showSecurityBlock("cloner_detected"); return
@@ -112,7 +112,7 @@ class AetherApplication : Application() {
                 showSecurityBlock("elf_tamper"); return
             }
             if (NativeAether.nativeCheckGotHook()) {
-                showSecurityBlock("got_hook_detected"); return
+                showSecurityBlock("native_hook_detected"); return
             }
         } catch (_: Throwable) {
             if (NativeAether.isLoaded) showSecurityBlock("security_check_failed")
