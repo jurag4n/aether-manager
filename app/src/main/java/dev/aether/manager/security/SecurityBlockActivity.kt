@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -195,40 +193,6 @@ private fun SecurityBlockScreen(
                         supporting = reasonUi.description
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    InfoSection(
-                        title = "Kode Deteksi",
-                        body = rawReason,
-                        supporting = "Kode ini membantu identifikasi sumber masalah saat pengecekan keamanan."
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = "Tindakan",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            SecurityHintRow("Tutup aplikasi lalu buka kembali setelah sumber modifikasi dihapus.")
-                            SecurityHintRow("LSPosed, Zygisk, dan Riru aman. Yang diblokir adalah LSPatch dan modifikasi serupa.")
-                            SecurityHintRow("Jika masalah tetap muncul, cek modul patching atau hasil repack pada aplikasi.")
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(20.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
                     Spacer(modifier = Modifier.height(18.dp))
@@ -299,29 +263,6 @@ private fun InfoSection(
                 lineHeight = 18.sp
             )
         }
-    }
-}
-
-@Composable
-private fun SecurityHintRow(text: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .padding(top = 6.dp)
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary)
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            lineHeight = 20.sp
-        )
     }
 }
 
