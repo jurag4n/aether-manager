@@ -57,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.aether.manager.ui.components.AetherSwitch
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.shizuku.ShizukuShell
 import kotlinx.coroutines.delay
@@ -413,11 +414,10 @@ private fun NoRootToggleCard(
                 Text(title, fontWeight = FontWeight.Bold, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline)
                 Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            Switch(
+            AetherSwitch(
                 checked = checked,
                 onCheckedChange = { onChecked(it) },
                 enabled = enabled,
-                colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
             )
         }
     }

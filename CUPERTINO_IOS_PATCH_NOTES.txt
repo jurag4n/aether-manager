@@ -1,0 +1,23 @@
+Aether Manager - Cupertino iOS Theme Patch
+
+Changes:
+- Added Compose Cupertino dependency for iOS theme core/widgets.
+- Wrapped AetherTheme IOS preset with CupertinoTheme.
+- Kept Material 3 as the compatibility layer for existing screens.
+- Converted app switches to AetherSwitch; on iOS theme it uses CupertinoSwitch.
+- Did not add cupertino-icons-extended / SF Symbols to avoid copyrighted icon pack issues on Android.
+- MIUI still uses MiuixIcons from Miuix library.
+
+Files changed:
+- gradle/libs.versions.toml
+- app/build.gradle.kts
+- app/src/main/java/dev/aether/manager/ui/Theme.kt
+- app/src/main/java/dev/aether/manager/ui/components/Components.kt
+- app/src/main/java/dev/aether/manager/ui/components/CupertinoBridge.kt
+- app/src/main/java/dev/aether/manager/ui/settings/SettingsScreen.kt
+- app/src/main/java/dev/aether/manager/ui/tweak/TweakScreen.kt
+- app/src/main/java/dev/aether/manager/ui/tweak/NoRootTweakScreen.kt
+- app/src/main/java/dev/aether/manager/ui/appprofile/AppProfileScreen.kt
+
+Build note:
+- Full build could not be executed in this environment because Gradle wrapper cannot download gradle-8.13-all.zip from services.gradle.org.

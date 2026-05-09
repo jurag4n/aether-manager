@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import dev.aether.manager.data.*
 import dev.aether.manager.i18n.LocalStrings
+import dev.aether.manager.ui.components.AetherSwitch
 import dev.aether.manager.ui.components.AetherIconTile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -577,14 +578,10 @@ private fun AppProfileStatusCard(
                 )
             }
 
-            Switch(
+            AetherSwitch(
                 checked = enabled,
                 onCheckedChange = { onToggle() },
                 modifier = Modifier.scale(0.86f),
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
-                )
             )
         }
     }
@@ -945,14 +942,10 @@ private fun ProfileSwitchRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Switch(
+            AetherSwitch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 modifier = Modifier.scale(0.82f),
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
-                )
             )
         }
     }
@@ -1240,13 +1233,9 @@ fun AppProfileEditor(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Switch(
-                        checked         = draft.enabled,
+                    AetherSwitch(
+                        checked = draft.enabled,
                         onCheckedChange = { draft = draft.copy(enabled = it) },
-                        colors          = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                        )
                     )
                     Text(
                         if (draft.enabled) s.appProfileEditorActive else s.appProfileEditorInactive,
@@ -1592,15 +1581,11 @@ private fun ExtraTweakRow(
             )
         }
 
-        Switch(
-            checked         = checked,
+        AetherSwitch(
+            checked = checked,
             onCheckedChange = { if (enabled) onChange(it) },
-            enabled         = enabled,
-            modifier        = Modifier.scale(0.8f),
-            colors          = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary
-            )
+            enabled = enabled,
+            modifier = Modifier.scale(0.8f),
         )
     }
 }

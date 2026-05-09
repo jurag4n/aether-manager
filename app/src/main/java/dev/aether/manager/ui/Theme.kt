@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.alexzhirkevich.cupertino.theme.CupertinoTheme as CupertinoComposeTheme
 
 /**
  * App-wide visual preset.
@@ -34,7 +35,7 @@ enum class AetherThemePreset(
     IOS(
         id = "ios",
         title = "iOS",
-        subtitle = "iOS-like squircle icons, rounded panels, Apple-style blue accent"
+        subtitle = "Compose Cupertino core, iOS-like controls, rounded panels"
     );
 
     companion object {
@@ -403,11 +404,21 @@ fun AetherTheme(
     val style = styleFor(themePreset)
 
     CompositionLocalProvider(LocalAetherThemeStyle provides style) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = typographyFor(themePreset),
-            shapes = shapesFor(themePreset),
-            content = content
-        )
+        val materialContent: @Composable () -> Unit = {
+            MaterialTheme(
+                colorScheme = colorScheme,
+                typography = typographyFor(themePreset),
+                shapes = shapesFor(themePreset),
+                content = content
+            )
+        }
+
+        if (themePreset == AetherThemePreset.IOS) {
+            CupertinoComposeTheme {
+                materialContent()
+            }
+        } else {
+            materialContent()
+        }
     }
 }

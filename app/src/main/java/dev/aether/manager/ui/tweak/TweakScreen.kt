@@ -92,6 +92,7 @@ import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.LocalLanguage
 import dev.aether.manager.ui.components.AetherIconTile
 import dev.aether.manager.ui.components.AetherGlassSurface
+import dev.aether.manager.ui.components.AetherSwitch
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -1832,7 +1833,7 @@ private fun ToggleOption(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Switch(checked = checked, onCheckedChange = { onClick() })
+                AetherSwitch(checked = checked, onCheckedChange = { onClick() })
             }
         }
     }

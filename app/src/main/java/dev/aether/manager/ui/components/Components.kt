@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import dev.aether.manager.ui.AetherThemePreset
+import dev.aether.manager.ui.LocalAetherThemeStyle
+import io.github.alexzhirkevich.cupertino.CupertinoSwitch
 
 // ── M3 Snackbar Toast (bottom-center) ────────────────────────────────────────
 
@@ -202,17 +205,33 @@ fun ItemDivider() {
 }
 
 @Composable
-fun AetherSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        colors = SwitchDefaults.colors(
-            checkedTrackColor = MaterialTheme.colorScheme.primary,
-            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+fun AetherSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    if (LocalAetherThemeStyle.current.preset == AetherThemePreset.IOS) {
+        CupertinoSwitch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            enabled = enabled,
         )
-    )
+    } else {
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+            )
+        )
+    }
 }
 
 @Composable

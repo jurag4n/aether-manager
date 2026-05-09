@@ -57,6 +57,7 @@ import dev.aether.manager.ui.AetherThemePreset
 import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.components.AetherIconTile
 import dev.aether.manager.ui.components.AetherGlassSurface
+import dev.aether.manager.ui.components.AetherSwitch
 import dev.aether.manager.util.BackupManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -976,7 +977,7 @@ private fun SettingsRowSwitch(
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        AetherSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
