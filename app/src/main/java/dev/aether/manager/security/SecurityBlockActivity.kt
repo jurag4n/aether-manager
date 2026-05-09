@@ -352,13 +352,13 @@ private fun securityReasonUi(rawReason: String): SecurityReasonUi {
             title = "Terdeteksi Lucky Patcher / LSPatch",
             description = "Ada indikasi patcher seperti Lucky Patcher, Chelpus, LSPatch, atau tool modifikasi APK yang mengubah keamanan aplikasi."
         )
-        "frida_detected" -> SecurityReasonUi(
+        "frida_detected", "frida_or_injector_detected" -> SecurityReasonUi(
             title = "Terdeteksi Frida / Injector",
-            description = "Aplikasi mendeteksi Frida, gadget, port Frida, atau injector runtime yang bisa melakukan hook saat aplikasi berjalan."
+            description = "Aplikasi menemukan artefak Frida, gadget, atau injector aktif di proses. LSPosed, Zygisk, dan Riru tidak diblokir otomatis."
         )
-        "native_hook_detected" -> SecurityReasonUi(
-            title = "Terdeteksi native hook",
-            description = "Ada indikasi hook pada fungsi native. LSPosed, Zygisk, dan Riru tidak otomatis diblokir, tetapi hook/injector berbahaya tetap ditolak."
+        "native_integrity_tamper", "native_hook_detected" -> SecurityReasonUi(
+            title = "Terdeteksi perubahan native",
+            description = "Ada indikasi perubahan pada library native aplikasi. Deteksi ini tidak dipicu hanya karena LSPosed, Zygisk, atau Riru."
         )
         "runtime_tamper", "multi_signal_tamper", "native_tamper", "loader_tamper", "got_hook_detected", "hook_detected" -> SecurityReasonUi(
             title = "Modifikasi runtime terdeteksi",

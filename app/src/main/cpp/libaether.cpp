@@ -281,11 +281,18 @@ static int l1_frida_tmp(void) {
 
 __attribute__((visibility("hidden")))
 static int layer1_anti_hook(void) {
-    if(l1_tracer_pid())  return 1;
-    if(l1_frida_maps())  return 1;
-    if(l1_frida_port())  return 1;
-    if(l1_frida_fd())    return 1;
-    if(l1_frida_tmp())   return 1;
+    // Stable mode:
+    // - TracerPid belongs to debugger detection, not hook detection.
+    // - Frida TCP port alone is too noisy on some ROMs/tools, so it never blocks by itself.
+    // - Block only when hard Frida/injector artifacts are visible in maps/fd/tmp.
+    int maps = l1_frida_maps();
+    int fd   = l1_frida_fd();
+    int tmp  = l1_frida_tmp();
+
+    if (maps || fd || tmp) return 1;
+
+    // Keep the port probe as weak telemetry only. Do not enforce on port alone.
+    (void)l1_frida_port();
     return 0;
 }
 

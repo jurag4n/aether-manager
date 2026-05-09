@@ -96,8 +96,10 @@ class AetherApplication : Application() {
             if (!jembutOk) {
                 showSecurityBlock(AetherSecurityNative.tamperReason(this)); return
             }
+            // Native hook detection is intentionally strict and reason-based.
+            // LSPosed, Zygisk, and Riru are allowed. Frida/injector artifacts still block.
             if (NativeAether.nativeIsHooked()) {
-                showSecurityBlock("frida_detected"); return
+                showSecurityBlock("frida_or_injector_detected"); return
             }
             if (NativeAether.nativeIsDebugged()) {
                 showSecurityBlock("debugger_detected"); return
@@ -111,8 +113,10 @@ class AetherApplication : Application() {
             if (!NativeAether.nativeCheckElfIntegrity()) {
                 showSecurityBlock("elf_tamper"); return
             }
-            if (NativeAether.nativeCheckGotHook()) {
-                showSecurityBlock("native_hook_detected"); return
+            // Generic GOT-hook checks are disabled in native layer to avoid false positives
+            // from allowed frameworks. Keep this only as a compatibility guard.
+            if (!NativeAether.nativeCheckGotHook()) {
+                showSecurityBlock("native_integrity_tamper"); return
             }
         } catch (_: Throwable) {
             if (NativeAether.isLoaded) showSecurityBlock("security_check_failed")
