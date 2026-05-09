@@ -63,6 +63,7 @@ import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.appprofile.AppProfileScreen
 import dev.aether.manager.ui.components.RebootBottomSheet
 import dev.aether.manager.ui.components.AetherIconTile
+import dev.aether.manager.ui.components.AetherSmallIcon
 import dev.aether.manager.ui.components.AetherGlassSurface
 import dev.aether.manager.ui.home.HomeScreen
 import dev.aether.manager.ui.settings.SettingsScreen
@@ -608,11 +609,12 @@ private fun FloatingBottomBar(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isHighlighted || (!expanded && isSelected)) item.selectedIcon else item.unselectedIcon,
+                        AetherSmallIcon(
+                            icon = if (isHighlighted || (!expanded && isSelected)) item.selectedIcon else item.unselectedIcon,
                             contentDescription = item.label,
                             tint = iconTint,
-                            modifier = Modifier.size(22.dp)
+                            size = 30.dp,
+                            iconSize = 20.dp
                         )
                         // Label — slides in when expanded
                         AnimatedVisibility(
