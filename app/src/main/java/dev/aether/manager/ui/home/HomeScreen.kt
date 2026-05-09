@@ -70,6 +70,7 @@ import dev.aether.manager.data.MonitorState
 import dev.aether.manager.data.UiState
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
+import dev.aether.manager.ui.components.AetherIconTile
 import kotlin.math.PI
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -391,12 +392,13 @@ private fun TappableCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? =
 
 @Composable
 private fun IconBadge(icon: ImageVector, color: Color) {
-    Box(
-        modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.13f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, null, tint = color, modifier = Modifier.size(22.dp))
-    }
+    AetherIconTile(
+        icon = icon,
+        tint = color,
+        containerColor = color.copy(alpha = 0.13f),
+        size = 42.dp,
+        iconSize = 22.dp
+    )
 }
 
 @Composable
@@ -418,12 +420,14 @@ private fun PillText(text: String, color: Color = MaterialTheme.colorScheme.prim
 @Composable
 private fun SmallToggleIcon(icon: ImageVector, active: Boolean) {
     val color = if (active) Color(0xFFFF9CAF) else MaterialTheme.colorScheme.onSurfaceVariant
-    Box(
-        modifier = Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(color.copy(alpha = if (active) 0.16f else 0.08f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, null, tint = color, modifier = Modifier.size(18.dp))
-    }
+    AetherIconTile(
+        icon = icon,
+        tint = color,
+        containerColor = color.copy(alpha = if (active) 0.16f else 0.08f),
+        size = 36.dp,
+        iconSize = 18.dp,
+        selected = active
+    )
 }
 
 @Composable
@@ -434,7 +438,13 @@ private fun InfoTile(icon: ImageVector, value: String, label: String, color: Col
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(26.dp))
+            AetherIconTile(
+                icon = icon,
+                tint = color,
+                containerColor = color.copy(alpha = 0.12f),
+                size = 36.dp,
+                iconSize = 20.dp
+            )
             Column {
                 Text(
                     value,
@@ -462,12 +472,13 @@ private fun MemoryMetricRow(icon: ImageVector, label: String, used: String, tota
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-        }
+        AetherIconTile(
+            icon = icon,
+            tint = color,
+            containerColor = color.copy(alpha = 0.12f),
+            size = 38.dp,
+            iconSize = 20.dp
+        )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -605,11 +616,13 @@ fun TabSectionTitle(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            Icon(
-                imageVector = icon,
+            AetherIconTile(
+                icon = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp)
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                size = 28.dp,
+                iconSize = 15.dp
             )
             Text(
                 text = title,

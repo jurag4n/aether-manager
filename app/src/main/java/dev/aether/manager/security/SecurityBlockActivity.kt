@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import dev.aether.manager.ui.AetherTheme
+import dev.aether.manager.ui.components.AetherIconTile
 import dev.aether.manager.util.SettingsPrefs
 import kotlin.system.exitProcess
 
@@ -135,20 +136,14 @@ private fun SecurityBlockScreen(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(76.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.errorContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.GppBad,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(38.dp)
-                        )
-                    }
+                    AetherIconTile(
+                        icon = Icons.Rounded.GppBad,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        size = 76.dp,
+                        iconSize = 38.dp
+                    )
 
                     Spacer(modifier = Modifier.height(18.dp))
 

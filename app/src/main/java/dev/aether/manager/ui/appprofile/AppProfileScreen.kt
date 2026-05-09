@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import dev.aether.manager.data.*
 import dev.aether.manager.i18n.LocalStrings
+import dev.aether.manager.ui.components.AetherIconTile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -1327,7 +1328,13 @@ private fun EditorSection(
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(icon, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            AetherIconTile(
+                icon = icon,
+                tint = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                size = 28.dp,
+                iconSize = 15.dp
+            )
             Text(
                 title,
                 style      = MaterialTheme.typography.labelLarge,
@@ -1423,7 +1430,14 @@ private fun GovernorChip(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            Icon(icon, null, modifier = Modifier.size(18.dp), tint = fg)
+            AetherIconTile(
+                icon = icon,
+                tint = fg,
+                containerColor = fg.copy(alpha = if (selected) 0.22f else 0.10f),
+                size = 30.dp,
+                iconSize = 16.dp,
+                selected = selected
+            )
             Text(
                 label,
                 style      = MaterialTheme.typography.labelSmall,
@@ -1560,7 +1574,14 @@ private fun ExtraTweakRow(
             else MaterialTheme.colorScheme.onSurfaceVariant,
             label = "extra_icon"
         )
-        Icon(icon, null, modifier = Modifier.size(18.dp), tint = iconTint)
+        AetherIconTile(
+            icon = icon,
+            tint = iconTint,
+            containerColor = iconTint.copy(alpha = if (checked && enabled) 0.16f else 0.08f),
+            size = 32.dp,
+            iconSize = 16.dp,
+            selected = checked && enabled
+        )
 
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)

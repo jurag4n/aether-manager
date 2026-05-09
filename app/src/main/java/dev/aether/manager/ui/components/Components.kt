@@ -176,12 +176,14 @@ fun CardItemRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Box(
-            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(iconContainerColor),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
-        }
+        AetherIconTile(
+            icon = icon,
+            contentDescription = null,
+            tint = iconTint,
+            containerColor = iconContainerColor,
+            size = 44.dp,
+            iconSize = 22.dp
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 16.sp)
@@ -299,10 +301,14 @@ fun ProfileChip(
         tonalElevation = 0.dp
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(accentColor.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center
-            ) { Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(22.dp)) }
+            AetherIconTile(
+                icon = icon,
+                contentDescription = null,
+                tint = accentColor,
+                containerColor = accentColor.copy(alpha = 0.18f),
+                size = 40.dp,
+                iconSize = 22.dp
+            )
             Text(label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
             Text(desc, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
             if (active) {
@@ -336,10 +342,14 @@ fun InfoClickCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(iconContainerColor),
-                contentAlignment = Alignment.Center
-            ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(22.dp)) }
+            AetherIconTile(
+                icon = icon,
+                contentDescription = null,
+                tint = iconTint,
+                containerColor = iconContainerColor,
+                size = 44.dp,
+                iconSize = 22.dp
+            )
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 17.sp)

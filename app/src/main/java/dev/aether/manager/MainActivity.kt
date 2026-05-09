@@ -62,6 +62,7 @@ import dev.aether.manager.ui.AetherTheme
 import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.appprofile.AppProfileScreen
 import dev.aether.manager.ui.components.RebootBottomSheet
+import dev.aether.manager.ui.components.AetherIconTile
 import dev.aether.manager.ui.home.HomeScreen
 import dev.aether.manager.ui.settings.SettingsScreen
 import dev.aether.manager.ui.tweak.TweakScreen
@@ -658,7 +659,14 @@ private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
             ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(23.dp))
+        AetherIconTile(
+            icon = icon,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            size = 38.dp,
+            iconSize = 21.dp,
+            selected = false
+        )
     }
 }
 
@@ -680,6 +688,13 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
             ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+        AetherIconTile(
+            icon = Icons.Outlined.PowerSettingsNew,
+            tint = MaterialTheme.colorScheme.primary,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            size = 40.dp,
+            iconSize = 22.dp,
+            selected = true
+        )
     }
 }

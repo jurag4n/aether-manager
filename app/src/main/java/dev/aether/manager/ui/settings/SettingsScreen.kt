@@ -49,6 +49,7 @@ import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.ui.AetherThemePreset
 import dev.aether.manager.ui.LocalAetherThemeStyle
+import dev.aether.manager.ui.components.AetherIconTile
 import dev.aether.manager.util.BackupManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -445,7 +446,7 @@ private fun ThemePresetSheet(
                 modifier = Modifier.padding(bottom = 2.dp)
             )
             Text(
-                text = "Tema berlaku untuk warna, surface, card, sheet, tombol, switch, navbar, dan komponen Material 3.",
+                text = "Tema berlaku untuk warna, ikon, surface, card, sheet, tombol, switch, navbar, dan komponen utama aplikasi.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -476,23 +477,16 @@ private fun ThemePresetSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .background(
-                                    if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-                                    else MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    RoundedCornerShape(themeStyle.iconCorner)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                        AetherIconTile(
+                            icon = icon,
+                            contentDescription = null,
+                            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                            else MaterialTheme.colorScheme.surfaceContainerHigh,
+                            size = 42.dp,
+                            iconSize = 22.dp,
+                            selected = selected
+                        )
                         Column(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -945,21 +939,25 @@ private fun SettingsActionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(iconBg, RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isLoading) {
+        if (isLoading) {
+            Box(
+                modifier = Modifier.size(40.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
                     color = iconTint
                 )
-            } else {
-                Icon(icon, null, tint = iconTint, modifier = Modifier.size(19.dp))
             }
+        } else {
+            AetherIconTile(
+                icon = icon,
+                tint = iconTint,
+                containerColor = iconBg,
+                size = 40.dp,
+                iconSize = 19.dp
+            )
         }
         Column(
             modifier = Modifier.weight(1f),
@@ -1027,21 +1025,25 @@ private fun SettingsBackupItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isProcessing) {
+        if (isProcessing) {
+            Box(
+                modifier = Modifier.size(42.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.primary
                 )
-            } else {
-                Icon(Icons.Outlined.Archive, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
             }
+        } else {
+            AetherIconTile(
+                icon = Icons.Outlined.Archive,
+                tint = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                size = 42.dp,
+                iconSize = 19.dp
+            )
         }
         Column(
             modifier = Modifier.weight(1f),
@@ -1065,14 +1067,13 @@ private fun IconBubble(
     tint      : Color,
     container : Color,
 ) {
-    Box(
-        modifier = Modifier
-            .size(38.dp)
-            .background(container, RoundedCornerShape(13.dp)),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
-    }
+    AetherIconTile(
+        icon = icon,
+        tint = tint,
+        containerColor = container,
+        size = 38.dp,
+        iconSize = 18.dp
+    )
 }
 
 @Composable

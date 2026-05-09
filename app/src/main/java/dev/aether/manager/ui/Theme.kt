@@ -29,12 +29,12 @@ enum class AetherThemePreset(
     MIUI(
         id = "miui",
         title = "MIUI",
-        subtitle = "Floating cards, soft blue accent, HyperOS-style spacing"
+        subtitle = "Colorful squircle icons, floating cards, HyperOS-style spacing"
     ),
     IOS(
         id = "ios",
         title = "iOS",
-        subtitle = "Rounded panels, clean surfaces, Apple-style blue accent"
+        subtitle = "iOS-like squircle icons, rounded panels, Apple-style blue accent"
     );
 
     companion object {

@@ -90,6 +90,7 @@ import androidx.compose.ui.unit.dp
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.LocalLanguage
+import dev.aether.manager.ui.components.AetherIconTile
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -1178,19 +1179,18 @@ private fun ExpandableTweakCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(iconBg)
-                        .graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, null, tint = iconTint, modifier = Modifier.size(21.dp))
-                }
+                AetherIconTile(
+                    icon = icon,
+                    tint = iconTint,
+                    containerColor = iconBg,
+                    size = 40.dp,
+                    iconSize = 21.dp,
+                    selected = active || expanded,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
+                )
                 Spacer(Modifier.weight(1f))
                 StatusPill(text = badge, active = active || expanded, bg = badgeBg, fg = badgeFg)
             }
@@ -1539,7 +1539,14 @@ private fun ProfileChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
+            AetherIconTile(
+                icon = icon,
+                tint = fg,
+                containerColor = fg.copy(alpha = if (selected) 0.22f else 0.10f),
+                size = 30.dp,
+                iconSize = 16.dp,
+                selected = selected
+            )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
@@ -1587,20 +1594,14 @@ private fun AppProfileCard(onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Outlined.Apps,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            AetherIconTile(
+                icon = Icons.Outlined.Apps,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f),
+                size = 44.dp,
+                iconSize = 24.dp
+            )
             Column(
                 Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -1745,20 +1746,15 @@ private fun ModernDropdownItem(
                 overflow = TextOverflow.Ellipsis
             )
             if (selected) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                AetherIconTile(
+                    icon = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    size = 28.dp,
+                    iconSize = 16.dp,
+                    selected = true
+                )
             }
         }
     }
@@ -1840,15 +1836,13 @@ private fun CompactFeatureBlock(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-            }
+            AetherIconTile(
+                icon = icon,
+                tint = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                size = 34.dp,
+                iconSize = 18.dp
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1964,7 +1958,14 @@ private fun ThermalChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
+            AetherIconTile(
+                icon = icon,
+                tint = fg,
+                containerColor = fg.copy(alpha = if (selected) 0.22f else 0.10f),
+                size = 30.dp,
+                iconSize = 16.dp,
+                selected = selected
+            )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
