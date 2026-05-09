@@ -23,7 +23,7 @@ object TweakApplier {
         // Node yang tidak ada tetap dihitung skipped, bukan gagal.
         val success: Boolean get() = subsystems.none {
             (it.name == "shell" && !it.ok) ||
-            (it.name in setOf("cpu_governor", "cpu_freq", "gpu", "gpu_freq") && !it.ok)
+            (it.name in setOf("cpu_governor", "cpu_freq", "gpu", "gpu_freq", "verify") && !it.ok)
         }
         val summary: String  get() {
             val ok  = subsystems.count { it.ok }
@@ -51,9 +51,12 @@ object TweakApplier {
     suspend fun apply(tweaks: Map<String, String>): ApplyResult = withContext(Dispatchers.IO) {
         val t0 = System.currentTimeMillis()
         val output = runScript(buildFullScript(tweaks))
+        val parsed = parseResults(output)
+        val took = System.currentTimeMillis() - t0
+        runCatching { RootEngine.appendRootLog("apply", "${parsed.count { it.ok }}/${parsed.size} OK in ${took}ms") }
         ApplyResult(
-            subsystems = parseResults(output),
-            totalMs    = System.currentTimeMillis() - t0,
+            subsystems = parsed,
+            totalMs    = took,
         )
     }
 
@@ -75,9 +78,12 @@ object TweakApplier {
         }
 
         val output = runScript(writeConf + "\n" + buildFullScript(tweaks))
+        val parsed = parseResults(output)
+        val took = System.currentTimeMillis() - t0
+        runCatching { RootEngine.appendRootLog("apply", "${parsed.count { it.ok }}/${parsed.size} OK in ${took}ms") }
         ApplyResult(
-            subsystems = parseResults(output),
-            totalMs    = System.currentTimeMillis() - t0,
+            subsystems = parsed,
+            totalMs    = took,
         )
     }
 
@@ -101,11 +107,17 @@ object TweakApplier {
             append(buildTouch(t))
             append(buildUiAnim(t))
             append(buildMisc(t))
+            append(buildVerify(t, profile))
         }
     }
 
     private val SHELL_HELPERS = """
 _A=0; _S=0; _F=0
+
+_aether_log() {
+  mkdir -p /data/adb/aether 2>/dev/null || true
+  printf '%s %s\n' "$(date '+%F %T' 2>/dev/null || echo now)" "$*" >> /data/adb/aether/aether.log 2>/dev/null || true
+}
 
 # apply val node — encore style: chmod 644 → echo → chmod 444
 apply() {
@@ -724,6 +736,73 @@ write fq /proc/sys/net/core/default_qdisc
             }
             append("_end \"network\"\n")
         }
+    }
+
+    private fun buildVerify(t: Map<String, String>, profile: String): String {
+        val requestedGov = (t["cpu_governor"] ?: "").lowercase().ifBlank {
+            when (profile) {
+                "gaming", "performance", "extreme" -> "performance"
+                "battery", "powersave" -> "powersave"
+                else -> ""
+            }
+        }.filter { it.isLetterOrDigit() || it == '_' || it == '-' }.take(32)
+
+        val provider = t["dns_provider"].orEmpty()
+        val dnsHost = when (provider.lowercase()) {
+            "cloudflare"          -> "one.one.one.one"
+            "cloudflare malware"  -> "security.cloudflare-dns.com"
+            "google"              -> "dns.google"
+            "quad9"               -> "dns.quad9.net"
+            "cleanbrowsing"       -> "family-filter-dns.cleanbrowsing.org"
+            "opendns"             -> "dns.opendns.com"
+            "dns.sb"              -> "dot.sb"
+            "off", ""             -> ""
+            else                   -> provider.lowercase().filter { it.isLetterOrDigit() || it == '.' || it == '-' }.take(96)
+        }
+
+        return """
+_begin
+# verify — readback status. Fails only when an explicitly requested critical value was not applied.
+_req_gov="$requestedGov"
+if [ -n "${'$'}_req_gov" ]; then
+  _gov_total=0
+  _gov_ok=0
+  for node in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+    [ -f "${'$'}node" ] || continue
+    _gov_total=${'$'}((_gov_total+1))
+    _cur=${'$'}(cat "${'$'}node" 2>/dev/null)
+    [ "${'$'}_cur" = "${'$'}_req_gov" ] && _gov_ok=${'$'}((_gov_ok+1))
+  done
+  if [ "${'$'}_gov_total" -gt 0 ] && [ "${'$'}_gov_ok" -eq 0 ]; then
+    _F=${'$'}((_F+1))
+    _aether_log verify "cpu_governor_failed target=${'$'}_req_gov"
+  else
+    _A=${'$'}((_A+1))
+    _aether_log verify "cpu_governor_ok target=${'$'}_req_gov ok=${'$'}_gov_ok/${'$'}_gov_total"
+  fi
+else
+  _S=${'$'}((_S+1))
+fi
+
+_req_dns="$dnsHost"
+if [ -n "${'$'}_req_dns" ]; then
+  _mode=${'$'}(settings get global private_dns_mode 2>/dev/null)
+  _dns=${'$'}(settings get global private_dns_specifier 2>/dev/null)
+  if [ "${'$'}_mode" = "hostname" ] && [ "${'$'}_dns" = "${'$'}_req_dns" ]; then
+    _A=${'$'}((_A+1))
+    _aether_log verify "dns_ok host=${'$'}_dns"
+  else
+    _F=${'$'}((_F+1))
+    _aether_log verify "dns_failed target=${'$'}_req_dns actual=${'$'}_dns mode=${'$'}_mode"
+  fi
+elif [ "${provider}" = "Off" ]; then
+  _mode=${'$'}(settings get global private_dns_mode 2>/dev/null)
+  [ "${'$'}_mode" = "off" ] && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))
+else
+  _S=${'$'}((_S+1))
+fi
+_end "verify"
+"""
     }
 
     private fun buildKsm(t: Map<String, String>): String {

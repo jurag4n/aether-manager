@@ -15,6 +15,9 @@ object RootEngine {
     const val PROFILE_FILE    = "$CONF_DIR/profile"
     const val SAFE_MODE_FILE  = "$CONF_DIR/safe_mode"
     const val BOOT_COUNT_FILE = "$CONF_DIR/boot_count"
+    const val LOG_FILE        = "$CONF_DIR/aether.log"
+    const val EXPORT_DIR      = "/sdcard/Aether"
+    const val SETTINGS_EXPORT = "$EXPORT_DIR/aether-settings.conf"
 
     data class ShellResult(val exitCode: Int, val stdout: String, val stderr: String)
 
@@ -130,6 +133,19 @@ object RootEngine {
     }
 
     suspend fun resetTweaks() = sh("rm -f $TWEAKS_CONF")
+
+    suspend fun clearRootLog(): Boolean =
+        sh("mkdir -p '$CONF_DIR'; : > '$LOG_FILE'; chmod 600 '$LOG_FILE'").exitCode == 0
+
+    suspend fun appendRootLog(tag: String, message: String): Boolean {
+        val safeTag = tag.filter { it.isLetterOrDigit() || it == '_' || it == '-' }.take(32).ifBlank { "app" }
+        val safeMsg = message.replace("'", "'\\''").replace("\n", " ").take(500)
+        val script = """
+            mkdir -p '$CONF_DIR'
+            printf '%s [%s] %s\n' "$(date '+%F %T' 2>/dev/null || echo now)" '$safeTag' '$safeMsg' >> '$LOG_FILE'
+        """.trimIndent()
+        return sh(script).exitCode == 0
+    }
 
     // ── Device info ───────────────────────────────────────────────────────────
 
@@ -266,9 +282,62 @@ object RootEngine {
         return TweakApplier.writeAndApply(TWEAKS_CONF, tweaks).success
     }
 
-    suspend fun toggleSafeMode(enable: Boolean): Boolean =
-        if (enable) sh("touch $SAFE_MODE_FILE").exitCode == 0
-        else        sh("rm -f $SAFE_MODE_FILE").exitCode == 0
+    suspend fun toggleSafeMode(enable: Boolean): Boolean {
+        val script = if (enable) """
+            mkdir -p '$CONF_DIR'
+            touch '$SAFE_MODE_FILE'
+            printf '%s safe_mode=1\n' "$(date '+%F %T' 2>/dev/null || echo now)" >> '$LOG_FILE'
+        """.trimIndent() else """
+            rm -f '$SAFE_MODE_FILE'
+            printf '%s safe_mode=0\n' "$(date '+%F %T' 2>/dev/null || echo now)" >> '$LOG_FILE'
+        """.trimIndent()
+        return sh(script).exitCode == 0
+    }
+
+    suspend fun enableSafeModeAndReset(): Boolean {
+        val script = """
+            mkdir -p '$CONF_DIR'
+            touch '$SAFE_MODE_FILE'
+            cat > '$TWEAKS_CONF' << 'AETHER_SAFE_CONF'
+profile=balance
+cpu_boost=0
+gpu_throttle_off=0
+schedboost=0
+cpu_freq_lock=0
+gpu_freq_lock=0
+thermal_profile=default
+kill_background=0
+lmk_aggressive=0
+AETHER_SAFE_CONF
+            settings put global private_dns_mode off 2>/dev/null || true
+            printf '%s safe_mode_reset\n' "$(date '+%F %T' 2>/dev/null || echo now)" >> '$LOG_FILE'
+        """.trimIndent()
+        return sh(script).exitCode == 0
+    }
+
+    suspend fun exportTweaksConfToSdcard(): String {
+        val script = """
+            mkdir -p '$EXPORT_DIR'
+            if [ -f '$TWEAKS_CONF' ]; then
+              cp '$TWEAKS_CONF' '$SETTINGS_EXPORT'
+            else
+              : > '$SETTINGS_EXPORT'
+            fi
+            chmod 644 '$SETTINGS_EXPORT' 2>/dev/null || true
+            echo '$SETTINGS_EXPORT'
+        """.trimIndent()
+        return sh(script).stdout.trim().ifBlank { SETTINGS_EXPORT }
+    }
+
+    suspend fun importTweaksConfFromSdcard(): Boolean {
+        val script = """
+            [ -f '$SETTINGS_EXPORT' ] || exit 2
+            mkdir -p '$CONF_DIR'
+            grep -E '^[A-Za-z0-9_-]+=' '$SETTINGS_EXPORT' | head -n 120 > '$TWEAKS_CONF'
+            chmod 600 '$TWEAKS_CONF'
+        """.trimIndent()
+        return sh(script).exitCode == 0
+    }
 
     suspend fun reboot(mode: RebootMode = RebootMode.NORMAL): Boolean =
         sh(when (mode) {

@@ -297,7 +297,7 @@ private fun securityReasonUi(rawReason: String): SecurityReasonUi {
             title = "Terdeteksi Lucky Patcher / LSPatch",
             description = "Ada indikasi patcher seperti Lucky Patcher, Chelpus, LSPatch, atau tool modifikasi APK yang mengubah keamanan aplikasi."
         )
-        "frida_detected", "frida_or_injector_detected" -> SecurityReasonUi(
+        "frida_detected", "frida_or_injector_detected", "frida_maps_detected", "frida_fd_detected", "frida_tmp_detected" -> SecurityReasonUi(
             title = "Terdeteksi Frida / Injector",
             description = "Aplikasi menemukan artefak Frida, gadget, atau injector aktif di proses. LSPosed, Zygisk, dan Riru tidak diblokir otomatis."
         )
@@ -317,7 +317,7 @@ private fun securityReasonUi(rawReason: String): SecurityReasonUi {
             title = "Debugger terdeteksi",
             description = "Aplikasi mendeteksi proses debugging aktif yang dapat memengaruhi keamanan runtime."
         )
-        "unity_tamper", "elf_tamper" -> SecurityReasonUi(
+        "unity_tamper", "unity_ads_tamper", "elf_tamper", "apk_zip_tamper", "dex_tamper" -> SecurityReasonUi(
             title = "Integritas library terganggu",
             description = "Ada indikasi perubahan pada komponen native atau library penting aplikasi."
         )

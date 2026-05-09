@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.aether.manager.util.BackupManager
+import dev.aether.manager.util.AetherLog
 import dev.aether.manager.ui.AetherThemePreset
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.RootManager
@@ -136,6 +137,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _snackMessage = MutableStateFlow<String?>(null)
     val snackMessage: StateFlow<String?> = _snackMessage.asStateFlow()
 
+    private val _logText = MutableStateFlow("Belum ada log.")
+    val logText: StateFlow<String> = _logText.asStateFlow()
+
     // ── Coroutine handles ─────────────────────────────────────────────────────
     private var monitorJob:      Job? = null
     private var applyWorkerJob:  Job? = null
@@ -148,6 +152,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         startApplyWorker()
 
         loadTweaksInstant()
+        refreshLogs()
         _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -352,6 +357,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             saveLocalTweaks(map)
+            AetherLog.append(getApplication(), "apply", "start profile=${map["profile"] ?: _tweaks.value.profile}")
             RootEngine.writeFile(RootEngine.PROFILE_FILE, map["profile"] ?: _tweaks.value.profile)
             val result = TweakApplier.writeAndApply(RootEngine.TWEAKS_CONF, map)
 
@@ -362,6 +368,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 summary = result.summary,
                 totalMs = result.totalMs,
             )
+
+            AetherLog.append(getApplication(), "apply", "finish success=${result.success} summary=${result.summary}")
+            refreshLogs()
 
             if (result.success) {
                 AdScheduler.tryShowAfterAction()
@@ -375,6 +384,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
         } catch (e: Exception) {
+            AetherLog.append(getApplication(), "apply", "error=${e.message ?: "unknown"}")
+            refreshLogs()
             _applyingTweak.value = false
             _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = e.message ?: "error")
         }
@@ -612,6 +623,61 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         try {
             if (SettingsPrefs.getAutoBackup(getApplication())) BackupManager.createBackup()
         } catch (_: Exception) {}
+    }
+
+    fun refreshLogs() = viewModelScope.launch(Dispatchers.IO) {
+        _logText.value = AetherLog.read(getApplication())
+    }
+
+    fun clearLogs() = viewModelScope.launch(Dispatchers.IO) {
+        AetherLog.clear(getApplication())
+        _logText.value = "Log dibersihkan."
+        snack("Log dibersihkan")
+    }
+
+    fun exportLogs() = viewModelScope.launch(Dispatchers.IO) {
+        val file = AetherLog.export(getApplication())
+        snack(if (file != null) "Log diekspor: ${file.absolutePath}" else "Gagal ekspor log")
+        refreshLogs()
+    }
+
+    fun enableSafeModeReset() = viewModelScope.launch(Dispatchers.IO) {
+        getApplication<Application>().getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("local_safe_mode", true)
+            .apply()
+        val ok = RootEngine.enableSafeModeAndReset()
+        clearLocalTweaks()
+        _tweaks.value = TweaksState()
+        snack(if (ok) "Safe Mode aktif, tweak agresif dimatikan" else "Gagal aktifkan Safe Mode")
+        refresh()
+        refreshLogs()
+    }
+
+    fun disableSafeMode() = viewModelScope.launch(Dispatchers.IO) {
+        getApplication<Application>().getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("local_safe_mode", false)
+            .putInt("rapid_crash_count", 0)
+            .apply()
+        val ok = RootEngine.toggleSafeMode(false)
+        snack(if (ok) "Safe Mode dimatikan" else "Gagal mematikan Safe Mode")
+        refresh()
+        refreshLogs()
+    }
+
+    fun exportSettingsToSdcard() = viewModelScope.launch(Dispatchers.IO) {
+        val path = RootEngine.exportTweaksConfToSdcard()
+        snack("Settings diekspor: $path")
+    }
+
+    fun importSettingsFromSdcard() = viewModelScope.launch(Dispatchers.IO) {
+        val ok = RootEngine.importTweaksConfFromSdcard()
+        if (ok) {
+            loadTweaks(syncRoot = true)
+            applyChannel.trySend(Unit)
+        }
+        snack(if (ok) "Settings diimpor dari ${RootEngine.SETTINGS_EXPORT}" else "File import tidak ditemukan")
     }
 
     private fun snack(msg: String) {

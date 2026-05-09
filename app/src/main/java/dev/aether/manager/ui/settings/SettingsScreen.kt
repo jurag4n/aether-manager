@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
@@ -36,7 +37,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,11 +81,13 @@ fun SettingsScreen(
     var showResetProfiles by remember { mutableStateOf(false) }
     var showResetMonitor by remember { mutableStateOf(false) }
     var showThemeSheet by remember { mutableStateOf(false) }
+    var showLogDialog by remember { mutableStateOf(false) }
     var restoreTarget by remember { mutableStateOf<String?>(null) }
     var processingFile by remember { mutableStateOf<String?>(null) }
 
     var appearanceExpanded by remember(Unit) { mutableStateOf(false) }
     var generalExpanded by remember(Unit) { mutableStateOf(false) }
+    var safetyExpanded by remember(Unit) { mutableStateOf(false) }
     var backupExpanded by remember(Unit) { mutableStateOf(false) }
 
     val isLicensed = remember { LicenseManager.isActive(ctx) }
@@ -95,6 +100,8 @@ fun SettingsScreen(
     val autoBackup by vm.autoBackup.collectAsState()
     val applyOnBoot by vm.applyOnBoot.collectAsState()
     val notifications by vm.notifications.collectAsState()
+    val logText by vm.logText.collectAsState()
+    val clipboard = LocalClipboardManager.current
 
     val currentLanguage = LocalLanguage.current
     val setLanguage = LocalSetLanguage.current
@@ -123,7 +130,8 @@ fun SettingsScreen(
         vm.clearBackupEvent()
     }
 
-    LaunchedEffect(Unit) { vm.loadBackups() }
+    LaunchedEffect(Unit) { vm.loadBackups(); vm.refreshLogs() }
+    LaunchedEffect(showLogDialog) { if (showLogDialog) vm.refreshLogs() }
     LaunchedEffect(working) { if (!working) processingFile = null }
 
     Scaffold(
@@ -238,6 +246,59 @@ fun SettingsScreen(
             }
 
             SettingsSectionCard(
+                icon = Icons.Outlined.Security,
+                title = "Safety & Logs",
+                subtitle = "Safe Mode, export/import, dan log apply",
+                expanded = safetyExpanded,
+                onToggle = { safetyExpanded = !safetyExpanded }
+            ) {
+                SettingsActionRow(
+                    icon = Icons.Outlined.HealthAndSafety,
+                    title = "Aktifkan Safe Mode",
+                    subtitle = "Matikan tweak agresif dan reset ke Balance",
+                    iconTint = MaterialTheme.colorScheme.error,
+                    iconBg = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.62f),
+                    onClick = { vm.enableSafeModeReset() }
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    icon = Icons.Outlined.VerifiedUser,
+                    title = "Matikan Safe Mode",
+                    subtitle = "Izinkan tweak aktif lagi setelah device stabil",
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
+                    onClick = { vm.disableSafeMode() }
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    icon = Icons.Outlined.Article,
+                    title = "Log Center",
+                    subtitle = "Lihat hasil apply, verify, boot, dan error",
+                    iconTint = MaterialTheme.colorScheme.tertiary,
+                    iconBg = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.58f),
+                    onClick = { showLogDialog = true; vm.refreshLogs() }
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    icon = Icons.Outlined.FileUpload,
+                    title = "Export Settings",
+                    subtitle = "Simpan ke /sdcard/Aether/aether-settings.conf",
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
+                    onClick = { vm.exportSettingsToSdcard() }
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    icon = Icons.Outlined.FileDownload,
+                    title = "Import Settings",
+                    subtitle = "Muat dari /sdcard/Aether/aether-settings.conf",
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
+                    onClick = { vm.importSettingsFromSdcard() }
+                )
+            }
+
+            SettingsSectionCard(
                 icon = Icons.Outlined.Archive,
                 title = "Backup & Reset",
                 subtitle = if (backupList.isEmpty()) s.settingsNoBackup else "${backupList.size} backup tersimpan",
@@ -337,6 +398,39 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showReset = false }) { Text(s.settingsBtnCancel) }
+            }
+        )
+    }
+
+    if (showLogDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogDialog = false },
+            icon = { Icon(Icons.Outlined.Article, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Log Center") },
+            text = {
+                SelectionContainer {
+                    Text(
+                        text = logText.takeLast(12000),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .heightIn(max = 360.dp)
+                            .verticalScroll(rememberScrollState())
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString(logText))
+                    android.widget.Toast.makeText(ctx, "Log disalin", android.widget.Toast.LENGTH_SHORT).show()
+                }) { Text("Copy") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { vm.exportLogs() }) { Text("Export") }
+                    TextButton(onClick = { vm.clearLogs() }) { Text("Clear") }
+                    TextButton(onClick = { showLogDialog = false }) { Text("Close") }
+                }
             }
         )
     }

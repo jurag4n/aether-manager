@@ -217,6 +217,10 @@ fun TweakScreen(
                 vm.setTweak("gpuThrottleOff", false)
                 vm.setTweak("schedboost", false)
             }
+            "custom" -> {
+                // Custom tidak menimpa toggle yang sedang user atur.
+                // Ini hanya menyimpan label profile agar setting manual tetap aman.
+            }
             else -> {
                 cpuGovernor = "Schedutil"
                 gpuProfile = "Balanced"
@@ -1505,6 +1509,20 @@ private fun ProfileModeSelector(
                 onSelect = onSelect
             )
         }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ProfileChip(
+                modifier = Modifier.weight(1f),
+                key = "custom",
+                label = "Custom",
+                icon = Icons.Outlined.Tune,
+                selected = current == "custom",
+                onSelect = onSelect
+            )
+            Spacer(modifier = Modifier.weight(1f))
+        }
     }
 }
 
@@ -2134,6 +2152,7 @@ private fun activeProfileLabel(value: String): String {
         "performance" -> "Performance"
         "extreme" -> "Extreme"
         "battery", "powersave" -> "Battery"
+        "custom" -> "Custom"
         else -> "Balance"
     }
 }
@@ -2143,6 +2162,7 @@ private fun activeProfileIcon(value: String): ImageVector {
         "performance" -> Icons.Outlined.Bolt
         "extreme" -> Icons.Outlined.Speed
         "battery", "powersave" -> Icons.Outlined.BatteryChargingFull
+        "custom" -> Icons.Outlined.Tune
         else -> Icons.Outlined.Balance
     }
 }

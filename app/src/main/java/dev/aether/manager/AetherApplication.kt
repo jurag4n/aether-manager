@@ -14,6 +14,7 @@ import dev.aether.manager.notification.NotificationHelper
 import dev.aether.manager.notification.NotificationScheduler
 import dev.aether.manager.security.AetherSecurityNative
 import dev.aether.manager.security.SecurityBlockActivity
+import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.UiNativeBoost
 import dev.aether.manager.util.UiPerformanceMonitor
 import kotlin.system.exitProcess
@@ -39,6 +40,8 @@ class AetherApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        installCrashGuard()
+        applyLocalSafeModeIfNeeded()
 
         NativeAether.tryLoad(this)
         UiNativeBoost.init(this)
@@ -61,6 +64,39 @@ class AetherApplication : Application() {
 
         NotificationHelper.createChannels(this)
         NotificationScheduler.schedule(this)
+    }
+
+
+    private fun installCrashGuard() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            runCatching {
+                val prefs = getSharedPreferences("aether_prefs", MODE_PRIVATE)
+                val now = System.currentTimeMillis()
+                val last = prefs.getLong("last_crash_at", 0L)
+                val count = if (now - last < 10 * 60 * 1000L) prefs.getInt("rapid_crash_count", 0) + 1 else 1
+                prefs.edit()
+                    .putLong("last_crash_at", now)
+                    .putInt("rapid_crash_count", count)
+                    .putBoolean("local_safe_mode", count >= 2)
+                    .apply()
+                val stamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date(now))
+                java.io.File(filesDir, "aether-local.log").appendText(
+                    "$stamp [crash] ${throwable.javaClass.simpleName}: ${throwable.message.orEmpty()}\n"
+                )
+            }
+            previous?.uncaughtException(thread, throwable) ?: run {
+                android.os.Process.killProcess(android.os.Process.myPid())
+                exitProcess(2)
+            }
+        }
+    }
+
+    private fun applyLocalSafeModeIfNeeded() {
+        val prefs = getSharedPreferences("aether_prefs", MODE_PRIVATE)
+        if (!prefs.getBoolean("local_safe_mode", false)) return
+        SettingsPrefs.setApplyOnBoot(this, false)
+        prefs.edit().putString("saved_tweaks_conf", "profile=balance\ncpu_boost=0\ngpu_throttle_off=0\nschedboost=0").apply()
     }
 
     @Volatile private var securityBlocked = false
@@ -99,10 +135,10 @@ class AetherApplication : Application() {
             // Native hook detection is intentionally strict and reason-based.
             // LSPosed, Zygisk, and Riru are allowed. Frida/injector artifacts still block.
             if (NativeAether.nativeIsHooked()) {
-                showSecurityBlock("frida_or_injector_detected"); return
+                showSecurityBlock(runCatching { NativeAether.nativeRuntimeReason(this) }.getOrDefault("frida_or_injector_detected")); return
             }
             if (NativeAether.nativeIsDebugged()) {
-                showSecurityBlock("debugger_detected"); return
+                showSecurityBlock(runCatching { NativeAether.nativeRuntimeReason(this) }.getOrDefault("debugger_detected")); return
             }
             if (!NativeAether.nativeCheckAntiPatch(this)) {
                 showSecurityBlock("lucky_patcher_or_lspatch_detected"); return

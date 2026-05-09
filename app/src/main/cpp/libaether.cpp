@@ -793,6 +793,23 @@ Java_dev_aether_manager_NativeAether_nativeCheckGotHook(JNIEnv *, jobject) {
     return layer9_got_hook_check()?JNI_FALSE:JNI_TRUE;
 }
 
+
+JNIEXPORT jstring JNICALL
+Java_dev_aether_manager_NativeAether_nativeRuntimeReason(JNIEnv *env, jobject, jobject ctx) {
+    if (l1_frida_maps()) return env->NewStringUTF("frida_maps_detected");
+    if (l1_frida_fd())   return env->NewStringUTF("frida_fd_detected");
+    if (l1_frida_tmp())  return env->NewStringUTF("frida_tmp_detected");
+    if (layer2_anti_debug()) return env->NewStringUTF("debugger_detected");
+    if (!l3_zip_integrity()) return env->NewStringUTF("apk_zip_tamper");
+    if (!l3_dex_magic())     return env->NewStringUTF("dex_tamper");
+    if (layer4_anti_patch(env, ctx)) return env->NewStringUTF("lucky_patcher_or_lspatch_detected");
+    if (!l5_unity_strings()) return env->NewStringUTF("unity_ads_tamper");
+    if (layer7_anti_cloner(env, ctx)) return env->NewStringUTF("cloner_detected");
+    if (!layer8_elf_self_integrity()) return env->NewStringUTF("elf_tamper");
+    if (layer9_got_hook_check()) return env->NewStringUTF("native_integrity_tamper");
+    return env->NewStringUTF("ok");
+}
+
 JNIEXPORT jboolean JNICALL
 Java_dev_aether_manager_NativeAether_nativeCheckAll(JNIEnv *env, jobject, jobject ctx) {
     DEVLOG("start");
