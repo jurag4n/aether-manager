@@ -93,7 +93,6 @@ ktor-serialization                   = { group = "io.ktor",                     
 shizuku-api                          = { group = "dev.rikka.shizuku",           name = "api",                            version.ref = "shizuku" }
 shizuku-provider                     = { group = "dev.rikka.shizuku",           name = "provider",                       version.ref = "shizuku" }
 miuix-android                       = { group = "top.yukonga.miuix.kmp",    name = "miuix-android",                  version.ref = "miuix" }
-miuix-icons-android                 = { group = "top.yukonga.miuix.kmp",    name = "miuix-icons-android",            version.ref = "miuix" }
 cupertino-compose                   = { group = "io.github.alexzhirkevich", name = "cupertino",                       version.ref = "cupertino" }
 androidx-compose-animation           = { group = "androidx.compose.animation",  name = "animation",                       version.ref = "composeUi" }
 androidx-compose-animation-graphics  = { group = "androidx.compose.animation",  name = "animation-graphics",              version.ref = "composeUi" }

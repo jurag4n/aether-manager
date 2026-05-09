@@ -171,7 +171,6 @@ dependencies {
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     implementation(libs.miuix.android)
-    implementation(libs.miuix.icons.android)
     implementation(libs.cupertino.compose)
     implementation(libs.compose.foundation)
     implementation(libs.lottie.compose)
