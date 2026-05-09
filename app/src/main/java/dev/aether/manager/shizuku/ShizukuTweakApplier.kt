@@ -6,11 +6,14 @@ import kotlin.system.measureTimeMillis
 object ShizukuTweakApplier {
     private fun dnsHost(provider: String): String? = when (provider.trim().lowercase()) {
         "", "off" -> null
-        "adguard" -> "dns.adguard.com"
         "cloudflare" -> "one.one.one.one"
+        "cloudflare malware" -> "security.cloudflare-dns.com"
         "google" -> "dns.google"
+        "quad9" -> "dns.quad9.net"
         "cleanbrowsing" -> "family-filter-dns.cleanbrowsing.org"
-        else -> provider.filter { it.isLetterOrDigit() || it == '.' || it == '-' }.takeIf { it.contains('.') }
+        "opendns" -> "dns.opendns.com"
+        "dns.sb" -> "dot.sb"
+        else -> provider.trim().lowercase().filter { it.isLetterOrDigit() || it == '.' || it == '-' }.take(96).takeIf { it.contains('.') && !it.startsWith('.') && !it.endsWith('.') }
     }
 
     suspend fun apply(tweaks: Map<String, String>): TweakApplier.ApplyResult {

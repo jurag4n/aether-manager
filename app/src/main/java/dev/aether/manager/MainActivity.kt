@@ -59,6 +59,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.notification.LicenseNotificationChecker
 import dev.aether.manager.ui.AetherTheme
+import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.appprofile.AppProfileScreen
 import dev.aether.manager.ui.components.RebootBottomSheet
 import dev.aether.manager.ui.home.HomeScreen
@@ -92,8 +93,9 @@ class MainActivity : ComponentActivity() {
             val darkModeOverride by vm.darkModeOverride.collectAsState()
             val darkMode         by vm.darkMode.collectAsState()
             val dynamicColor     by vm.dynamicColor.collectAsState()
+            val themePreset      by vm.themePreset.collectAsState()
             val effectiveDark    = if (darkModeOverride) darkMode else isSystemInDarkTheme()
-            AetherTheme(darkTheme = effectiveDark, dynamicColor = dynamicColor) {
+            AetherTheme(darkTheme = effectiveDark, dynamicColor = dynamicColor, themePreset = themePreset) {
                 ProvideStrings {
                     AetherApp(vm, apVm, updateVm)
                 }
@@ -418,12 +420,13 @@ private fun FloatingUtilityBar(
     onPowerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val themeStyle = LocalAetherThemeStyle.current
     // Match the utility bar elevation with the main bottom navigation bar to avoid
     // inconsistent shadows when sliding between tabs.
     Surface(
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        shadowElevation = 8.dp,
+        shape = RoundedCornerShape(themeStyle.pillCorner),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = themeStyle.navAlpha),
+        shadowElevation = if (themeStyle.cardElevation == 0.dp) 0.dp else 8.dp,
         tonalElevation = 4.dp,
         modifier = modifier
     ) {
@@ -482,10 +485,12 @@ private fun FloatingBottomBar(
     // ── Drag threshold per item (px → will be set after layout) ──────────────
     val itemWidthPx = remember { mutableStateOf(0f) }
 
+    val themeStyle = LocalAetherThemeStyle.current
+
     Surface(
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        shadowElevation = 8.dp,
+        shape = RoundedCornerShape(themeStyle.pillCorner),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = themeStyle.navAlpha),
+        shadowElevation = if (themeStyle.cardElevation == 0.dp) 0.dp else 8.dp,
         tonalElevation = 4.dp,
         modifier = modifier
             .scale(scaleX = 1f, scaleY = capsuleScale)
@@ -545,7 +550,7 @@ private fun FloatingBottomBar(
                         .onGloballyPositioned { coords ->
                             itemWidthPx.value = coords.size.width.toFloat().coerceAtLeast(1f)
                         }
-                        .clip(RoundedCornerShape(50))
+                        .clip(RoundedCornerShape(LocalAetherThemeStyle.current.pillCorner))
                         .background(bgColor)
                         // Short tap → navigate
                         .clickable(
@@ -646,7 +651,7 @@ private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
         modifier = Modifier
             .size(48.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(LocalAetherThemeStyle.current.pillCorner))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
@@ -667,7 +672,7 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
         modifier = Modifier
             .size(48.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(LocalAetherThemeStyle.current.pillCorner))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable(
                 interactionSource = interactionSource,

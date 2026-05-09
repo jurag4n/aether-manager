@@ -65,6 +65,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -127,9 +128,10 @@ fun TweakScreen(
     var rendererDialog by rememberSaveable { mutableStateOf(false) }
 
     var dnsProvider by rememberSaveable {
-        mutableStateOf(
-            if (tweaks.dnsProvider.isBlank()) "Off" else tweaks.dnsProvider
-        )
+        mutableStateOf(dnsUiLabel(tweaks.dnsProvider.ifBlank { "Off" }))
+    }
+    var dnsCustomHost by rememberSaveable {
+        mutableStateOf(if (isBuiltInDnsValue(tweaks.dnsProvider) || tweaks.dnsProvider.isBlank()) "" else tweaks.dnsProvider)
     }
     var networkStable by rememberSaveable { mutableStateOf(tweaks.networkStable) }
     var tcpEnabled by rememberSaveable { mutableStateOf(tweaks.tcpBbr) }
@@ -153,7 +155,11 @@ fun TweakScreen(
         tcpEnabled = tweaks.tcpBbr
         swapEnabled = tweaks.swap
         killBackgroundActive = tweaks.killBackground
-        dnsProvider = tweaks.dnsProvider.ifBlank { "Off" }
+        val rawDns = tweaks.dnsProvider.ifBlank { "Off" }
+        dnsProvider = dnsUiLabel(rawDns)
+        if (!isBuiltInDnsValue(rawDns) && rawDns.isNotBlank()) {
+            dnsCustomHost = rawDns
+        }
         ioScheduler = if (tweaks.ioScheduler.isBlank()) "Auto" else normalizeLabel(tweaks.ioScheduler)
         schedBoostMode = if (tweaks.schedboost) "Game" else "Off"
         cpuGovernor = when {
@@ -329,14 +335,30 @@ fun TweakScreen(
                 NetworkCard(
                     modifier = itemModifier,
                     expanded = expandedCard == "network",
-                    active = dnsProvider != "Off" || networkStable || tcpEnabled || tweaks.tcpBbr,
+                    active = dnsProvider != "Off" || dnsCustomHost.isNotBlank() || networkStable || tcpEnabled || tweaks.tcpBbr,
                     dnsProvider = dnsProvider,
+                    dnsCustomHost = dnsCustomHost,
                     networkStable = networkStable,
                     tcpEnabled = tcpEnabled || tweaks.tcpBbr,
                     onClick = { toggleExpand("network") },
                     onDnsSelect = { provider ->
                         dnsProvider = provider
-                        vm.setTweakStr("dnsProvider", provider)
+                        if (provider != "Custom") {
+                            vm.setTweakStr("dnsProvider", provider)
+                        } else if (dnsCustomHost.isNotBlank()) {
+                            vm.setTweakStr("dnsProvider", dnsCustomHost)
+                        }
+                    },
+                    onDnsCustomChange = { host ->
+                        dnsCustomHost = sanitizeDnsHost(host)
+                    },
+                    onDnsCustomApply = {
+                        val host = sanitizeDnsHost(dnsCustomHost)
+                        dnsCustomHost = host
+                        if (host.isNotBlank()) {
+                            dnsProvider = "Custom"
+                            vm.setTweakStr("dnsProvider", host)
+                        }
                     },
                     onNetworkStableToggle = {
                         networkStable = !networkStable
@@ -744,14 +766,16 @@ private fun NetworkCard(
     expanded: Boolean,
     active: Boolean,
     dnsProvider: String,
+    dnsCustomHost: String,
     networkStable: Boolean,
     tcpEnabled: Boolean,
     onClick: () -> Unit,
     onDnsSelect: (String) -> Unit,
+    onDnsCustomChange: (String) -> Unit,
+    onDnsCustomApply: () -> Unit,
     onNetworkStableToggle: () -> Unit,
     onTcpToggle: () -> Unit
 ) {
-    // Localized strings for network card
     val strings = rememberTweakI18n()
 
     ExpandableTweakCard(
@@ -767,9 +791,36 @@ private fun NetworkCard(
         DropdownAction(
             title = strings.networkDnsTitle,
             value = dnsProvider,
-            options = listOf("Off", "AdGuard", "Cloudflare", "Google", "CleanBrowsing"),
+            options = privateDnsOptions(),
             onSelect = onDnsSelect
         )
+
+        if (dnsProvider == "Custom") {
+            SubCard(
+                title = if (strings.isId) "DNS Custom" else "Custom DNS",
+                subtitle = if (strings.isId) "Isi hostname Private DNS sendiri" else "Enter your own Private DNS hostname"
+            ) {
+                OutlinedTextField(
+                    value = dnsCustomHost,
+                    onValueChange = onDnsCustomChange,
+                    label = { Text("Hostname") },
+                    placeholder = { Text("dns.example.com") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = onDnsCustomApply,
+                    enabled = dnsCustomHost.contains('.') && dnsCustomHost.length >= 4,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Check, null, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (strings.isId) "Terapkan DNS" else "Apply DNS")
+                }
+            }
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1734,29 +1785,37 @@ private fun ToggleOption(
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         color = bg,
         modifier = modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                if (checked) {
-                    Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(17.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = fg,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = fg.copy(alpha = 0.70f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = fg)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = fg.copy(alpha = 0.68f))
+                Switch(checked = checked, onCheckedChange = { onClick() })
             }
         }
     }
@@ -2109,7 +2168,56 @@ private fun <T> snappySpring() = spring<T>(
 )
 
 
-private class TweakI18n(private val isId: Boolean) {
+private fun privateDnsOptions(): List<String> = listOf(
+    "Off",
+    "Cloudflare",
+    "Cloudflare Malware",
+    "Google",
+    "Quad9",
+    "CleanBrowsing",
+    "OpenDNS",
+    "DNS.SB",
+    "Custom"
+)
+
+private fun isBuiltInDnsValue(value: String): Boolean {
+    val v = value.trim().lowercase()
+    return v.isBlank() || v in setOf(
+        "off",
+        "cloudflare", "one.one.one.one",
+        "cloudflare malware", "security.cloudflare-dns.com",
+        "google", "dns.google",
+        "quad9", "dns.quad9.net",
+        "cleanbrowsing", "family-filter-dns.cleanbrowsing.org",
+        "opendns", "dns.opendns.com",
+        "dns.sb", "dot.sb"
+    )
+}
+
+private fun dnsUiLabel(value: String): String {
+    return when (value.trim().lowercase()) {
+        "", "off" -> "Off"
+        "cloudflare", "one.one.one.one" -> "Cloudflare"
+        "cloudflare malware", "security.cloudflare-dns.com" -> "Cloudflare Malware"
+        "google", "dns.google" -> "Google"
+        "quad9", "dns.quad9.net" -> "Quad9"
+        "cleanbrowsing", "family-filter-dns.cleanbrowsing.org" -> "CleanBrowsing"
+        "opendns", "dns.opendns.com" -> "OpenDNS"
+        "dns.sb", "dot.sb" -> "DNS.SB"
+        else -> "Custom"
+    }
+}
+
+private fun sanitizeDnsHost(value: String): String {
+    return value
+        .trim()
+        .lowercase()
+        .filter { it.isLetterOrDigit() || it == '.' || it == '-' }
+        .take(96)
+}
+
+
+private class TweakI18n(val isId: Boolean) {
     val deviceInfoTitle: String get() = if (isId) "Info Perangkat" else "Device Info"
     val deviceInfoSubtitle: String get() = if (isId) "Ringkas dan bersih" else "Concise and clean"
     val deviceInfoName: String get() = if (isId) "Nama Perangkat" else "Device Name"

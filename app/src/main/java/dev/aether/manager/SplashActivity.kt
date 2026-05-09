@@ -22,6 +22,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.aether.manager.i18n.ProvideStrings
 import dev.aether.manager.ui.AetherTheme
+import dev.aether.manager.util.SettingsPrefs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -100,7 +102,14 @@ class SplashActivity : ComponentActivity() {
         )
 
         setContent {
-            AetherTheme {
+            val themePreset = SettingsPrefs.getThemePreset(this)
+            val darkOverride = SettingsPrefs.isDarkModeOverride(this)
+            val darkTheme = if (darkOverride) SettingsPrefs.getDarkMode(this) else isSystemInDarkTheme()
+            AetherTheme(
+                darkTheme = darkTheme,
+                dynamicColor = SettingsPrefs.getDynamicColor(this),
+                themePreset = themePreset
+            ) {
                 ProvideStrings {
                     SplashScreen {
                         val next = if (setupDone) MainActivity::class.java else SetupActivity::class.java
@@ -336,7 +345,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Smart Control • Clean Boost • Premium Tools",
+                text = "Smart Control • Safe Tuning • Clean Tools",
                 modifier = Modifier.graphicsLayer {
                     alpha = subtitleAlpha.value
                     translationY = with(density) { subtitleOffset.value.dp.toPx() }
@@ -360,7 +369,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Preparing your workspace",
+                    text = "Preparing safe tuning engine",
                     color = primary.copy(alpha = 0.92f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -378,8 +387,8 @@ fun SplashScreen(onFinished: () -> Unit) {
                 secondary = secondary,
                 onSurface = onSurface,
                 modifier = Modifier
-                    .width(236.dp)
-                    .height(44.dp)
+                    .width(252.dp)
+                    .height(46.dp)
             )
         }
 

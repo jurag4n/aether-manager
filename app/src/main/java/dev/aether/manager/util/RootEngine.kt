@@ -93,18 +93,21 @@ object RootEngine {
         sh("mkdir -p '$CONF_DIR' && chmod 700 '$CONF_DIR' && chown 0:0 '$CONF_DIR'")
     }
 
+    private fun shellQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
+
     suspend fun readFile(path: String): String =
-        sh("cat ${'$'}path 2>/dev/null").stdout
+        sh("cat ${shellQuote(path)} 2>/dev/null").stdout
 
     suspend fun writeFile(path: String, content: String): Boolean {
         val escaped = content.replace("'", "'\\''")
+        val quotedPath = shellQuote(path)
         val dir = path.substringBeforeLast('/', "")
-        val mkdir = if (dir.isNotBlank()) "mkdir -p '$dir' && " else ""
-        return sh("${mkdir}printf '%s' '$escaped' > '${'$'}path'").exitCode == 0
+        val mkdir = if (dir.isNotBlank()) "mkdir -p ${shellQuote(dir)} && " else ""
+        return sh("${mkdir}printf '%s' '$escaped' > $quotedPath && chmod 600 $quotedPath").exitCode == 0
     }
 
     suspend fun fileExists(path: String): Boolean =
-        sh("[ -f ${'$'}path ] && echo yes").stdout.contains("yes")
+        sh("[ -f ${shellQuote(path)} ] && echo yes").stdout.contains("yes")
 
     // ── getprop — tidak butuh root ────────────────────────────────────────────
 

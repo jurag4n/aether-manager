@@ -168,8 +168,6 @@ private fun MonitorSection(state: MonitorState, info: DeviceInfo?) {
 private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
     val cpuFreq = normalizeCpuFreq(state.cpuFreq)
-    // Display CPU usage gracefully: show dash if zero or negative
-    val cpuUsageLabel = if (state.cpuUsage > 0) "${state.cpuUsage}%" else "—%"
     val freqSize = when {
         cpuFreq.length >= 10 -> 23.sp
         cpuFreq.length >= 8 -> 25.sp
@@ -189,7 +187,6 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconBadge(Icons.Outlined.Memory, color)
-                PillText(cpuUsageLabel)
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

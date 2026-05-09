@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import dev.aether.manager.ui.AetherTheme
+import dev.aether.manager.util.SettingsPrefs
 import kotlin.system.exitProcess
 
 class SecurityBlockActivity : ComponentActivity() {
@@ -59,7 +61,14 @@ class SecurityBlockActivity : ComponentActivity() {
         val rawReason = intent.getStringExtra(EXTRA_REASON).orEmpty().ifBlank { "security_violation" }
 
         setContent {
-            AetherTheme {
+            val themePreset = SettingsPrefs.getThemePreset(this)
+            val darkOverride = SettingsPrefs.isDarkModeOverride(this)
+            val darkTheme = if (darkOverride) SettingsPrefs.getDarkMode(this) else isSystemInDarkTheme()
+            AetherTheme(
+                darkTheme = darkTheme,
+                dynamicColor = SettingsPrefs.getDynamicColor(this),
+                themePreset = themePreset
+            ) {
                 SecurityBlockScreen(
                     rawReason = rawReason,
                     onClose = ::closeApp

@@ -19,9 +19,12 @@ object TweakApplier {
         val subsystems: List<SubsystemResult>,
         val totalMs:    Long,
     ) {
-        // Dianggap sukses selama shell bisa jalan.
-        // Node yang gagal ditulis (karena tidak ada di device) bukan kegagalan apply.
-        val success: Boolean get() = subsystems.none { it.name == "shell" && !it.ok }
+        // Sukses kalau shell jalan dan subsystem penting yang diminta tidak gagal.
+        // Node yang tidak ada tetap dihitung skipped, bukan gagal.
+        val success: Boolean get() = subsystems.none {
+            (it.name == "shell" && !it.ok) ||
+            (it.name in setOf("cpu_governor", "cpu_freq", "gpu", "gpu_freq") && !it.ok)
+        }
         val summary: String  get() {
             val ok  = subsystems.count { it.ok }
             val all = subsystems.size
@@ -136,16 +139,54 @@ forall() {
   done
 }
 
-# change_cpu_gov — persis encore change_cpu_gov()
+# change_cpu_gov — stable per-policy apply + readback verification
 change_cpu_gov() {
-  local gov="${'$'}1"
-  chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 2>/dev/null
-  chmod 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null
-  chown 0:0 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 2>/dev/null
-  chown 0:0 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null
-  echo "${'$'}gov" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1
-  echo "${'$'}gov" | tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor >/dev/null 2>&1
-  _A=${'$'}((_A+1))
+  local target="${'$'}1"
+  local found=0
+
+  for node in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+    [ -f "${'$'}node" ] || continue
+    found=1
+
+    local dir avail gov old newv
+    dir=${'$'}(dirname "${'$'}node")
+    avail=${'$'}(cat "${'$'}dir/scaling_available_governors" 2>/dev/null)
+
+    gov="${'$'}target"
+    if [ -n "${'$'}avail" ] && ! echo " ${'$'}avail " | grep -qw "${'$'}gov"; then
+      gov=""
+      for fb in schedutil interactive ondemand performance powersave conservative userspace; do
+        echo " ${'$'}avail " | grep -qw "${'$'}fb" && { gov="${'$'}fb"; break; }
+      done
+    fi
+
+    [ -n "${'$'}gov" ] || { _S=${'$'}((_S+1)); continue; }
+
+    old=${'$'}(cat "${'$'}node" 2>/dev/null)
+    chmod 644 "${'$'}node" 2>/dev/null || true
+    chown 0:0 "${'$'}node" 2>/dev/null || true
+
+    local ok=0
+    for retry_sleep in 0 0.12 0.35; do
+      [ "${'$'}retry_sleep" = "0" ] || sleep "${'$'}retry_sleep" 2>/dev/null || true
+      if printf '%s' "${'$'}gov" > "${'$'}node" 2>/dev/null || printf '%s' "${'$'}gov" | tee "${'$'}node" >/dev/null 2>&1; then
+        sleep 0.05 2>/dev/null || true
+        newv=${'$'}(cat "${'$'}node" 2>/dev/null)
+        if [ "${'$'}newv" = "${'$'}gov" ]; then
+          ok=1
+          break
+        fi
+      fi
+    done
+
+    if [ "${'$'}ok" = "1" ]; then
+      _A=${'$'}((_A+1))
+    else
+      _F=${'$'}((_F+1))
+    fi
+  done
+
+  [ "${'$'}found" = "0" ] && _S=${'$'}((_S+1))
 }
 
 # devfreq helpers — encore style
@@ -188,22 +229,8 @@ _end()   {
         return """
 _begin
 # cpu_governor — target: $target
-AVAIL=${'$'}(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors 2>/dev/null || echo "")
-if [ -n "${'$'}AVAIL" ]; then
-  _GOV=$target
-  _OK=0
-  for g in ${'$'}AVAIL; do
-    [ "${'$'}g" = "${'$'}_GOV" ] && { _OK=1; break; }
-  done
-  if [ ${'$'}_OK -eq 0 ]; then
-    for fb in schedutil interactive ondemand performance; do
-      for g in ${'$'}AVAIL; do
-        [ "${'$'}g" = "${'$'}fb" ] && { _GOV=${'$'}fb; _OK=1; break 2; }
-      done
-    done
-  fi
-  change_cpu_gov "${'$'}_GOV"
-fi
+# Jangan bergantung ke cpu0 saja. Banyak kernel expose governor lewat policy*/.
+change_cpu_gov "$target"
 _end "cpu_governor"
 """
     }
@@ -212,30 +239,30 @@ _end "cpu_governor"
         return when {
             t["cpu_freq_lock"] == "1" -> """
 _begin
-# cpu_freq lock — force max freq on all policies
+# cpu_freq lock — safe cap: jangan paksa min=max karena bisa bikin thermal/kernel hang
 for pol in /sys/devices/system/cpu/cpufreq/policy*/; do
   [ -d "${'$'}pol" ] || continue
   maxf=${'$'}(cat "${'$'}{pol}cpuinfo_max_freq" 2>/dev/null || echo 0)
-  echo "${'$'}maxf" | grep -qE '^[0-9]+' || continue
-  # apply both min and max to lock the freq
-  apply "${'$'}maxf" "${'$'}{pol}scaling_max_freq"
-  apply "${'$'}maxf" "${'$'}{pol}scaling_min_freq"
+  minf=${'$'}(cat "${'$'}{pol}cpuinfo_min_freq" 2>/dev/null || echo 0)
+  echo "${'$'}maxf" | grep -qE '^[0-9]+$' || continue
+  echo "${'$'}minf" | grep -qE '^[0-9]+$' || continue
+  write "${'$'}maxf" "${'$'}{pol}scaling_max_freq"
+  write "${'$'}minf" "${'$'}{pol}scaling_min_freq"
 done
 _end "cpu_freq"
 """
             profile == "gaming" || profile == "performance" || profile == "extreme" -> """
 _begin
-# cpu_freq — max perf (safe: write only, no chmod 444 lock)
+# cpu_freq — safe performance: governor dinaikkan, tapi min freq tetap rendah agar tidak overheat/reboot
 for pol in /sys/devices/system/cpu/cpufreq/policy*/; do
   [ -d "${'$'}pol" ] || continue
   maxf=${'$'}(cat "${'$'}{pol}cpuinfo_max_freq" 2>/dev/null)
+  minf=${'$'}(cat "${'$'}{pol}cpuinfo_min_freq" 2>/dev/null)
   echo "${'$'}maxf" | grep -qE '^[0-9]+$' || continue
-  # Tulis max dulu, baru min — urutan penting agar tidak invalid range
+  echo "${'$'}minf" | grep -qE '^[0-9]+$' || minf=""
   write "${'$'}maxf" "${'$'}{pol}scaling_max_freq"
-  write "${'$'}maxf" "${'$'}{pol}scaling_min_freq"
+  [ -n "${'$'}minf" ] && write "${'$'}minf" "${'$'}{pol}scaling_min_freq"
 done
-# TIDAK chmod 444 — mengunci freq nodes secara paksa dapat menyebabkan
-# kernel hang saat thermal atau scheduler mencoba mengubah nilai tersebut
 _end "cpu_freq"
 """
             profile == "battery" -> """
@@ -440,19 +467,10 @@ _end "thermal"
 """
             "extreme" -> """
 _begin
-# thermal — extreme: raise limits only (TIDAK disable total — disable thermal
-# dapat menyebabkan chip overheat → kernel panic → reboot paksa)
-write 90 /sys/module/msm_thermal/parameters/temp_threshold
-write 95 /sys/module/msm_thermal/parameters/core_limit_temp_degC
+# thermal — safe extreme: thermal tetap aktif. Jangan ubah trip point karena beberapa kernel panic/reboot.
 write Y  /sys/module/msm_thermal/parameters/enabled
 write 1  /sys/module/msm_thermal/core_control/enabled
-write 3  /proc/mtk_cl_objthermal/thermal_policy
-# MTK: raise trip point tapi tidak disable
-for tz in /sys/class/thermal/thermal_zone*/trip_point_0_temp; do
-  [ -f "${'$'}tz" ] || continue
-  cur=${'$'}(cat "${'$'}tz" 2>/dev/null)
-  [ "${'$'}cur" -lt 90000 ] 2>/dev/null && write 90000 "${'$'}tz"
-done
+write 1  /proc/mtk_cl_objthermal/thermal_policy
 _end "thermal"
 """
             else -> """
@@ -474,19 +492,14 @@ _end "thermal"
         val perf = t["gpu_throttle_off"] == "1" || profile == "gaming" || profile == "performance" || profile == "extreme"
         return if (perf) """
 _begin
-# gpu — performance (safe: tanpa force_clk_on/idle_timer paksa)
+# gpu — performance safe: jangan disable DVFS/power policy agar tidak hang/reboot paksa
 if [ -d /sys/class/kgsl/kgsl-3d0 ]; then
   apply 0 /sys/class/kgsl/kgsl-3d0/throttling
-  # force_clk_on dan idle_timer=1000 dihapus: menyebabkan GPU driver hang
-  # saat app keluar dan driver mencoba power-gate GPU
   apply 0 /sys/class/kgsl/kgsl-3d0/bus_split
-  # Qcom devfreq GPU
   devfreq_max /sys/class/devfreq/kgsl-3d0
 fi
-write 0 /sys/kernel/ged/hal/dvfs_enable
-apply always_on /sys/class/misc/mali0/device/power_policy
-apply on        /sys/devices/platform/mali.0/power/control
-apply 10        /sys/class/misc/mali0/device/js_scheduling_period
+# Mali/MTK: biarkan DVFS aktif, hanya tuning ringan jika node tersedia
+apply 10 /sys/class/misc/mali0/device/js_scheduling_period
 _end "gpu"
 """ else """
 _begin
@@ -553,7 +566,14 @@ for _zdev in /dev/zram0 /dev/zram1; do
   _zsys="/sys/block/${'$'}_zblk"
   [ -d "${'$'}_zsys" ] || continue
 
-  # Step 1: swapoff — paksa meski gagal (lanjut ke reset)
+  # Jika zram sudah aktif dari kernel/ROM, jangan reset ulang karena bisa freeze di beberapa device.
+  if grep -qw "${'$'}_zdev" /proc/swaps 2>/dev/null; then
+    _A=${'$'}((_A+1))
+    _zram_ok=1
+    break
+  fi
+
+  # Step 1: swapoff hanya untuk device yang belum aktif di /proc/swaps
   swapoff "${'$'}_zdev" 2>/dev/null || true
 
   # Step 2: reset — cara kernel modern: tulis 0 ke disksize dulu
@@ -602,22 +622,10 @@ done
         }
 
         if (t["kill_background"] == "1") {
-            append("sync && echo 3 > /proc/sys/vm/drop_caches 2>/dev/null && _A=${'$'}((_A+1)) || _F=${'$'}((_F+1))\n")
-            append("pm trim-caches 0 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
-            // Actual kill background processes — ini yang utama, am kill-all matikan semua cached proses
+            // Safe cleaner: hindari kill -9 massal/drop_caches berat karena bisa bikin UI macet di beberapa ROM.
             append("cmd activity idle-maintenance 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
-            // Fallback: kill proses cached di /proc yang bukan system UID (>= 10000)
-            append("""
-for _pid in /proc/[0-9]*; do
-  [ -r "${'$'}_pid/status" ] || continue
-  _uid=${'$'}(awk '/^Uid:/{print $2}' "${'$'}_pid/status" 2>/dev/null)
-  [ -z "${'$'}_uid" ] && continue
-  [ "${'$'}_uid" -ge 10000 ] 2>/dev/null || continue
-  _oom=${'$'}(cat "${'$'}_pid/oom_score_adj" 2>/dev/null)
-  # oom_score_adj >= 700 = cached/expendable background
-  [ -n "${'$'}_oom" ] && [ "${'$'}_oom" -ge 700 ] 2>/dev/null && kill -9 ${'$'}(basename "${'$'}_pid") 2>/dev/null
-done
-""".trimIndent() + "\n")
+            append("pm trim-caches 1G 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
+            append("echo 1 > /proc/sys/vm/drop_caches 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
         }
 
         append("_end \"memory\"\n")
@@ -669,13 +677,17 @@ done
             else -> ""
         }
         val dnsHost = if (provider.isNotEmpty() && provider != "Off") {
-            when (provider.lowercase()) {
-                "adguard"         -> "dns.adguard.com"
-                "cloudflare"      -> "one.one.one.one"
-                "google"          -> "dns.google"
-                "cleanbrowsing"   -> "family-filter-dns.cleanbrowsing.org"
-                else               -> provider
-            }.filter { it.isLetterOrDigit() || it == '.' || it == '-' }
+            val host = when (provider.lowercase()) {
+                "cloudflare"          -> "one.one.one.one"
+                "cloudflare malware"  -> "security.cloudflare-dns.com"
+                "google"              -> "dns.google"
+                "quad9"               -> "dns.quad9.net"
+                "cleanbrowsing"       -> "family-filter-dns.cleanbrowsing.org"
+                "opendns"             -> "dns.opendns.com"
+                "dns.sb"              -> "dot.sb"
+                else                   -> provider
+            }.trim().lowercase().filter { it.isLetterOrDigit() || it == '.' || it == '-' }.take(96)
+            host.takeIf { it.contains('.') && !it.startsWith('.') && !it.endsWith('.') }
         } else null
         return buildString {
             append("_begin\n# network\n")

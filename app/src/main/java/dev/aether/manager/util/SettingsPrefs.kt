@@ -2,6 +2,7 @@ package dev.aether.manager.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import dev.aether.manager.ui.AetherThemePreset
 
 /**
  * Centralized SharedPreferences helper for app settings.
@@ -14,6 +15,7 @@ object SettingsPrefs {
     private const val KEY_DARK_MODE     = "dark_mode"
     private const val KEY_DARK_OVERRIDE = "dark_mode_override"  // true = manual, false = follow system
     private const val KEY_DYNAMIC_COLOR = "dynamic_color"
+    private const val KEY_THEME_PRESET  = "theme_preset"
     private const val KEY_AUTO_BACKUP   = "auto_backup"
     private const val KEY_APPLY_ON_BOOT = "apply_on_boot"
     private const val KEY_NOTIFICATIONS = "notifications"
@@ -50,6 +52,14 @@ object SettingsPrefs {
 
     fun setDynamicColor(ctx: Context, enabled: Boolean) {
         prefs(ctx).edit().putBoolean(KEY_DYNAMIC_COLOR, enabled).apply()
+    }
+
+    // ── Theme preset ─────────────────────────────────────────────────────────
+    fun getThemePreset(ctx: Context): AetherThemePreset =
+        AetherThemePreset.fromId(prefs(ctx).getString(KEY_THEME_PRESET, AetherThemePreset.DEFAULT.id))
+
+    fun setThemePreset(ctx: Context, preset: AetherThemePreset) {
+        prefs(ctx).edit().putString(KEY_THEME_PRESET, preset.id).apply()
     }
 
     // ── Auto backup ──────────────────────────────────────────────────────────

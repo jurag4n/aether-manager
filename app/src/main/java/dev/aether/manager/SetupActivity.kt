@@ -37,6 +37,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -111,6 +112,7 @@ import dev.aether.manager.i18n.AppStrings
 import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.i18n.ProvideStrings
 import dev.aether.manager.ui.AetherTheme
+import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.RootManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -133,7 +135,14 @@ class SetupActivity : ComponentActivity() {
             )
         )
         setContent {
-            AetherTheme {
+            val themePreset = SettingsPrefs.getThemePreset(this)
+            val darkOverride = SettingsPrefs.isDarkModeOverride(this)
+            val darkTheme = if (darkOverride) SettingsPrefs.getDarkMode(this) else isSystemInDarkTheme()
+            AetherTheme(
+                darkTheme = darkTheme,
+                dynamicColor = SettingsPrefs.getDynamicColor(this),
+                themePreset = themePreset
+            ) {
                 ProvideStrings {
                     SetupScreen(
                         onDone = { rootWasGranted ->
@@ -248,7 +257,7 @@ private fun SetupHeader() {
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "Setup awal aplikasi",
+                text = "Quick setup • Root & permissions",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -315,15 +324,15 @@ private fun FeatureCard(item: FeatureItem, index: Int) {
     }
 
     Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.26f)),
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer(alpha = alpha.value, translationY = y.value)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(17.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -420,7 +429,7 @@ private fun PermissionCard(
             .graphicsLayer(alpha = alpha.value, translationY = y.value)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(17.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {

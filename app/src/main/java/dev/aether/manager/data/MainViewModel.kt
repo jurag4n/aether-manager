@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.aether.manager.util.BackupManager
+import dev.aether.manager.ui.AetherThemePreset
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.RootManager
 import dev.aether.manager.util.RootEngine
@@ -624,6 +625,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _darkModeOverride = MutableStateFlow(SettingsPrefs.isDarkModeOverride(getApplication()))
     private val _darkMode         = MutableStateFlow(SettingsPrefs.getDarkMode(getApplication()))
     private val _dynamicColor     = MutableStateFlow(SettingsPrefs.getDynamicColor(getApplication()))
+    private val _themePreset      = MutableStateFlow(SettingsPrefs.getThemePreset(getApplication()))
     private val _autoBackup       = MutableStateFlow(SettingsPrefs.getAutoBackup(getApplication()))
     private val _applyOnBoot      = MutableStateFlow(SettingsPrefs.getApplyOnBoot(getApplication()))
     private val _notifications    = MutableStateFlow(SettingsPrefs.getNotifications(getApplication()))
@@ -632,6 +634,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val darkModeOverride : StateFlow<Boolean> = _darkModeOverride.asStateFlow()
     val darkMode         : StateFlow<Boolean> = _darkMode.asStateFlow()
     val dynamicColor     : StateFlow<Boolean> = _dynamicColor.asStateFlow()
+    val themePreset      : StateFlow<AetherThemePreset> = _themePreset.asStateFlow()
     val autoBackup       : StateFlow<Boolean> = _autoBackup.asStateFlow()
     val applyOnBoot      : StateFlow<Boolean> = _applyOnBoot.asStateFlow()
     val notifications    : StateFlow<Boolean> = _notifications.asStateFlow()
@@ -651,6 +654,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setDynamicColor(e: Boolean) {
         SettingsPrefs.setDynamicColor(getApplication(), e)
         _dynamicColor.value = e
+    }
+
+    fun setThemePreset(preset: AetherThemePreset) {
+        SettingsPrefs.setThemePreset(getApplication(), preset)
+        _themePreset.value = preset
     }
 
     fun setAutoBackup(e: Boolean) {
