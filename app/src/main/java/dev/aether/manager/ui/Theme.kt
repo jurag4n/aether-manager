@@ -29,7 +29,7 @@ enum class AetherThemePreset(
     MIUI(
         id = "miui",
         title = "MIUI",
-        subtitle = "Colorful squircle icons, floating cards, HyperOS-style spacing"
+        subtitle = "Miuix Compose core, glossy blur surfaces, HyperOS-style controls"
     ),
     IOS(
         id = "ios",
@@ -345,9 +345,9 @@ private fun styleFor(preset: AetherThemePreset): AetherThemeStyle = when (preset
         controlCorner = 18.dp,
         iconCorner = 16.dp,
         pillCorner = 50.dp,
-        cardAlpha = 0.98f,
-        navAlpha = 0.90f,
-        cardElevation = 2.dp,
+        cardAlpha = 0.72f,
+        navAlpha = 0.70f,
+        cardElevation = 3.dp,
     )
     AetherThemePreset.IOS -> AetherThemeStyle(
         preset = preset,
@@ -356,9 +356,9 @@ private fun styleFor(preset: AetherThemePreset): AetherThemeStyle = when (preset
         controlCorner = 14.dp,
         iconCorner = 13.dp,
         pillCorner = 50.dp,
-        cardAlpha = 0.96f,
-        navAlpha = 0.88f,
-        cardElevation = 0.dp,
+        cardAlpha = 0.76f,
+        navAlpha = 0.72f,
+        cardElevation = 1.dp,
     )
 }
 

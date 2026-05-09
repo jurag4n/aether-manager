@@ -217,7 +217,7 @@ fun AetherSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
 
 @Composable
 fun StatCard(value: String, label: String, modifier: Modifier = Modifier) {
-    Surface(
+    AetherGlassSurface(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f),

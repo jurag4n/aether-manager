@@ -91,6 +91,7 @@ import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.LocalLanguage
 import dev.aether.manager.ui.components.AetherIconTile
+import dev.aether.manager.ui.components.AetherGlassSurface
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -1152,12 +1153,13 @@ private fun ExpandableTweakCard(
         label = "detail_slide_$title"
     )
 
-    Surface(
+    AetherGlassSurface(
         onClick = onClick,
         interactionSource = interactionSource,
         shape = RoundedCornerShape(cornerRadius),
         color = container,
         tonalElevation = elevation,
+        shadowElevation = if (expanded) 3.dp else 1.dp,
         modifier = modifier
             .graphicsLayer {
                 scaleX = cardScale
@@ -1307,11 +1309,12 @@ private fun DeviceInfoCard(
         ),
         label = "device_info_offset"
     )
-    Surface(
+    AetherGlassSurface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp,
+        shadowElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(

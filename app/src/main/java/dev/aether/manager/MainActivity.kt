@@ -63,6 +63,7 @@ import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.appprofile.AppProfileScreen
 import dev.aether.manager.ui.components.RebootBottomSheet
 import dev.aether.manager.ui.components.AetherIconTile
+import dev.aether.manager.ui.components.AetherGlassSurface
 import dev.aether.manager.ui.home.HomeScreen
 import dev.aether.manager.ui.settings.SettingsScreen
 import dev.aether.manager.ui.tweak.TweakScreen
@@ -424,10 +425,10 @@ private fun FloatingUtilityBar(
     val themeStyle = LocalAetherThemeStyle.current
     // Match the utility bar elevation with the main bottom navigation bar to avoid
     // inconsistent shadows when sliding between tabs.
-    Surface(
+    AetherGlassSurface(
         shape = RoundedCornerShape(themeStyle.pillCorner),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = themeStyle.navAlpha),
-        shadowElevation = if (themeStyle.cardElevation == 0.dp) 0.dp else 8.dp,
+        shadowElevation = if (themeStyle.cardElevation == 0.dp) 0.dp else 10.dp,
         tonalElevation = 4.dp,
         modifier = modifier
     ) {
@@ -488,10 +489,10 @@ private fun FloatingBottomBar(
 
     val themeStyle = LocalAetherThemeStyle.current
 
-    Surface(
+    AetherGlassSurface(
         shape = RoundedCornerShape(themeStyle.pillCorner),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = themeStyle.navAlpha),
-        shadowElevation = if (themeStyle.cardElevation == 0.dp) 0.dp else 8.dp,
+        shadowElevation = if (themeStyle.cardElevation == 0.dp) 0.dp else 10.dp,
         tonalElevation = 4.dp,
         modifier = modifier
             .scale(scaleX = 1f, scaleY = capsuleScale)
@@ -542,7 +543,7 @@ private fun FloatingBottomBar(
                     animationSpec = tween(200),
                     label = "item_tint_$idx"
                 )
-                val bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha)
+                val bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha * 0.86f)
 
                 Box(
                     modifier = Modifier

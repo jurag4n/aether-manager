@@ -71,6 +71,7 @@ import dev.aether.manager.data.UiState
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
 import dev.aether.manager.ui.components.AetherIconTile
+import dev.aether.manager.ui.components.AetherGlassSurface
 import kotlin.math.PI
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -376,11 +377,11 @@ private fun TappableCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? =
         label = "card_press_scale"
     )
 
-    Surface(
+    AetherGlassSurface(
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = if (pressed) 4.dp else 1.dp,
-        shadowElevation = if (pressed) 6.dp else 0.dp,
+        shadowElevation = if (pressed) 6.dp else 1.dp,
         modifier = modifier
             .scale(scale)
             .clickable(
@@ -432,7 +433,7 @@ private fun SmallToggleIcon(icon: ImageVector, active: Boolean) {
 
 @Composable
 private fun InfoTile(icon: ImageVector, value: String, label: String, color: Color, modifier: Modifier = Modifier) {
-    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = modifier) {
+    AetherGlassSurface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = modifier) {
         Row(
             modifier = Modifier.padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),

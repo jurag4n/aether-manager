@@ -2,6 +2,15 @@ package dev.aether.manager.data
 
 import android.app.Application
 import android.app.NotificationManager
+import java.util.Locale
+import java.util.Date
+import java.text.SimpleDateFormat
+import java.io.File
+import android.provider.MediaStore
+import android.os.Environment
+import android.os.Build
+import android.net.Uri
+import android.content.ContentValues
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.aether.manager.util.BackupManager
@@ -559,9 +568,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             else                 -> state
         }
 
-    fun toggleSafeMode(enable: Boolean) = viewModelScope.launch {
-        RootEngine.toggleSafeMode(enable)
-        refresh()
+    fun toggleSafeMode(enable: Boolean) = setSafeModeEnabled(enable)
+
+    fun setSafeModeEnabled(enable: Boolean) {
+        if (enable) enableSafeModeReset() else disableSafeMode()
     }
 
     fun reboot(mode: RootEngine.RebootMode) = viewModelScope.launch {
@@ -647,6 +657,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .putBoolean("local_safe_mode", true)
             .apply()
         val ok = RootEngine.enableSafeModeAndReset()
+        _safeModeEnabled.value = true
         clearLocalTweaks()
         _tweaks.value = TweaksState()
         snack(if (ok) "Safe Mode aktif, tweak agresif dimatikan" else "Gagal aktifkan Safe Mode")
@@ -661,14 +672,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .putInt("rapid_crash_count", 0)
             .apply()
         val ok = RootEngine.toggleSafeMode(false)
+        if (ok) _safeModeEnabled.value = false
         snack(if (ok) "Safe Mode dimatikan" else "Gagal mematikan Safe Mode")
         refresh()
         refreshLogs()
     }
 
     fun exportSettingsToSdcard() = viewModelScope.launch(Dispatchers.IO) {
-        val path = RootEngine.exportTweaksConfToSdcard()
-        snack("Settings diekspor: $path")
+        val app = getApplication<Application>()
+        val rootText = RootEngine.readFile(RootEngine.TWEAKS_CONF).trim()
+        val localText = serializeCurrentTweaksForExport()
+        val text = (rootText.ifBlank { localText }).ifBlank { "profile=balance\n" }
+        val name = "aether-settings-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".conf"
+        val exported = runCatching { exportTextToDownloads(app, name, text) }.getOrNull()
+        snack(if (exported != null) "Settings diekspor: $exported" else "Gagal ekspor settings")
     }
 
     fun importSettingsFromSdcard() = viewModelScope.launch(Dispatchers.IO) {
@@ -678,6 +695,64 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             applyChannel.trySend(Unit)
         }
         snack(if (ok) "Settings diimpor dari ${RootEngine.SETTINGS_EXPORT}" else "File import tidak ditemukan")
+    }
+
+    fun importSettingsFromUri(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        val app = getApplication<Application>()
+        val raw = runCatching {
+            app.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+        }.getOrDefault("")
+        if (raw.isBlank()) {
+            snack("File settings kosong / tidak bisa dibaca")
+            return@launch
+        }
+        val ok = RootEngine.importTweaksConfText(raw)
+        if (ok) {
+            loadTweaks(syncRoot = true)
+            applyChannel.trySend(Unit)
+        }
+        snack(if (ok) "Settings berhasil diimpor" else "Gagal import settings")
+    }
+
+    private fun serializeCurrentTweaksForExport(): String {
+        val t = _tweaks.value
+        return buildString {
+            appendLine("profile=${t.profile}")
+            appendLine("cpu_governor=${t.cpuGovernor}")
+            appendLine("io_scheduler=${t.ioScheduler}")
+            appendLine("zram_size=${t.zramSize}")
+            appendLine("zram_algo=${t.zramAlgo}")
+            appendLine("thermal_profile=${t.thermalProfile}")
+            appendLine("dnsProvider=${t.dnsProvider}")
+            appendLine("schedboost=${if (t.schedboost) 1 else 0}")
+            appendLine("cpu_boost=${if (t.cpuBoost) 1 else 0}")
+            appendLine("gpu_throttle_off=${if (t.gpuThrottleOff) 1 else 0}")
+            appendLine("tcp_bbr=${if (t.tcpBbr) 1 else 0}")
+            appendLine("network_stable=${if (t.networkStable) 1 else 0}")
+            appendLine("cpu_freq_lock=${if (t.cpuFreqLock) 1 else 0}")
+            appendLine("gpu_freq_lock=${if (t.gpuFreqLock) 1 else 0}")
+            appendLine("kill_background=${if (t.killBackground) 1 else 0}")
+            appendLine("lmk_aggressive=${if (t.lmkAggressive) 1 else 0}")
+        }
+    }
+
+    private fun exportTextToDownloads(app: Application, filename: String, text: String): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Aether")
+            }
+            val uri = app.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
+            app.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } ?: return null
+            "Downloads/Aether/$filename"
+        } else {
+            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Aether")
+            if (!dir.exists()) dir.mkdirs()
+            val file = File(dir, filename)
+            file.writeText(text)
+            file.absolutePath
+        }
     }
 
     private fun snack(msg: String) {
@@ -696,6 +771,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _applyOnBoot      = MutableStateFlow(SettingsPrefs.getApplyOnBoot(getApplication()))
     private val _notifications    = MutableStateFlow(SettingsPrefs.getNotifications(getApplication()))
     private val _debugLog         = MutableStateFlow(SettingsPrefs.getDebugLog(getApplication()))
+    private val _safeModeEnabled  = MutableStateFlow(
+        getApplication<Application>()
+            .getSharedPreferences("aether_prefs", android.content.Context.MODE_PRIVATE)
+            .getBoolean("local_safe_mode", false)
+    )
 
     val darkModeOverride : StateFlow<Boolean> = _darkModeOverride.asStateFlow()
     val darkMode         : StateFlow<Boolean> = _darkMode.asStateFlow()
@@ -705,6 +785,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val applyOnBoot      : StateFlow<Boolean> = _applyOnBoot.asStateFlow()
     val notifications    : StateFlow<Boolean> = _notifications.asStateFlow()
     val debugLog         : StateFlow<Boolean> = _debugLog.asStateFlow()
+    val safeModeEnabled  : StateFlow<Boolean> = _safeModeEnabled.asStateFlow()
 
     fun setDarkMode(dark: Boolean) {
         SettingsPrefs.setDarkMode(getApplication(), dark)

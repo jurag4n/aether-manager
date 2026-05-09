@@ -339,6 +339,21 @@ AETHER_SAFE_CONF
         return sh(script).exitCode == 0
     }
 
+    suspend fun importTweaksConfText(raw: String): Boolean {
+        val cleaned = raw.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+            .mapNotNull { line ->
+                val key = line.substringBefore('=').trim()
+                val value = line.substringAfter('=').trim()
+                if (!key.matches(Regex("[A-Za-z0-9_-]{1,64}"))) null else "$key=$value"
+            }
+            .take(160)
+            .joinToString("\n")
+            .let { if (it.isBlank()) "profile=balance\n" else it + "\n" }
+        return writeFile(TWEAKS_CONF, cleaned)
+    }
+
     suspend fun reboot(mode: RebootMode = RebootMode.NORMAL): Boolean =
         sh(when (mode) {
             RebootMode.NORMAL     -> "reboot"

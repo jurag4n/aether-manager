@@ -1,6 +1,9 @@
 package dev.aether.manager.ui.settings
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -53,6 +56,7 @@ import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.ui.AetherThemePreset
 import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.components.AetherIconTile
+import dev.aether.manager.ui.components.AetherGlassSurface
 import dev.aether.manager.util.BackupManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,8 +104,23 @@ fun SettingsScreen(
     val autoBackup by vm.autoBackup.collectAsState()
     val applyOnBoot by vm.applyOnBoot.collectAsState()
     val notifications by vm.notifications.collectAsState()
+    val safeModeEnabled by vm.safeModeEnabled.collectAsState()
     val logText by vm.logText.collectAsState()
     val clipboard = LocalClipboardManager.current
+
+    val importSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                ctx.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+            vm.importSettingsFromUri(uri)
+        }
+    }
 
     val currentLanguage = LocalLanguage.current
     val setLanguage = LocalSetLanguage.current
@@ -252,22 +271,12 @@ fun SettingsScreen(
                 expanded = safetyExpanded,
                 onToggle = { safetyExpanded = !safetyExpanded }
             ) {
-                SettingsActionRow(
+                SettingsRowSwitch(
                     icon = Icons.Outlined.HealthAndSafety,
-                    title = "Aktifkan Safe Mode",
-                    subtitle = "Matikan tweak agresif dan reset ke Balance",
-                    iconTint = MaterialTheme.colorScheme.error,
-                    iconBg = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.62f),
-                    onClick = { vm.enableSafeModeReset() }
-                )
-                SettingsDivider()
-                SettingsActionRow(
-                    icon = Icons.Outlined.VerifiedUser,
-                    title = "Matikan Safe Mode",
-                    subtitle = "Izinkan tweak aktif lagi setelah device stabil",
-                    iconTint = MaterialTheme.colorScheme.primary,
-                    iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
-                    onClick = { vm.disableSafeMode() }
+                    title = "Safe Mode",
+                    subtitle = if (safeModeEnabled) "Aktif: tweak agresif dimatikan dan profile direset ke Balance" else "Mati: tweak bisa dipakai normal",
+                    checked = safeModeEnabled,
+                    onCheckedChange = { vm.setSafeModeEnabled(it) }
                 )
                 SettingsDivider()
                 SettingsActionRow(
@@ -282,7 +291,7 @@ fun SettingsScreen(
                 SettingsActionRow(
                     icon = Icons.Outlined.FileUpload,
                     title = "Export Settings",
-                    subtitle = "Simpan ke /sdcard/Aether/aether-settings.conf",
+                    subtitle = "Simpan ke Downloads/Aether dengan MediaStore",
                     iconTint = MaterialTheme.colorScheme.primary,
                     iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
                     onClick = { vm.exportSettingsToSdcard() }
@@ -291,10 +300,10 @@ fun SettingsScreen(
                 SettingsActionRow(
                     icon = Icons.Outlined.FileDownload,
                     title = "Import Settings",
-                    subtitle = "Muat dari /sdcard/Aether/aether-settings.conf",
+                    subtitle = "Pilih file .conf dari file manager",
                     iconTint = MaterialTheme.colorScheme.primary,
                     iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
-                    onClick = { vm.importSettingsFromSdcard() }
+                    onClick = { importSettingsLauncher.launch(arrayOf("text/*", "application/octet-stream", "*/*")) }
                 )
             }
 
@@ -717,11 +726,12 @@ private fun SettingsLicenseCard(
     val border = if (isLicensed) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
                  else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.36f)
 
-    Surface(
+    AetherGlassSurface(
         shape = RoundedCornerShape(26.dp),
         color = bg,
         border = BorderStroke(1.dp, border),
         tonalElevation = 1.dp,
+        shadowElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
@@ -820,10 +830,11 @@ private fun SettingsSectionCard(
         label = "settings_detail_offset"
     )
 
-    Surface(
+    AetherGlassSurface(
         shape = RoundedCornerShape(corner),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = if (expanded) 3.dp else 1.dp,
+        shadowElevation = if (expanded) 3.dp else 1.dp,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (expanded) 0.32f else 0.22f)),
         modifier = Modifier
             .fillMaxWidth()

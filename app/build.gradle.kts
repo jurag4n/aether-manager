@@ -170,6 +170,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
+    implementation(libs.miuix.android)
+    implementation(libs.miuix.icons.android)
     implementation(libs.compose.foundation)
     implementation(libs.lottie.compose)
     implementation(libs.timber)
