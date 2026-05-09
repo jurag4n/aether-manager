@@ -2,7 +2,7 @@ HSPLdev/aether/manager/MainActivity;-><init>()V
 HSPLdev/aether/manager/SplashActivity;-><init>()V
 HSPLdev/aether/manager/SetupActivity;-><init>()V
 HSPLdev/aether/manager/AetherApplication;->onCreate()V
-HSPLdev/aether/manager/ui/home/**
-HSPLdev/aether/manager/ui/tweak/**
-HSPLdev/aether/manager/ui/components/**
+Ldev/aether/manager/ui/home/**
+Ldev/aether/manager/ui/tweak/**
+Ldev/aether/manager/ui/components/**
 HSPLdev/aether/manager/util/RootEngine;->getMonitorState()Ldev/aether/manager/util/MonitorState;
