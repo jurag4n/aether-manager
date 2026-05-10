@@ -53,7 +53,6 @@ import dev.aether.manager.i18n.LocalLanguage
 import dev.aether.manager.i18n.LocalSetLanguage
 import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.license.LicenseManager
-import dev.aether.manager.ui.AetherThemePreset
 import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.components.AetherIconTile
 import dev.aether.manager.ui.components.AetherGlassSurface
@@ -85,7 +84,6 @@ fun SettingsScreen(
     var showReset by remember { mutableStateOf(false) }
     var showResetProfiles by remember { mutableStateOf(false) }
     var showResetMonitor by remember { mutableStateOf(false) }
-    var showThemeSheet by remember { mutableStateOf(false) }
     var showLogDialog by remember { mutableStateOf(false) }
     var restoreTarget by remember { mutableStateOf<String?>(null) }
     var processingFile by remember { mutableStateOf<String?>(null) }
@@ -101,7 +99,6 @@ fun SettingsScreen(
     val darkModeOverride by vm.darkModeOverride.collectAsState()
     val darkMode by vm.darkMode.collectAsState()
     val dynamicColor by vm.dynamicColor.collectAsState()
-    val themePreset by vm.themePreset.collectAsState()
     val autoBackup by vm.autoBackup.collectAsState()
     val applyOnBoot by vm.applyOnBoot.collectAsState()
     val notifications by vm.notifications.collectAsState()
@@ -202,13 +199,6 @@ fun SettingsScreen(
                 onToggle = { appearanceExpanded = !appearanceExpanded }
             ) {
                 val systemDark = isSystemInDarkTheme()
-                SettingsRowInfo(
-                    icon = Icons.Outlined.Style,
-                    title = "Tema Aplikasi",
-                    subtitle = themePreset.title,
-                    onClick = { showThemeSheet = true }
-                )
-                SettingsDivider()
                 SettingsRowSwitch(
                     icon = Icons.Outlined.DarkMode,
                     title = s.settingsDarkMode,
@@ -220,8 +210,8 @@ fun SettingsScreen(
                 SettingsRowSwitch(
                     icon = Icons.Outlined.ColorLens,
                     title = s.settingsDynamicColor,
-                    subtitle = if (themePreset == AetherThemePreset.DEFAULT) s.settingsDynamicColorDesc else "Dynamic color hanya aktif untuk tema Default Android",
-                    checked = dynamicColor && themePreset == AetherThemePreset.DEFAULT,
+                    subtitle = s.settingsDynamicColorDesc,
+                    checked = dynamicColor,
                     onCheckedChange = { vm.setDynamicColor(it) }
                 )
             }
@@ -509,120 +499,8 @@ fun SettingsScreen(
         )
     }
 
-    if (showThemeSheet) {
-        ThemePresetSheet(
-            current = themePreset,
-            onSelect = { preset ->
-                vm.setThemePreset(preset)
-                showThemeSheet = false
-            },
-            onDismiss = { showThemeSheet = false }
-        )
-    }
 }
 
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ThemePresetSheet(
-    current  : AetherThemePreset,
-    onSelect : (AetherThemePreset) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val themeStyle = LocalAetherThemeStyle.current
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Pilih Tema",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 2.dp)
-            )
-            Text(
-                text = "Tema berlaku untuk warna, ikon, surface, card, sheet, tombol, switch, navbar, dan komponen utama aplikasi.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            AetherThemePreset.entries.forEach { preset ->
-                val selected = preset == current
-                val icon = when (preset) {
-                    AetherThemePreset.DEFAULT -> Icons.Outlined.Android
-                    AetherThemePreset.MIUI -> Icons.Outlined.Widgets
-                    AetherThemePreset.IOS -> Icons.Outlined.PhoneIphone
-                }
-                Surface(
-                    shape = RoundedCornerShape(themeStyle.controlCorner),
-                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)
-                                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(themeStyle.controlCorner))
-                        .clickable { onSelect(preset) }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        AetherIconTile(
-                            icon = icon,
-                            contentDescription = null,
-                            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-                            else MaterialTheme.colorScheme.surfaceContainerHigh,
-                            size = 42.dp,
-                            iconSize = 22.dp,
-                            selected = selected
-                        )
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = preset.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = preset.subtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.76f)
-                                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 17.sp
-                            )
-                        }
-                        if (selected) {
-                            Icon(
-                                imageVector = Icons.Outlined.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(21.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

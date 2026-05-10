@@ -23,39 +23,37 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import dev.aether.manager.ui.AetherThemePreset
 import dev.aether.manager.ui.LocalAetherThemeStyle
-import io.github.alexzhirkevich.cupertino.CupertinoSwitch
 
 // ── M3 Snackbar Toast (bottom-center) ────────────────────────────────────────
 
-enum class IosToastType { LOADING, SUCCESS, ERROR, INFO }
+enum class AetherToastType { LOADING, SUCCESS, ERROR, INFO }
 
-data class IosToastData(
+data class AetherToastData(
     val message: String,
-    val type: IosToastType = IosToastType.SUCCESS,
+    val type: AetherToastType = AetherToastType.SUCCESS,
 )
 
 @Composable
-fun rememberIosToastState(): IosToastState = remember { IosToastState() }
+fun rememberAetherToastState(): AetherToastState = remember { AetherToastState() }
 
-class IosToastState {
-    var current by mutableStateOf<IosToastData?>(null)
+class AetherToastState {
+    var current by mutableStateOf<AetherToastData?>(null)
         private set
     var visible by mutableStateOf(false)
         private set
 
     fun showLoading(message: String) {
-        current = IosToastData(message, IosToastType.LOADING)
+        current = AetherToastData(message, AetherToastType.LOADING)
         visible = true
     }
 
-    fun resolve(message: String, type: IosToastType = IosToastType.SUCCESS) {
-        current = IosToastData(message, type)
+    fun resolve(message: String, type: AetherToastType = AetherToastType.SUCCESS) {
+        current = AetherToastData(message, type)
     }
 
-    fun show(message: String, type: IosToastType = IosToastType.SUCCESS) {
-        current = IosToastData(message, type)
+    fun show(message: String, type: AetherToastType = AetherToastType.SUCCESS) {
+        current = AetherToastData(message, type)
         visible = true
     }
 
@@ -70,13 +68,13 @@ class IosToastState {
 }
 
 @Composable
-fun IosToastHost(state: IosToastState) {
+fun AetherToastHost(state: AetherToastState) {
     val data    = state.current
     val visible = state.visible
 
     // Auto-dismiss after result shown (non-LOADING)
     LaunchedEffect(data) {
-        if (data != null && data.type != IosToastType.LOADING) {
+        if (data != null && data.type != AetherToastType.LOADING) {
             delay(2400)
             state.dismiss()
             delay(400)
@@ -87,7 +85,7 @@ fun IosToastHost(state: IosToastState) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(data, visible) {
-        if (visible && data != null && data.type != IosToastType.LOADING) {
+        if (visible && data != null && data.type != AetherToastType.LOADING) {
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(
                 message  = data.message,
@@ -109,15 +107,15 @@ fun IosToastHost(state: IosToastState) {
                 .padding(bottom = 80.dp), // di atas bottom nav bar
             snackbar = { snackData ->
                 val accentColor = when (data?.type) {
-                    IosToastType.SUCCESS -> Color(0xFF34C759)
-                    IosToastType.ERROR   -> Color(0xFFFF3B30)
-                    IosToastType.INFO    -> Color(0xFF007AFF)
+                    AetherToastType.SUCCESS -> Color(0xFF34C759)
+                    AetherToastType.ERROR   -> Color(0xFFFF3B30)
+                    AetherToastType.INFO    -> Color(0xFF007AFF)
                     else                 -> MaterialTheme.colorScheme.primary
                 }
                 val icon = when (data?.type) {
-                    IosToastType.SUCCESS -> Icons.Filled.CheckCircle
-                    IosToastType.ERROR   -> Icons.Filled.Error
-                    IosToastType.INFO    -> Icons.Filled.Info
+                    AetherToastType.SUCCESS -> Icons.Filled.CheckCircle
+                    AetherToastType.ERROR   -> Icons.Filled.Error
+                    AetherToastType.INFO    -> Icons.Filled.Info
                     else                 -> null
                 }
                 Snackbar(
@@ -211,27 +209,18 @@ fun AetherSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    if (LocalAetherThemeStyle.current.preset == AetherThemePreset.IOS) {
-        CupertinoSwitch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            modifier = modifier,
-            enabled = enabled,
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        enabled = enabled,
+        colors = SwitchDefaults.colors(
+            checkedTrackColor = MaterialTheme.colorScheme.primary,
+            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
         )
-    } else {
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            modifier = modifier,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-            )
-        )
-    }
+    )
 }
 
 @Composable

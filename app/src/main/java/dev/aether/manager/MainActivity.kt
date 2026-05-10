@@ -96,9 +96,8 @@ class MainActivity : ComponentActivity() {
             val darkModeOverride by vm.darkModeOverride.collectAsState()
             val darkMode         by vm.darkMode.collectAsState()
             val dynamicColor     by vm.dynamicColor.collectAsState()
-            val themePreset      by vm.themePreset.collectAsState()
             val effectiveDark    = if (darkModeOverride) darkMode else isSystemInDarkTheme()
-            AetherTheme(darkTheme = effectiveDark, dynamicColor = dynamicColor, themePreset = themePreset) {
+            AetherTheme(darkTheme = effectiveDark, dynamicColor = dynamicColor) {
                 ProvideStrings {
                     AetherApp(vm, apVm, updateVm)
                 }
@@ -445,7 +444,7 @@ private fun FloatingUtilityBar(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FloatingBottomBar — iOS 26-style hold-to-expand + drag-to-switch capsule
+// FloatingBottomBar — hold-to-expand + drag-to-switch capsule
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun FloatingBottomBar(

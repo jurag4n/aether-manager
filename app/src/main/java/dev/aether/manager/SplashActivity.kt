@@ -102,13 +102,11 @@ class SplashActivity : ComponentActivity() {
         )
 
         setContent {
-            val themePreset = SettingsPrefs.getThemePreset(this)
             val darkOverride = SettingsPrefs.isDarkModeOverride(this)
             val darkTheme = if (darkOverride) SettingsPrefs.getDarkMode(this) else isSystemInDarkTheme()
             AetherTheme(
                 darkTheme = darkTheme,
-                dynamicColor = SettingsPrefs.getDynamicColor(this),
-                themePreset = themePreset
+                dynamicColor = SettingsPrefs.getDynamicColor(this)
             ) {
                 ProvideStrings {
                     SplashScreen {

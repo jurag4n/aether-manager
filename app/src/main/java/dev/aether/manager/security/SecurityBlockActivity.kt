@@ -62,13 +62,11 @@ class SecurityBlockActivity : ComponentActivity() {
         val rawReason = intent.getStringExtra(EXTRA_REASON).orEmpty().ifBlank { "security_violation" }
 
         setContent {
-            val themePreset = SettingsPrefs.getThemePreset(this)
             val darkOverride = SettingsPrefs.isDarkModeOverride(this)
             val darkTheme = if (darkOverride) SettingsPrefs.getDarkMode(this) else isSystemInDarkTheme()
             AetherTheme(
                 darkTheme = darkTheme,
-                dynamicColor = SettingsPrefs.getDynamicColor(this),
-                themePreset = themePreset
+                dynamicColor = SettingsPrefs.getDynamicColor(this)
             ) {
                 SecurityBlockScreen(
                     rawReason = rawReason,
