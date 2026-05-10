@@ -569,67 +569,94 @@ _end "gpu_freq"
             val size = t["zram_size"] ?: "1073741824"
             val algo = t["zram_algo"] ?: "lz4"
             append("""
-# zram setup — aman: swapoff → reset → comp_algorithm → disksize → mkswap → swapon
-# Tidak memakai write() helper untuk sysfs special nodes, dan tidak melakukan double-setup.
+# zram setup — resize real sesuai pilihan user.
+# Fix utama: kalau zram sudah aktif tapi ukurannya beda, jangan langsung dianggap sukses.
+# Lakukan swapoff → reset → set algo → set disksize → mkswap → swapon, lalu verify readback.
 _zram_ok=0
-for _zdev in /dev/zram0 /dev/zram1; do
+_zram_target=$size
+_zram_algo="$algo"
+_mem_avail_kb=${'$'}(awk '/MemAvailable:/ {print ${'$'}2}' /proc/meminfo 2>/dev/null)
+[ -n "${'$'}_mem_avail_kb" ] || _mem_avail_kb=0
+
+for _zdev in /dev/zram0 /dev/zram1 /dev/block/zram0; do
   [ -b "${'$'}_zdev" ] || continue
   _zblk=${'$'}(basename "${'$'}_zdev")
   _zsys="/sys/block/${'$'}_zblk"
   [ -d "${'$'}_zsys" ] || continue
+  [ -f "${'$'}_zsys/disksize" ] || { _S=${'$'}((_S+1)); continue; }
 
-  # Jika zram sudah aktif dari kernel/ROM, jangan reset ulang karena bisa freeze di beberapa device.
-  if grep -qw "${'$'}_zdev" /proc/swaps 2>/dev/null; then
+  _current_size=${'$'}(cat "${'$'}_zsys/disksize" 2>/dev/null | tr -cd '0-9')
+  _active=0
+  grep -qw "${'$'}_zdev" /proc/swaps 2>/dev/null && _active=1
+
+  # Sudah aktif dan ukurannya sama: verifikasi sukses, tidak reset ulang.
+  if [ "${'$'}_active" = "1" ] && [ "${'$'}_current_size" = "${'$'}_zram_target" ]; then
     _A=${'$'}((_A+1))
     _zram_ok=1
+    _aether_log memory "zram_ok already_active size=${'$'}_current_size"
     break
   fi
 
-  # Step 1: swapoff hanya untuk device yang belum aktif di /proc/swaps
-  swapoff "${'$'}_zdev" 2>/dev/null || true
-
-  # Step 2: reset — cara kernel modern: tulis 0 ke disksize dulu
-  # Beberapa kernel pakai /reset, beberapa pakai disksize=0, support keduanya
-  if [ -f "${'$'}_zsys/reset" ]; then
-    chmod 644 "${'$'}_zsys/reset" 2>/dev/null
-    echo 1 > "${'$'}_zsys/reset" 2>/dev/null || true
-  else
-    chmod 644 "${'$'}_zsys/disksize" 2>/dev/null
-    echo 0 > "${'$'}_zsys/disksize" 2>/dev/null || true
+  # Kalau zram aktif dan ukuran beda, resize wajib. Hindari resize kalau RAM bebas terlalu kecil.
+  if [ "${'$'}_active" = "1" ] && [ "${'$'}_mem_avail_kb" -lt 262144 ] 2>/dev/null; then
+    _F=${'$'}((_F+1))
+    _aether_log memory "zram_resize_skipped_low_ram available_kb=${'$'}_mem_avail_kb target=${'$'}_zram_target current=${'$'}_current_size"
+    continue
   fi
-  # Beri waktu kernel selesaikan reset
-  sleep 0.1 2>/dev/null || true
 
-  # Step 3: set comp_algorithm — cek dulu apakah algo tersedia
+  _old_size="${'$'}_current_size"
+  swapoff "${'$'}_zdev" 2>/dev/null || true
+  sleep 0.08 2>/dev/null || true
+
+  chmod 644 "${'$'}_zsys/reset" "${'$'}_zsys/disksize" 2>/dev/null || true
+  if [ -f "${'$'}_zsys/reset" ]; then
+    echo 1 > "${'$'}_zsys/reset" 2>/dev/null || true
+  fi
+  echo 0 > "${'$'}_zsys/disksize" 2>/dev/null || true
+  sleep 0.12 2>/dev/null || true
+
   if [ -f "${'$'}_zsys/comp_algorithm" ]; then
-    chmod 644 "${'$'}_zsys/comp_algorithm" 2>/dev/null
-    if grep -qw "$algo" "${'$'}_zsys/comp_algorithm" 2>/dev/null; then
-      echo "$algo" > "${'$'}_zsys/comp_algorithm" 2>/dev/null || true
+    chmod 644 "${'$'}_zsys/comp_algorithm" 2>/dev/null || true
+    if grep -qw "${'$'}_zram_algo" "${'$'}_zsys/comp_algorithm" 2>/dev/null; then
+      echo "${'$'}_zram_algo" > "${'$'}_zsys/comp_algorithm" 2>/dev/null || true
     else
-      # Fallback algo: lz4 → lzo → deflate
-      for _fb in lz4 lzo deflate; do
-        grep -qw "${'$'}_fb" "${'$'}_zsys/comp_algorithm" 2>/dev/null && {
-          echo "${'$'}_fb" > "${'$'}_zsys/comp_algorithm" 2>/dev/null || true
-          break
-        }
+      for _fb in lz4 lzo-rle lzo zstd deflate; do
+        grep -qw "${'$'}_fb" "${'$'}_zsys/comp_algorithm" 2>/dev/null && { echo "${'$'}_fb" > "${'$'}_zsys/comp_algorithm" 2>/dev/null || true; break; }
       done
     fi
   fi
 
-  # Step 4: set disksize
-  chmod 644 "${'$'}_zsys/disksize" 2>/dev/null
-  echo $size > "${'$'}_zsys/disksize" 2>/dev/null || { _F=${'$'}((_F+1)); continue; }
+  echo "${'$'}_zram_target" > "${'$'}_zsys/disksize" 2>/dev/null || { _F=${'$'}((_F+1)); _aether_log memory "zram_disksize_write_failed target=${'$'}_zram_target"; continue; }
+  sleep 0.08 2>/dev/null || true
 
-  # Step 5: mkswap + swapon
-  if mkswap "${'$'}_zdev" >/dev/null 2>&1 && swapon -p 5 "${'$'}_zdev" 2>/dev/null; then
-    _A=${'$'}((_A+1))
-    _zram_ok=1
-    break  # sukses, tidak perlu coba zram1
-  else
-    _F=${'$'}((_F+1))
+  if mkswap "${'$'}_zdev" >/dev/null 2>&1 && swapon -p 32767 "${'$'}_zdev" 2>/dev/null; then
+    _new_size=${'$'}(cat "${'$'}_zsys/disksize" 2>/dev/null | tr -cd '0-9')
+    if grep -qw "${'$'}_zdev" /proc/swaps 2>/dev/null && [ "${'$'}_new_size" = "${'$'}_zram_target" ]; then
+      _A=${'$'}((_A+1))
+      _zram_ok=1
+      _aether_log memory "zram_resized size=${'$'}_new_size algo=${'$'}_zram_algo"
+      break
+    fi
+  fi
+
+  _F=${'$'}((_F+1))
+  _aether_log memory "zram_verify_failed target=${'$'}_zram_target"
+
+  # Fallback: kalau sebelumnya aktif, coba restore ukuran lama supaya device tidak ditinggal tanpa swap.
+  if [ -n "${'$'}_old_size" ] && [ "${'$'}_old_size" -gt 0 ] 2>/dev/null; then
+    swapoff "${'$'}_zdev" 2>/dev/null || true
+    [ -f "${'$'}_zsys/reset" ] && echo 1 > "${'$'}_zsys/reset" 2>/dev/null || true
+    echo "${'$'}_old_size" > "${'$'}_zsys/disksize" 2>/dev/null || true
+    mkswap "${'$'}_zdev" >/dev/null 2>&1 && swapon -p 5 "${'$'}_zdev" 2>/dev/null || true
   fi
 done
-[ "${'$'}_zram_ok" = "0" ] && [ "${'$'}_F" = "0" ] && _S=${'$'}((_S+1))
+
+[ "${'$'}_zram_ok" = "0" ] && [ ${'$'}_F -eq 0 ] && _S=${'$'}((_S+1))
+""")
+        } else {
+            append("""
+# zram — skipped. Jangan swapoff/reset zram bawaan ROM kalau user tidak mengaktifkan fitur ini.
+_S=${'$'}((_S+1))
 """)
         }
 
@@ -801,6 +828,32 @@ elif [ "${provider}" = "Off" ]; then
 else
   _S=${'$'}((_S+1))
 fi
+
+_req_zram="${t["zram"] ?: "0"}"
+_req_zram_size="${(t["zram_size"] ?: "1073741824").filter { it.isDigit() }.ifBlank { "1073741824" }}"
+if [ "${'$'}_req_zram" = "1" ]; then
+  _z_ok=0
+  for _zdev in /dev/zram0 /dev/zram1 /dev/block/zram0; do
+    [ -b "${'$'}_zdev" ] || continue
+    _zblk=${'$'}(basename "${'$'}_zdev")
+    _zsys="/sys/block/${'$'}_zblk"
+    [ -f "${'$'}_zsys/disksize" ] || continue
+    _zsize=${'$'}(cat "${'$'}_zsys/disksize" 2>/dev/null | tr -cd '0-9')
+    if grep -qw "${'$'}_zdev" /proc/swaps 2>/dev/null && [ "${'$'}_zsize" = "${'$'}_req_zram_size" ]; then
+      _z_ok=1
+      break
+    fi
+  done
+  if [ "${'$'}_z_ok" = "1" ]; then
+    _A=${'$'}((_A+1))
+    _aether_log verify "zram_ok size=${'$'}_req_zram_size"
+  else
+    _F=${'$'}((_F+1))
+    _aether_log verify "zram_failed target=${'$'}_req_zram_size"
+  fi
+else
+  _S=${'$'}((_S+1))
+fi
 _end "verify"
 """
     }
@@ -882,6 +935,20 @@ fi
         if (t["entropy_boost"] == "1") {
             append("write 256 /proc/sys/kernel/random/write_wakeup_threshold\n")
             append("write 64  /proc/sys/kernel/random/read_wakeup_threshold\n")
+        }
+
+        if (t["vm_dirty_opt"] == "1") {
+            append("write 10 /proc/sys/vm/dirty_ratio\n")
+            append("write 5 /proc/sys/vm/dirty_background_ratio\n")
+            append("write 500 /proc/sys/vm/dirty_writeback_centisecs\n")
+            append("write 3000 /proc/sys/vm/dirty_expire_centisecs\n")
+            append("write 0 /proc/sys/vm/page-cluster\n")
+        }
+
+        if (t["clear_cache"] == "1") {
+            append("cmd package bg-dexopt-job 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
+            append("pm trim-caches 2G 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
+            append("echo 1 > /proc/sys/vm/drop_caches 2>/dev/null && _A=${'$'}((_A+1)) || _S=${'$'}((_S+1))\n")
         }
 
         if (t["doze"] == "1") {

@@ -414,7 +414,9 @@ fun TweakScreen(
                     modifier = itemModifier,
                     expanded = expandedCard == "io",
                     selected = ioScheduler,
+                    latencyOpt = tweaks.ioLatencyOpt,
                     onClick = { toggleExpand("io") },
+                    onLatencyToggle = { setTweakNow("ioLatencyOpt", !tweaks.ioLatencyOpt) },
                     onSelect = {
                         ioScheduler = it
                         val schedulerValue = when (it) {
@@ -450,6 +452,32 @@ fun TweakScreen(
             current = thermalProfile,
             onClick = { toggleExpand("thermal") },
             onSelect = { setThermalProfileNow(it) }
+        )
+
+        KernelToolsCard(
+            expanded = expandedCard == "kernel_tools",
+            active = tweaks.cpusetOpt || tweaks.touchBoost || tweaks.ksm || tweaks.fastAnim || tweaks.doze || tweaks.vmDirtyOpt || tweaks.entropyBoost || tweaks.clearCache || tweaks.mtkBoost,
+            cpuset = tweaks.cpusetOpt,
+            touchBoost = tweaks.touchBoost,
+            ksm = tweaks.ksm,
+            ksmAggressive = tweaks.ksmAggressive,
+            fastAnim = tweaks.fastAnim,
+            doze = tweaks.doze,
+            vmDirty = tweaks.vmDirtyOpt,
+            entropy = tweaks.entropyBoost,
+            clearCache = tweaks.clearCache,
+            mtkBoost = tweaks.mtkBoost,
+            onClick = { toggleExpand("kernel_tools") },
+            onCpusetToggle = { setTweakNow("cpusetOpt", !tweaks.cpusetOpt) },
+            onTouchBoostToggle = { setTweakNow("touchBoost", !tweaks.touchBoost) },
+            onKsmToggle = { setTweakNow("ksm", !tweaks.ksm) },
+            onKsmAggressiveToggle = { setTweakNow("ksmAggressive", !tweaks.ksmAggressive) },
+            onFastAnimToggle = { setTweakNow("fastAnim", !tweaks.fastAnim) },
+            onDozeToggle = { setTweakNow("doze", !tweaks.doze) },
+            onVmDirtyToggle = { setTweakNow("vmDirtyOpt", !tweaks.vmDirtyOpt) },
+            onEntropyToggle = { setTweakNow("entropyBoost", !tweaks.entropyBoost) },
+            onClearCacheToggle = { setTweakNow("clearCache", !tweaks.clearCache) },
+            onMtkBoostToggle = { setTweakNow("mtkBoost", !tweaks.mtkBoost) }
         )
     }
 }
@@ -966,16 +994,18 @@ private fun IoSchedulerCard(
     modifier: Modifier = Modifier,
     expanded: Boolean,
     selected: String,
+    latencyOpt: Boolean,
     onClick: () -> Unit,
+    onLatencyToggle: () -> Unit,
     onSelect: (String) -> Unit
 ) {
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.Storage,
         title = "I/O Scheduler",
-        subtitle = "Disk read/write queue",
-        badge = selected,
-        active = selected != "Auto",
+        subtitle = "Disk queue & latency tuning",
+        badge = if (latencyOpt) "Latency" else selected,
+        active = selected != "Auto" || latencyOpt,
         expanded = expanded,
         onClick = onClick
     ) {
@@ -984,6 +1014,12 @@ private fun IoSchedulerCard(
             value = selected,
             options = listOf("Auto", "CFQ", "Deadline", "Noop", "BFQ", "Maple"),
             onSelect = onSelect
+        )
+        ToggleOption(
+            title = "I/O Latency",
+            subtitle = "Read-ahead, rq_affinity, queue tuning",
+            checked = latencyOpt,
+            onClick = onLatencyToggle
         )
     }
 }
@@ -1036,6 +1072,141 @@ private fun ThermalProfileCard(
         onClick = onClick
     ) {
         ProfileSelector(current = current, onSelect = onSelect)
+    }
+}
+
+@Composable
+private fun KernelToolsCard(
+    expanded: Boolean,
+    active: Boolean,
+    cpuset: Boolean,
+    touchBoost: Boolean,
+    ksm: Boolean,
+    ksmAggressive: Boolean,
+    fastAnim: Boolean,
+    doze: Boolean,
+    vmDirty: Boolean,
+    entropy: Boolean,
+    clearCache: Boolean,
+    mtkBoost: Boolean,
+    onClick: () -> Unit,
+    onCpusetToggle: () -> Unit,
+    onTouchBoostToggle: () -> Unit,
+    onKsmToggle: () -> Unit,
+    onKsmAggressiveToggle: () -> Unit,
+    onFastAnimToggle: () -> Unit,
+    onDozeToggle: () -> Unit,
+    onVmDirtyToggle: () -> Unit,
+    onEntropyToggle: () -> Unit,
+    onClearCacheToggle: () -> Unit,
+    onMtkBoostToggle: () -> Unit
+) {
+    ExpandableTweakCard(
+        modifier = Modifier.fillMaxWidth(),
+        icon = Icons.Outlined.DeveloperMode,
+        title = "Kernel Tools",
+        subtitle = "Cpuset, touch, KSM, VM, cache, doze",
+        badge = if (active) "Active" else "Safe",
+        active = active,
+        expanded = expanded,
+        baseHeight = 98.dp,
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Cpuset",
+                subtitle = "Prioritas top-app CPU",
+                checked = cpuset,
+                onClick = onCpusetToggle
+            )
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Touch Boost",
+                subtitle = "Respons sentuh lebih cepat",
+                checked = touchBoost,
+                onClick = onTouchBoostToggle
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "KSM",
+                subtitle = "Merge page RAM sama",
+                checked = ksm,
+                onClick = onKsmToggle
+            )
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "KSM Aggressive",
+                subtitle = "Scan lebih cepat",
+                checked = ksmAggressive,
+                onClick = onKsmAggressiveToggle
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "VM Dirty",
+                subtitle = "Tuning writeback cache",
+                checked = vmDirty,
+                onClick = onVmDirtyToggle
+            )
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Entropy",
+                subtitle = "Random wake threshold",
+                checked = entropy,
+                onClick = onEntropyToggle
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Fast Anim",
+                subtitle = "Animasi sistem 0.5x",
+                checked = fastAnim,
+                onClick = onFastAnimToggle
+            )
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Doze",
+                subtitle = "Deep idle mode",
+                checked = doze,
+                onClick = onDozeToggle
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "Clear Cache",
+                subtitle = "Trim cache ringan",
+                checked = clearCache,
+                onClick = onClearCacheToggle
+            )
+            ToggleOption(
+                modifier = Modifier.weight(1f),
+                title = "MTK Boost",
+                subtitle = "Khusus MediaTek",
+                checked = mtkBoost,
+                onClick = onMtkBoostToggle
+            )
+        }
     }
 }
 
