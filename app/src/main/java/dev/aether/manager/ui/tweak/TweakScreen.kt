@@ -259,8 +259,10 @@ fun TweakScreen(
             .verticalScroll(scroll)
             .padding(horizontal = 16.dp)
             .padding(top = 16.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        TweakHeader()
+
         DeviceInfoCard(
             expanded = deviceInfoExpanded,
             onClick = { deviceInfoExpanded = !deviceInfoExpanded }
@@ -482,6 +484,26 @@ fun TweakScreen(
     }
 }
 
+
+@Composable
+private fun TweakHeader() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = "Tweaks",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = "Atur performa, jaringan, memori, dan kernel dengan aman",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
 
 @Composable
 private fun AdaptiveTweakGridRow(
@@ -1259,7 +1281,7 @@ private fun ExpandableTweakCard(
 
     // Corner radius dianimasikan supaya transisi mengembang/mengecil lebih smooth
     val cornerRadius by animateDpAsState(
-        targetValue = if (expanded) 28.dp else 22.dp,
+        targetValue = if (expanded) 22.dp else 20.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
@@ -1269,7 +1291,7 @@ private fun ExpandableTweakCard(
 
     // Elevation juga dianimasikan
     val elevation by animateDpAsState(
-        targetValue = if (expanded) 4.dp else 0.dp,
+        targetValue = 0.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
@@ -1279,8 +1301,7 @@ private fun ExpandableTweakCard(
 
     val cardScale by animateFloatAsState(
         targetValue = when {
-            pressed -> 0.975f
-            expanded -> 1.012f
+            pressed -> 0.985f
             else -> 1f
         },
         animationSpec = spring(
@@ -1331,7 +1352,8 @@ private fun ExpandableTweakCard(
         shape = RoundedCornerShape(cornerRadius),
         color = container,
         tonalElevation = elevation,
-        shadowElevation = if (expanded) 3.dp else 1.dp,
+        shadowElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f)),
         modifier = modifier
             .graphicsLayer {
                 scaleX = cardScale
@@ -1377,7 +1399,7 @@ private fun ExpandableTweakCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1526,7 +1548,7 @@ private fun DeviceInfoCard(
                     Text(
                         text = strings.deviceInfoTitle,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -1603,7 +1625,7 @@ private fun DeviceInfoLine(
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1.14f),
             maxLines = 1,
@@ -1802,7 +1824,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 Text(
                     text = strings.appProfileCardTitle,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1844,7 +1866,7 @@ private fun DropdownAction(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.SemiBold
                 )
             },
             text = {

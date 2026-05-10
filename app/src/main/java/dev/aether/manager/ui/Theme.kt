@@ -16,6 +16,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -31,14 +32,14 @@ data class AetherThemeStyle(
 )
 
 private val DefaultAetherStyle = AetherThemeStyle(
-    cardCorner = 24.dp,
+    cardCorner = 20.dp,
     sheetCorner = 28.dp,
-    controlCorner = 16.dp,
-    iconCorner = 14.dp,
+    controlCorner = 12.dp,
+    iconCorner = 12.dp,
     pillCorner = 50.dp,
     cardAlpha = 1.0f,
-    navAlpha = 0.94f,
-    cardElevation = 1.dp,
+    navAlpha = 1.0f,
+    cardElevation = 0.dp,
 )
 
 val LocalAetherThemeStyle = staticCompositionLocalOf { DefaultAetherStyle }
@@ -109,8 +110,20 @@ private val AppShapes = Shapes(
     extraSmall = RoundedCornerShape(4.dp),
     small = RoundedCornerShape(8.dp),
     medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(20.dp),
     extraLarge = RoundedCornerShape(28.dp),
+)
+
+private val AppTypography = Typography(
+    displayLarge = Typography().displayLarge.copy(fontWeight = FontWeight.SemiBold),
+    displayMedium = Typography().displayMedium.copy(fontWeight = FontWeight.SemiBold),
+    displaySmall = Typography().displaySmall.copy(fontWeight = FontWeight.SemiBold),
+    headlineLarge = Typography().headlineLarge.copy(fontWeight = FontWeight.SemiBold),
+    headlineMedium = Typography().headlineMedium.copy(fontWeight = FontWeight.SemiBold),
+    headlineSmall = Typography().headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+    titleLarge = Typography().titleLarge.copy(fontWeight = FontWeight.SemiBold),
+    titleMedium = Typography().titleMedium.copy(fontWeight = FontWeight.SemiBold),
+    titleSmall = Typography().titleSmall.copy(fontWeight = FontWeight.Medium),
 )
 
 @Composable
@@ -129,7 +142,7 @@ fun AetherTheme(
     CompositionLocalProvider(LocalAetherThemeStyle provides DefaultAetherStyle) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography(),
+            typography = AppTypography,
             shapes = AppShapes,
             content = content
         )

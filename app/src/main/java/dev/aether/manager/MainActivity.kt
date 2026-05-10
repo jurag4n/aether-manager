@@ -315,13 +315,68 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets.systemBars
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Aether Manager",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
+                    IconButton(onClick = { showReboot = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.PowerSettingsNew,
+                            contentDescription = "Power"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            )
+        },
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                tonalElevation = 3.dp
+            ) {
+                navItems.forEach { item ->
+                    val selected = currentScreen == item.screen
+                    NavigationBarItem(
+                        selected = selected,
+                        onClick = { currentScreen = item.screen },
+                        icon = {
+                            Icon(
+                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                contentDescription = item.label
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1
+                            )
+                        }
+                    )
+                }
+            }
+        }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .nestedScroll(scrollAwareNavConnection)
         ) {
             AnimatedContent(
                 targetState = currentScreen,
@@ -338,16 +393,6 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                     Screen.APPS -> AppProfileScreen(apVm)
                 }
             }
-
-            FloatingBottomCluster(
-                navItems = navItems,
-                currentScreen = currentScreen,
-                visible = bottomNavVisible,
-                onScreenChange = { currentScreen = it },
-                onSettingsClick = { showSettings = true },
-                onPowerClick = { showReboot = true },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
         }
     }
     if (showReboot) {

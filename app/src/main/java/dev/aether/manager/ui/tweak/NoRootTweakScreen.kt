@@ -94,7 +94,7 @@ fun NoRootTweakScreen(vm: MainViewModel) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
-            .padding(top = 10.dp, bottom = 150.dp)
+            .padding(top = 12.dp, bottom = 32.dp)
             .navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
