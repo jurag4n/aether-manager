@@ -1,6 +1,7 @@
 package dev.aether.manager.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.MaterialTheme
@@ -16,6 +17,8 @@ import dev.aether.manager.ui.LocalAetherThemeStyle
 @Composable
 fun AetherGlassSurface(
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    interactionSource: androidx.compose.foundation.interaction.MutableInteractionSource? = null,
     shape: Shape = androidx.compose.foundation.shape.RoundedCornerShape(LocalAetherThemeStyle.current.cardCorner),
     color: Color = MaterialTheme.colorScheme.surfaceContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
@@ -24,8 +27,14 @@ fun AetherGlassSurface(
     border: BorderStroke? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val resolvedModifier = if (onClick != null) {
+        modifier.clickable(onClick = onClick)
+    } else {
+        modifier
+    }
+
     Surface(
-        modifier = modifier,
+        modifier = resolvedModifier,
         shape = shape,
         color = color,
         contentColor = contentColor,
