@@ -346,9 +346,9 @@ private fun styleFor(preset: AetherThemePreset): AetherThemeStyle = when (preset
         controlCorner = 18.dp,
         iconCorner = 16.dp,
         pillCorner = 50.dp,
-        cardAlpha = 0.72f,
-        navAlpha = 0.70f,
-        cardElevation = 3.dp,
+        cardAlpha = 0.98f,
+        navAlpha = 0.96f,
+        cardElevation = 2.dp,
     )
     AetherThemePreset.IOS -> AetherThemeStyle(
         preset = preset,
@@ -357,8 +357,8 @@ private fun styleFor(preset: AetherThemePreset): AetherThemeStyle = when (preset
         controlCorner = 14.dp,
         iconCorner = 13.dp,
         pillCorner = 50.dp,
-        cardAlpha = 0.76f,
-        navAlpha = 0.72f,
+        cardAlpha = 0.99f,
+        navAlpha = 0.97f,
         cardElevation = 1.dp,
     )
 }

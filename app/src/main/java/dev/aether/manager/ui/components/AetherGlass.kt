@@ -1,17 +1,13 @@
 package dev.aether.manager.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -20,8 +16,12 @@ import dev.aether.manager.ui.AetherThemePreset
 import dev.aether.manager.ui.LocalAetherThemeStyle
 
 /**
- * MIUI/HyperOS-like glossy glass container.
- * Stable blur/glass feel without expensive realtime backdrop blur.
+ * Stable themed surface.
+ *
+ * Previous glass implementation used a white gradient overlay inside every Surface.
+ * On MIUI/iOS that overlay looked like broken white blocks on cards. This version
+ * keeps the glossy feel through solid translucent-safe colors, border, and elevation
+ * without drawing extra rectangles above the content.
  */
 @Composable
 fun AetherGlassSurface(
@@ -37,36 +37,22 @@ fun AetherGlassSurface(
     content: @Composable () -> Unit,
 ) {
     val preset = LocalAetherThemeStyle.current.preset
-    val glass = preset == AetherThemePreset.MIUI || preset == AetherThemePreset.IOS
-    val alpha = when (preset) {
-        AetherThemePreset.MIUI -> 0.68f
-        AetherThemePreset.IOS -> 0.72f
-        AetherThemePreset.DEFAULT -> 1f
-    }
-    val effectiveBorder = border ?: if (glass) {
-        BorderStroke(0.8.dp, Color.White.copy(alpha = if (preset == AetherThemePreset.MIUI) 0.34f else 0.24f))
-    } else null
-    val resolvedColor = if (glass) color.copy(alpha = alpha) else color
+    val isStyledOs = preset == AetherThemePreset.MIUI || preset == AetherThemePreset.IOS
 
-    val inner: @Composable () -> Unit = {
-        if (glass) {
-            Box(
-                modifier = Modifier
-                    .clip(shape)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = if (preset == AetherThemePreset.MIUI) 0.26f else 0.18f),
-                                Color.White.copy(alpha = 0.06f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = if (preset == AetherThemePreset.MIUI) 0.05f else 0.03f),
-                            )
-                        )
-                    )
-            ) { content() }
-        } else {
-            content()
-        }
+    val resolvedColor = when (preset) {
+        AetherThemePreset.DEFAULT -> color
+        AetherThemePreset.MIUI -> color.copy(alpha = 0.98f)
+        AetherThemePreset.IOS -> color.copy(alpha = 0.99f)
     }
+
+    val resolvedBorder = border ?: when (preset) {
+        AetherThemePreset.DEFAULT -> null
+        AetherThemePreset.MIUI -> BorderStroke(0.8.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f))
+        AetherThemePreset.IOS -> BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
+    }
+
+    val resolvedTonalElevation = if (isStyledOs && tonalElevation == 0.dp) 1.dp else tonalElevation
+    val resolvedShadowElevation = if (isStyledOs && shadowElevation == 0.dp) 2.dp else shadowElevation
 
     if (onClick != null) {
         Surface(
@@ -75,11 +61,11 @@ fun AetherGlassSurface(
             shape = shape,
             color = resolvedColor,
             contentColor = contentColor,
-            tonalElevation = tonalElevation,
-            shadowElevation = shadowElevation,
-            border = effectiveBorder,
+            tonalElevation = resolvedTonalElevation,
+            shadowElevation = resolvedShadowElevation,
+            border = resolvedBorder,
             interactionSource = interactionSource ?: remember { MutableInteractionSource() },
-            content = inner,
+            content = content,
         )
     } else {
         Surface(
@@ -87,10 +73,10 @@ fun AetherGlassSurface(
             shape = shape,
             color = resolvedColor,
             contentColor = contentColor,
-            tonalElevation = tonalElevation,
-            shadowElevation = shadowElevation,
-            border = effectiveBorder,
-            content = inner,
+            tonalElevation = resolvedTonalElevation,
+            shadowElevation = resolvedShadowElevation,
+            border = resolvedBorder,
+            content = content,
         )
     }
 }
@@ -99,8 +85,8 @@ fun AetherGlassSurface(
 fun glossyContainerColor(base: Color = MaterialTheme.colorScheme.surfaceContainerHigh): Color {
     val preset = LocalAetherThemeStyle.current.preset
     return when (preset) {
-        AetherThemePreset.MIUI -> base.copy(alpha = 0.70f)
-        AetherThemePreset.IOS -> base.copy(alpha = 0.76f)
+        AetherThemePreset.MIUI -> base.copy(alpha = 0.98f)
+        AetherThemePreset.IOS -> base.copy(alpha = 0.99f)
         AetherThemePreset.DEFAULT -> base
     }
 }

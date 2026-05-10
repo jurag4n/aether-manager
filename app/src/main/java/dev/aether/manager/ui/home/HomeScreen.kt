@@ -71,6 +71,7 @@ import dev.aether.manager.data.UiState
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
 import dev.aether.manager.ui.components.AetherIconTile
+import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.components.AetherGlassSurface
 import kotlin.math.PI
 import kotlin.math.sin
@@ -86,8 +87,8 @@ fun HomeScreen(vm: MainViewModel) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
-            .padding(top = 10.dp, bottom = 150.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(top = 10.dp, bottom = 170.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         AnimatedContent(
             targetState = deviceState,
@@ -176,11 +177,11 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
         else -> 30.sp
     }
 
-    TappableCard(modifier = modifier.height(178.dp)) {
+    TappableCard(modifier = modifier.height(150.dp)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(14.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
@@ -231,8 +232,8 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
     val pager = rememberPagerState(pageCount = { temps.size })
     val accent = Color(0xFFFF9CAF)
 
-    TappableCard(modifier = modifier.height(178.dp)) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+    TappableCard(modifier = modifier.height(150.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Start,
@@ -298,7 +299,7 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
     val gpuShortName = shortGpuName(gpuFullName)
 
     TappableCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -313,7 +314,7 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("FREKUENSI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(normalizeGpuFreq(state.gpuFreq), fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    Text(normalizeGpuFreq(state.gpuFreq), fontSize = 30.sp, lineHeight = 32.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("GPU Type", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
@@ -376,18 +377,23 @@ private fun TappableCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? =
         animationSpec = tween(160, easing = FastOutSlowInEasing),
         label = "card_press_scale"
     )
+    val style = LocalAetherThemeStyle.current
+    val clickableModifier = if (onClick != null) {
+        Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
+    } else Modifier
 
     AetherGlassSurface(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(style.cardCorner),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = if (pressed) 4.dp else 1.dp,
-        shadowElevation = if (pressed) 6.dp else 1.dp,
+        tonalElevation = style.cardElevation,
+        shadowElevation = style.cardElevation,
         modifier = modifier
             .scale(scale)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) { onClick?.invoke() }
+            .then(clickableModifier)
     ) { content() }
 }
 
