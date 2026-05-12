@@ -199,7 +199,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _monitorState.value = RootEngine.getMonitorState()
                     } catch (_: Exception) {}
                 }
-                delay(1000)
+                delay(900)
             }
             monitorStarted = false
         }

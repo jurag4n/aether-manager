@@ -745,7 +745,46 @@ private fun SettingsRowSwitch(
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        V3TogglePill(checked = checked, onClick = { onCheckedChange(!checked) })
+    }
+}
+
+@Composable
+private fun V3TogglePill(checked: Boolean, onClick: () -> Unit) {
+    val bg by animateColorAsState(
+        targetValue = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = tween(220),
+        label = "settings_v3_toggle_bg"
+    )
+    val fg by animateColorAsState(
+        targetValue = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(220),
+        label = "settings_v3_toggle_fg"
+    )
+    val align = if (checked) Alignment.CenterEnd else Alignment.CenterStart
+    Box(
+        modifier = Modifier
+            .width(74.dp)
+            .height(36.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(4.dp),
+        contentAlignment = align
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (checked) "ON" else "OFF",
+                color = fg,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
     }
 }
 

@@ -4,4 +4,5 @@
     <color name="splash_bg_dark">#141218</color>
     <!-- legacy alias -->
     <color name="splash_bg">#141218</color>
+    <color name="aether_icon_bg">#020617</color>
 </resources>

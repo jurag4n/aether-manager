@@ -14,6 +14,7 @@ import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.getStringsForLanguage
 import dev.aether.manager.i18n.loadSavedLanguage
 import dev.aether.manager.util.RootEngine
+import dev.aether.manager.util.RootManager
 import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.TweakApplier
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +37,7 @@ class AetherService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        RootManager.configureShell(this)
         createNotificationChannel()
     }
 
@@ -97,7 +99,7 @@ class AetherService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(s.serviceNotifChannelName)
             .setContentText(s.serviceNotifText)
-            .setSmallIcon(android.R.drawable.ic_menu_manage)
+            .setSmallIcon(R.drawable.ic_aether_v3)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setSilent(true)
             .setOngoing(true)
@@ -203,6 +205,7 @@ class BootReceiver : BroadcastReceiver() {
             }
 
             val result = TweakApplier.apply(tweaks)
+            if (result.success) RootEngine.writeFile(RAPID_BOOT_COUNT, "0")
 
             // Retry sekali kalau ada yang gagal — tunggu lebih lama agar
             // kernel/HAL sudah benar-benar stabil sebelum retry

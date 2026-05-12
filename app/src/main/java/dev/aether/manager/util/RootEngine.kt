@@ -284,6 +284,9 @@ object RootEngine {
     @Volatile private var lastCpuTotal: Long = 0L
     @Volatile private var lastCpuIdle: Long = 0L
     @Volatile private var lastCpuUsage: Int = 0
+    @Volatile private var lastGpuBusyUsed: Long = 0L
+    @Volatile private var lastGpuBusyTotal: Long = 0L
+    @Volatile private var lastGpuUsage: Int = 0
 
     private fun readTextFast(path: String): String = runCatching {
         File(path).takeIf { it.canRead() }?.readText()?.trim().orEmpty()
@@ -327,16 +330,36 @@ object RootEngine {
     }
 
     private fun readCpuFreqMhz(): Long {
-        val freqs = File("/sys/devices/system/cpu").listFiles()
+        val policyFreqs = File("/sys/devices/system/cpu/cpufreq").listFiles()
+            ?.filter { it.name.startsWith("policy") }
+            ?.mapNotNull { policy ->
+                val cur = readLongFast("${policy.path}/scaling_cur_freq")
+                    .takeIf { it > 0L } ?: readLongFast("${policy.path}/cpuinfo_cur_freq")
+                cur.takeIf { it > 0L }
+            }.orEmpty()
+
+        val cpuFreqs = File("/sys/devices/system/cpu").listFiles()
             ?.filter { it.name.matches(Regex("cpu[0-9]+")) }
             ?.mapNotNull { cpu ->
                 val cur = readLongFast("${cpu.path}/cpufreq/scaling_cur_freq")
                     .takeIf { it > 0L } ?: readLongFast("${cpu.path}/cpufreq/cpuinfo_cur_freq")
                 cur.takeIf { it > 0L }
             }.orEmpty()
-        if (freqs.isEmpty()) return 0L
-        val active = freqs.filter { it > 0L }
-        val valueKhz = if (active.isNotEmpty()) active.average().roundToInt().toLong() else freqs.maxOrNull() ?: 0L
+
+        val freqs = (policyFreqs + cpuFreqs).distinct().filter { it > 0L }
+        if (freqs.isEmpty()) {
+            val procCpuMhz = readTextFast("/proc/cpuinfo")
+                .lineSequence()
+                .firstOrNull { it.contains("cpu MHz", ignoreCase = true) }
+                ?.substringAfter(':')
+                ?.trim()
+                ?.toFloatOrNull()
+                ?.roundToInt()
+                ?.toLong()
+            return procCpuMhz ?: 0L
+        }
+
+        val valueKhz = freqs.average().roundToInt().toLong()
         return when {
             valueKhz > 1_000_000L -> valueKhz / 1000L
             valueKhz > 10_000L -> valueKhz / 1000L
@@ -344,9 +367,14 @@ object RootEngine {
         }
     }
 
-    private fun readCpuGovernor(): String = File("/sys/devices/system/cpu").listFiles()
-        ?.firstOrNull { it.name.matches(Regex("cpu[0-9]+")) && File(it, "cpufreq/scaling_governor").canRead() }
-        ?.let { readTextFast("${it.path}/cpufreq/scaling_governor") }.orEmpty()
+    private fun readCpuGovernor(): String {
+        File("/sys/devices/system/cpu/cpufreq").listFiles()
+            ?.firstOrNull { it.name.startsWith("policy") && File(it, "scaling_governor").canRead() }
+            ?.let { return readTextFast("${it.path}/scaling_governor") }
+        return File("/sys/devices/system/cpu").listFiles()
+            ?.firstOrNull { it.name.matches(Regex("cpu[0-9]+")) && File(it, "cpufreq/scaling_governor").canRead() }
+            ?.let { readTextFast("${it.path}/cpufreq/scaling_governor") }.orEmpty()
+    }
 
     private fun readThermalByName(vararg keys: String, excludeBattery: Boolean = false): Float {
         val zones = File("/sys/class/thermal").listFiles()?.filter { it.name.startsWith("thermal_zone") }.orEmpty()
@@ -376,33 +404,69 @@ object RootEngine {
         else -> raw
     }
 
+    private fun firstPercentFrom(text: String): Int? = text
+        .split(Regex("\\s+|%|,"))
+        .firstNotNullOfOrNull { part -> part.filter { it.isDigit() }.toIntOrNull()?.takeIf { v -> v in 0..100 } }
+
+    private fun readGpuUsageLocal(): Int {
+        firstPercentFrom(readTextFast("/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage"))?.let {
+            lastGpuUsage = it
+            return it
+        }
+
+        val busy = readTextFast("/sys/class/kgsl/kgsl-3d0/gpubusy").split(Regex("\\s+"))
+        val used = busy.getOrNull(0)?.toLongOrNull() ?: 0L
+        val total = busy.getOrNull(1)?.toLongOrNull() ?: 0L
+        if (used > 0L && total > 0L) {
+            val oldUsed = lastGpuBusyUsed
+            val oldTotal = lastGpuBusyTotal
+            lastGpuBusyUsed = used
+            lastGpuBusyTotal = total
+            val pct = if (oldTotal > 0L && total > oldTotal && used >= oldUsed) {
+                val du = used - oldUsed
+                val dt = total - oldTotal
+                if (dt > 0L) ((du.coerceAtLeast(0L) * 100L) / dt).toInt() else 0
+            } else {
+                ((used.coerceAtMost(total) * 100L) / total).toInt()
+            }.coerceIn(0, 100)
+            if (pct > 0) {
+                lastGpuUsage = pct
+                return pct
+            }
+        }
+
+        val paths = listOf(
+            "/sys/kernel/ged/hal/gpu_utilization",
+            "/sys/class/misc/mali0/device/utilisation",
+            "/sys/class/devfreq/mtk-gpu/load",
+            "/sys/kernel/gpu/gpu_busy",
+            "/sys/kernel/gpu/gpu_utilization",
+            "/proc/gpufreq/gpufreq_var_dump"
+        )
+        for (path in paths) {
+            firstPercentFrom(readTextFast(path))?.let {
+                lastGpuUsage = it
+                return it
+            }
+        }
+        return lastGpuUsage.takeIf { it > 0 } ?: 0
+    }
+
+
     private fun readGpuLocal(): Triple<Int, Long, String> {
-        var usage = 0
-        val busyPct = readTextFast("/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage").filter(Char::isDigit).toIntOrNull()
-        usage = busyPct ?: run {
-            val busy = readTextFast("/sys/class/kgsl/kgsl-3d0/gpubusy").split(Regex("\\s+"))
-            val used = busy.getOrNull(0)?.toLongOrNull() ?: 0L
-            val total = busy.getOrNull(1)?.toLongOrNull() ?: 0L
-            if (used > 0L && total > 0L) ((used * 100L) / total).toInt() else 0
-        }
-        if (usage <= 0) {
-            val paths = listOf(
-                "/sys/kernel/ged/hal/gpu_utilization",
-                "/sys/class/misc/mali0/device/utilisation",
-                "/sys/kernel/gpu/gpu_busy",
-                "/sys/kernel/gpu/gpu_utilization"
-            )
-            usage = paths.firstNotNullOfOrNull { readTextFast(it).split(Regex("\\s+|%|,")) .firstOrNull()?.filter(Char::isDigit)?.toIntOrNull() } ?: 0
-        }
+        val usage = readGpuUsageLocal()
         var freq = listOf(
             "/sys/class/kgsl/kgsl-3d0/gpuclk",
             "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
             "/sys/kernel/ged/hal/current_freqency",
+            "/sys/kernel/ged/hal/current_freqency_by_pid",
             "/sys/kernel/gpu/gpu_clock"
         ).firstNotNullOfOrNull { readLongFast(it).takeIf { v -> v > 0L } } ?: 0L
         if (freq <= 0L) {
             freq = File("/sys/class/devfreq").listFiles()?.firstNotNullOfOrNull { d ->
-                if (d.name.contains("gpu", true) || d.name.contains("mali", true) || d.name.contains("kgsl", true)) readLongFast("${d.path}/cur_freq").takeIf { it > 0L } else null
+                if (d.name.contains("gpu", true) || d.name.contains("mali", true) || d.name.contains("kgsl", true) || d.name.contains("g3d", true) || d.name.contains("mfg", true)) {
+                    readLongFast("${d.path}/cur_freq").takeIf { it > 0L }
+                } else null
             } ?: 0L
         }
         val name = listOf(
@@ -429,11 +493,19 @@ object RootEngine {
         if ((gpuUsage <= 0 || gpuFreqMhz <= 0L || gpuName.isBlank() || !validTemp(gpuTempC)) && RootManager.isRootGranted) {
             val rootGpuR = shRootCached("""
                 gpu_usage=0
-                for p in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/ged/hal/gpu_utilization /sys/class/misc/mali0/device/utilisation /sys/kernel/gpu/gpu_busy /sys/kernel/gpu/gpu_utilization; do
-                  [ -r "${'$'}p" ] || continue
-                  v=${'$'}(cat "${'$'}p" 2>/dev/null | tr -cd '0-9 ' | awk '{print $1}' | cut -c1-3)
-                  [ -n "${'$'}v" ] && { gpu_usage=${'$'}v; break; }
-                done
+                if [ -r /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage ]; then
+                  gpu_usage=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null | tr -cd '0-9' | cut -c1-3)
+                elif [ -r /sys/class/kgsl/kgsl-3d0/gpubusy ]; then
+                  set -- ${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpubusy 2>/dev/null)
+                  [ -n "${'$'}1" ] && [ -n "${'$'}2" ] && [ "${'$'}2" -gt 0 ] 2>/dev/null && gpu_usage=${'$'}(( ${'$'}1 * 100 / ${'$'}2 ))
+                fi
+                if [ -z "${'$'}gpu_usage" ] || [ "${'$'}gpu_usage" -le 0 ] 2>/dev/null; then
+                  for p in /sys/kernel/ged/hal/gpu_utilization /sys/class/misc/mali0/device/utilisation /sys/class/devfreq/*gpu*/load /sys/kernel/gpu/gpu_busy /sys/kernel/gpu/gpu_utilization; do
+                    [ -r "${'$'}p" ] || continue
+                    v=${'$'}(cat "${'$'}p" 2>/dev/null | tr -cd '0-9 ' | awk '{print $1}' | cut -c1-3)
+                    [ -n "${'$'}v" ] && { gpu_usage=${'$'}v; break; }
+                  done
+                fi
                 [ "${'$'}gpu_usage" -gt 100 ] 2>/dev/null && gpu_usage=100
                 echo gpu_usage=${'$'}gpu_usage
                 gpu_freq=0
@@ -468,7 +540,7 @@ object RootEngine {
         if ((cpuFreqMhz <= 0L || !validTemp(cpuTempC)) && RootManager.isRootGranted) {
             val rootCpuR = shRootCached("""
                 total=0; count=0
-                for p in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq /sys/devices/system/cpu/cpu[0-9]*/cpufreq/cpuinfo_cur_freq; do
+                for p in /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_cur_freq /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq /sys/devices/system/cpu/cpu[0-9]*/cpufreq/cpuinfo_cur_freq; do
                   [ -r "${'$'}p" ] || continue
                   v=${'$'}(cat "${'$'}p" 2>/dev/null | tr -cd '0-9')
                   [ -n "${'$'}v" ] && [ "${'$'}v" -gt 0 ] 2>/dev/null && { total=${'$'}((total+v)); count=${'$'}((count+1)); }

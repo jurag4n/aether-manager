@@ -576,15 +576,7 @@ private fun AppProfileStatusCard(
                 )
             }
 
-            Switch(
-                checked = enabled,
-                onCheckedChange = { onToggle() },
-                modifier = Modifier.scale(0.86f),
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
-                )
-            )
+            AppProfileV3Toggle(checked = enabled, onClick = onToggle)
         }
     }
 }
@@ -944,15 +936,7 @@ private fun ProfileSwitchRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                modifier = Modifier.scale(0.82f),
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
-                )
-            )
+            AppProfileV3Toggle(checked = checked, onClick = { onCheckedChange(!checked) })
         }
     }
 }
@@ -1239,14 +1223,7 @@ fun AppProfileEditor(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Switch(
-                        checked         = draft.enabled,
-                        onCheckedChange = { draft = draft.copy(enabled = it) },
-                        colors          = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
+                    AppProfileV3Toggle(checked = draft.enabled, onClick = { draft = draft.copy(enabled = !draft.enabled) })
                     Text(
                         if (draft.enabled) s.appProfileEditorActive else s.appProfileEditorInactive,
                         style = MaterialTheme.typography.labelSmall,
@@ -1570,17 +1547,41 @@ private fun ExtraTweakRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        AppProfileV3Toggle(checked = checked, enabled = enabled, onClick = { if (enabled) onChange(!checked) })
+    }
+}
 
-        Switch(
-            checked         = checked,
-            onCheckedChange = { if (enabled) onChange(it) },
-            enabled         = enabled,
-            modifier        = Modifier.scale(0.8f),
-            colors          = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary
-            )
-        )
+
+@Composable
+private fun AppProfileV3Toggle(
+    checked: Boolean,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    val bg by animateColorAsState(
+        targetValue = when {
+            checked -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.surfaceContainerHighest
+        },
+        animationSpec = tween(220),
+        label = "appprofile_v3_toggle_bg"
+    )
+    val fg by animateColorAsState(
+        targetValue = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(220),
+        label = "appprofile_v3_toggle_fg"
+    )
+    Box(
+        modifier = Modifier
+            .width(70.dp)
+            .height(34.dp)
+            .alpha(if (enabled) 1f else .45f)
+            .clip(RoundedCornerShape(17.dp))
+            .background(bg)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(if (checked) "ON" else "OFF", color = fg, fontSize = 11.sp, fontWeight = FontWeight.Black)
     }
 }
 

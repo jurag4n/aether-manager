@@ -22,6 +22,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1815,9 +1816,35 @@ private fun ToggleOption(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Switch(checked = checked, onCheckedChange = { onClick() })
+                MiniV3Toggle(checked = checked, onClick = onClick)
             }
         }
+    }
+}
+
+
+@Composable
+private fun MiniV3Toggle(checked: Boolean, onClick: () -> Unit) {
+    val bg by animateColorAsState(
+        targetValue = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = tween(220),
+        label = "tweak_v3_toggle_bg"
+    )
+    val fg by animateColorAsState(
+        targetValue = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(220),
+        label = "tweak_v3_toggle_fg"
+    )
+    Box(
+        modifier = Modifier
+            .width(68.dp)
+            .height(34.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .background(bg)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(if (checked) "ON" else "OFF", color = fg, fontSize = 11.sp, fontWeight = FontWeight.Black)
     }
 }
 

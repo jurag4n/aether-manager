@@ -189,23 +189,50 @@ change_cpu_gov() {
   [ "${'$'}found" = "0" ] && _S=${'$'}((_S+1))
 }
 
-# devfreq helpers — encore style
+# devfreq helpers — robust all chipset
+_devfreq_freqs() {
+  local path="${'$'}1"
+  if [ -r "${'$'}path/available_frequencies" ]; then
+    tr ' ' '\n' < "${'$'}path/available_frequencies" | grep -E '^[0-9]+${'$'}'
+  elif [ -r "${'$'}path/available_freqs" ]; then
+    tr ' ' '\n' < "${'$'}path/available_freqs" | grep -E '^[0-9]+${'$'}'
+  fi
+}
+
 devfreq_max() {
   local path="${'$'}1"
-  [ -f "${'$'}path/available_frequencies" ] || return
-  local maxf; maxf=${'$'}(tr ' ' '\n' < "${'$'}path/available_frequencies" | sort -n | tail -1)
+  [ -d "${'$'}path" ] || return
+  local maxf
+  maxf=${'$'}(_devfreq_freqs "${'$'}path" | sort -n | tail -1)
+  if [ -z "${'$'}maxf" ]; then
+    maxf=${'$'}(cat "${'$'}path/max_freq" "${'$'}path/cur_freq" 2>/dev/null | grep -E '^[0-9]+${'$'}' | sort -n | tail -1)
+  fi
+  [ -n "${'$'}maxf" ] || { _S=${'$'}((_S+1)); return; }
   apply "${'$'}maxf" "${'$'}path/max_freq"
   apply "${'$'}maxf" "${'$'}path/min_freq"
+  write performance "${'$'}path/governor"
 }
 
 devfreq_unlock() {
   local path="${'$'}1"
-  [ -f "${'$'}path/available_frequencies" ] || return
+  [ -d "${'$'}path" ] || return
   local maxf minf
-  maxf=${'$'}(tr ' ' '\n' < "${'$'}path/available_frequencies" | sort -n | tail -1)
-  minf=${'$'}(tr ' ' '\n' < "${'$'}path/available_frequencies" | sort -n | head -1)
-  write "${'$'}maxf" "${'$'}path/max_freq"
-  write "${'$'}minf" "${'$'}path/min_freq"
+  maxf=${'$'}(_devfreq_freqs "${'$'}path" | sort -n | tail -1)
+  minf=${'$'}(_devfreq_freqs "${'$'}path" | sort -n | head -1)
+  [ -n "${'$'}maxf" ] || maxf=${'$'}(cat "${'$'}path/max_freq" 2>/dev/null | grep -E '^[0-9]+${'$'}' | tail -1)
+  [ -n "${'$'}minf" ] || minf=${'$'}(cat "${'$'}path/min_freq" 2>/dev/null | grep -E '^[0-9]+${'$'}' | tail -1)
+  [ -n "${'$'}maxf" ] && write "${'$'}maxf" "${'$'}path/max_freq" || _S=${'$'}((_S+1))
+  [ -n "${'$'}minf" ] && write "${'$'}minf" "${'$'}path/min_freq" || _S=${'$'}((_S+1))
+  for gov in simple_ondemand msm-adreno-tz mali_ondemand userspace; do
+    [ -r "${'$'}path/available_governors" ] && ! grep -qw "${'$'}gov" "${'$'}path/available_governors" && continue
+    write "${'$'}gov" "${'$'}path/governor" && break
+  done
+}
+
+gpu_devfreq_paths() {
+  for d in /sys/class/devfreq/kgsl-3d0 /sys/class/kgsl/kgsl-3d0/devfreq /sys/class/devfreq/*gpu* /sys/class/devfreq/*mali* /sys/class/devfreq/*kgsl* /sys/class/devfreq/*g3d* /sys/class/devfreq/*mfg*; do
+    [ -d "${'$'}d" ] && echo "${'$'}d"
+  done
 }
 
 # marker — diparse Kotlin untuk SubsystemResult
@@ -492,14 +519,16 @@ _end "thermal"
         val perf = t["gpu_throttle_off"] == "1" || profile == "gaming" || profile == "performance" || profile == "extreme"
         return if (perf) """
 _begin
-# gpu — performance safe: jangan disable DVFS/power policy agar tidak hang/reboot paksa
+# gpu — performance safe: DVFS tetap aktif, clock ceiling dinaikkan di semua devfreq GPU yang tersedia
 if [ -d /sys/class/kgsl/kgsl-3d0 ]; then
   apply 0 /sys/class/kgsl/kgsl-3d0/throttling
   apply 0 /sys/class/kgsl/kgsl-3d0/bus_split
-  devfreq_max /sys/class/devfreq/kgsl-3d0
 fi
-# Mali/MTK: biarkan DVFS aktif, hanya tuning ringan jika node tersedia
-apply 10 /sys/class/misc/mali0/device/js_scheduling_period
+for d in ${'$'}(gpu_devfreq_paths); do
+  devfreq_max "${'$'}d"
+done
+write 0 /sys/kernel/ged/hal/dvfs_margin_value
+write 10 /sys/class/misc/mali0/device/js_scheduling_period
 _end "gpu"
 """ else """
 _begin
@@ -510,8 +539,9 @@ apply 0 /sys/class/kgsl/kgsl-3d0/bus_split
 write 1 /sys/kernel/ged/hal/dvfs_enable
 apply coarse_demand /sys/class/misc/mali0/device/power_policy
 apply auto          /sys/devices/platform/mali.0/power/control
-# Qcom devfreq GPU
-devfreq_unlock /sys/class/devfreq/kgsl-3d0
+for d in ${'$'}(gpu_devfreq_paths); do
+  devfreq_unlock "${'$'}d"
+done
 _end "gpu"
 """
     }
@@ -520,7 +550,11 @@ _end "gpu"
         val freq = t["gpu_freq_max"]?.takeIf { it.isNotBlank() && t["gpu_freq_lock"] == "1" }
         return if (freq != null) """
 _begin
-# gpu_freq — lock $freq Hz
+# gpu_freq — lock $freq Hz / kHz sesuai node kernel
+for d in ${'$'}(gpu_devfreq_paths); do
+  apply $freq "${'$'}d/max_freq"
+  apply $freq "${'$'}d/min_freq"
+done
 apply $freq /sys/class/kgsl/kgsl-3d0/devfreq/max_freq
 apply $freq /sys/class/kgsl/kgsl-3d0/devfreq/min_freq
 write $freq /proc/gpufreq/gpufreq_opp_freq
@@ -530,7 +564,9 @@ _end "gpu_freq"
 """ else """
 _begin
 # gpu_freq — unlock
-devfreq_unlock /sys/class/devfreq/kgsl-3d0
+for d in ${'$'}(gpu_devfreq_paths); do
+  devfreq_unlock "${'$'}d"
+done
 apply 0 /sys/class/misc/mali0/device/dvfs_max_lock
 apply 0 /sys/class/misc/mali0/device/dvfs_min_lock
 _end "gpu_freq"
