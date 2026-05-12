@@ -48,6 +48,7 @@ import dev.aether.manager.i18n.LocalSetLanguage
 import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.util.BackupManager
+import androidx.compose.animation.animateColorAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

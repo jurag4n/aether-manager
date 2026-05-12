@@ -36,6 +36,9 @@ import dev.aether.manager.data.*
 import dev.aether.manager.i18n.LocalStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Root Screen

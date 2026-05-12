@@ -67,6 +67,7 @@ import dev.aether.manager.ui.tweak.TweakScreen
 import dev.aether.manager.update.UpdateDialogHost
 import dev.aether.manager.update.UpdateViewModel
 import dev.aether.manager.util.RootEngine
+import androidx.compose.animation.animateColorAsState
 
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
