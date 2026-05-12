@@ -90,9 +90,6 @@ import androidx.compose.ui.unit.dp
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.i18n.AppLanguage
 import dev.aether.manager.i18n.LocalLanguage
-import dev.aether.manager.ui.components.AetherIconTile
-import dev.aether.manager.ui.components.AetherGlassSurface
-import dev.aether.manager.ui.components.AetherSwitch
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -219,10 +216,6 @@ fun TweakScreen(
                 vm.setTweak("gpuThrottleOff", false)
                 vm.setTweak("schedboost", false)
             }
-            "custom" -> {
-                // Custom tidak menimpa toggle yang sedang user atur.
-                // Ini hanya menyimpan label profile agar setting manual tetap aman.
-            }
             else -> {
                 cpuGovernor = "Schedutil"
                 gpuProfile = "Balanced"
@@ -259,10 +252,8 @@ fun TweakScreen(
             .verticalScroll(scroll)
             .padding(horizontal = 16.dp)
             .padding(top = 16.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        TweakHeader()
-
         DeviceInfoCard(
             expanded = deviceInfoExpanded,
             onClick = { deviceInfoExpanded = !deviceInfoExpanded }
@@ -416,9 +407,7 @@ fun TweakScreen(
                     modifier = itemModifier,
                     expanded = expandedCard == "io",
                     selected = ioScheduler,
-                    latencyOpt = tweaks.ioLatencyOpt,
                     onClick = { toggleExpand("io") },
-                    onLatencyToggle = { setTweakNow("ioLatencyOpt", !tweaks.ioLatencyOpt) },
                     onSelect = {
                         ioScheduler = it
                         val schedulerValue = when (it) {
@@ -455,55 +444,9 @@ fun TweakScreen(
             onClick = { toggleExpand("thermal") },
             onSelect = { setThermalProfileNow(it) }
         )
-
-        KernelToolsCard(
-            expanded = expandedCard == "kernel_tools",
-            active = tweaks.cpusetOpt || tweaks.touchBoost || tweaks.ksm || tweaks.fastAnim || tweaks.doze || tweaks.vmDirtyOpt || tweaks.entropyBoost || tweaks.clearCache || tweaks.mtkBoost,
-            cpuset = tweaks.cpusetOpt,
-            touchBoost = tweaks.touchBoost,
-            ksm = tweaks.ksm,
-            ksmAggressive = tweaks.ksmAggressive,
-            fastAnim = tweaks.fastAnim,
-            doze = tweaks.doze,
-            vmDirty = tweaks.vmDirtyOpt,
-            entropy = tweaks.entropyBoost,
-            clearCache = tweaks.clearCache,
-            mtkBoost = tweaks.mtkBoost,
-            onClick = { toggleExpand("kernel_tools") },
-            onCpusetToggle = { setTweakNow("cpusetOpt", !tweaks.cpusetOpt) },
-            onTouchBoostToggle = { setTweakNow("touchBoost", !tweaks.touchBoost) },
-            onKsmToggle = { setTweakNow("ksm", !tweaks.ksm) },
-            onKsmAggressiveToggle = { setTweakNow("ksmAggressive", !tweaks.ksmAggressive) },
-            onFastAnimToggle = { setTweakNow("fastAnim", !tweaks.fastAnim) },
-            onDozeToggle = { setTweakNow("doze", !tweaks.doze) },
-            onVmDirtyToggle = { setTweakNow("vmDirtyOpt", !tweaks.vmDirtyOpt) },
-            onEntropyToggle = { setTweakNow("entropyBoost", !tweaks.entropyBoost) },
-            onClearCacheToggle = { setTweakNow("clearCache", !tweaks.clearCache) },
-            onMtkBoostToggle = { setTweakNow("mtkBoost", !tweaks.mtkBoost) }
-        )
     }
 }
 
-
-@Composable
-private fun TweakHeader() {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = "Tweaks",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = "Atur performa, jaringan, memori, dan kernel dengan aman",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
 
 @Composable
 private fun AdaptiveTweakGridRow(
@@ -1016,18 +959,16 @@ private fun IoSchedulerCard(
     modifier: Modifier = Modifier,
     expanded: Boolean,
     selected: String,
-    latencyOpt: Boolean,
     onClick: () -> Unit,
-    onLatencyToggle: () -> Unit,
     onSelect: (String) -> Unit
 ) {
     ExpandableTweakCard(
         modifier = modifier,
         icon = Icons.Outlined.Storage,
         title = "I/O Scheduler",
-        subtitle = "Disk queue & latency tuning",
-        badge = if (latencyOpt) "Latency" else selected,
-        active = selected != "Auto" || latencyOpt,
+        subtitle = "Disk read/write queue",
+        badge = selected,
+        active = selected != "Auto",
         expanded = expanded,
         onClick = onClick
     ) {
@@ -1036,12 +977,6 @@ private fun IoSchedulerCard(
             value = selected,
             options = listOf("Auto", "CFQ", "Deadline", "Noop", "BFQ", "Maple"),
             onSelect = onSelect
-        )
-        ToggleOption(
-            title = "I/O Latency",
-            subtitle = "Read-ahead, rq_affinity, queue tuning",
-            checked = latencyOpt,
-            onClick = onLatencyToggle
         )
     }
 }
@@ -1098,141 +1033,6 @@ private fun ThermalProfileCard(
 }
 
 @Composable
-private fun KernelToolsCard(
-    expanded: Boolean,
-    active: Boolean,
-    cpuset: Boolean,
-    touchBoost: Boolean,
-    ksm: Boolean,
-    ksmAggressive: Boolean,
-    fastAnim: Boolean,
-    doze: Boolean,
-    vmDirty: Boolean,
-    entropy: Boolean,
-    clearCache: Boolean,
-    mtkBoost: Boolean,
-    onClick: () -> Unit,
-    onCpusetToggle: () -> Unit,
-    onTouchBoostToggle: () -> Unit,
-    onKsmToggle: () -> Unit,
-    onKsmAggressiveToggle: () -> Unit,
-    onFastAnimToggle: () -> Unit,
-    onDozeToggle: () -> Unit,
-    onVmDirtyToggle: () -> Unit,
-    onEntropyToggle: () -> Unit,
-    onClearCacheToggle: () -> Unit,
-    onMtkBoostToggle: () -> Unit
-) {
-    ExpandableTweakCard(
-        modifier = Modifier.fillMaxWidth(),
-        icon = Icons.Outlined.DeveloperMode,
-        title = "Kernel Tools",
-        subtitle = "Cpuset, touch, KSM, VM, cache, doze",
-        badge = if (active) "Active" else "Safe",
-        active = active,
-        expanded = expanded,
-        baseHeight = 98.dp,
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "Cpuset",
-                subtitle = "Prioritas top-app CPU",
-                checked = cpuset,
-                onClick = onCpusetToggle
-            )
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "Touch Boost",
-                subtitle = "Respons sentuh lebih cepat",
-                checked = touchBoost,
-                onClick = onTouchBoostToggle
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "KSM",
-                subtitle = "Merge page RAM sama",
-                checked = ksm,
-                onClick = onKsmToggle
-            )
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "KSM Aggressive",
-                subtitle = "Scan lebih cepat",
-                checked = ksmAggressive,
-                onClick = onKsmAggressiveToggle
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "VM Dirty",
-                subtitle = "Tuning writeback cache",
-                checked = vmDirty,
-                onClick = onVmDirtyToggle
-            )
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "Entropy",
-                subtitle = "Random wake threshold",
-                checked = entropy,
-                onClick = onEntropyToggle
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "Fast Anim",
-                subtitle = "Animasi sistem 0.5x",
-                checked = fastAnim,
-                onClick = onFastAnimToggle
-            )
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "Doze",
-                subtitle = "Deep idle mode",
-                checked = doze,
-                onClick = onDozeToggle
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "Clear Cache",
-                subtitle = "Trim cache ringan",
-                checked = clearCache,
-                onClick = onClearCacheToggle
-            )
-            ToggleOption(
-                modifier = Modifier.weight(1f),
-                title = "MTK Boost",
-                subtitle = "Khusus MediaTek",
-                checked = mtkBoost,
-                onClick = onMtkBoostToggle
-            )
-        }
-    }
-}
-
-@Composable
 private fun ExpandableTweakCard(
     modifier: Modifier = Modifier,
     icon: ImageVector,
@@ -1281,7 +1081,7 @@ private fun ExpandableTweakCard(
 
     // Corner radius dianimasikan supaya transisi mengembang/mengecil lebih smooth
     val cornerRadius by animateDpAsState(
-        targetValue = if (expanded) 22.dp else 20.dp,
+        targetValue = if (expanded) 28.dp else 22.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
@@ -1291,7 +1091,7 @@ private fun ExpandableTweakCard(
 
     // Elevation juga dianimasikan
     val elevation by animateDpAsState(
-        targetValue = 0.dp,
+        targetValue = if (expanded) 4.dp else 0.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
@@ -1301,7 +1101,8 @@ private fun ExpandableTweakCard(
 
     val cardScale by animateFloatAsState(
         targetValue = when {
-            pressed -> 0.985f
+            pressed -> 0.975f
+            expanded -> 1.012f
             else -> 1f
         },
         animationSpec = spring(
@@ -1346,14 +1147,12 @@ private fun ExpandableTweakCard(
         label = "detail_slide_$title"
     )
 
-    AetherGlassSurface(
+    Surface(
         onClick = onClick,
         interactionSource = interactionSource,
         shape = RoundedCornerShape(cornerRadius),
         color = container,
         tonalElevation = elevation,
-        shadowElevation = 0.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f)),
         modifier = modifier
             .graphicsLayer {
                 scaleX = cardScale
@@ -1379,18 +1178,19 @@ private fun ExpandableTweakCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                AetherIconTile(
-                    icon = icon,
-                    tint = iconTint,
-                    containerColor = iconBg,
-                    size = 40.dp,
-                    iconSize = 21.dp,
-                    selected = active || expanded,
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
-                    }
-                )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(iconBg)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = iconTint, modifier = Modifier.size(21.dp))
+                }
                 Spacer(Modifier.weight(1f))
                 StatusPill(text = badge, active = active || expanded, bg = badgeBg, fg = badgeFg)
             }
@@ -1399,7 +1199,7 @@ private fun ExpandableTweakCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1503,12 +1303,11 @@ private fun DeviceInfoCard(
         ),
         label = "device_info_offset"
     )
-    AetherGlassSurface(
+    Surface(
         onClick = onClick,
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp,
-        shadowElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(
@@ -1548,7 +1347,7 @@ private fun DeviceInfoCard(
                     Text(
                         text = strings.deviceInfoTitle,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -1625,7 +1424,7 @@ private fun DeviceInfoLine(
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1.14f),
             maxLines = 1,
@@ -1706,20 +1505,6 @@ private fun ProfileModeSelector(
                 onSelect = onSelect
             )
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ProfileChip(
-                modifier = Modifier.weight(1f),
-                key = "custom",
-                label = "Custom",
-                icon = Icons.Outlined.Tune,
-                selected = current == "custom",
-                onSelect = onSelect
-            )
-            Spacer(modifier = Modifier.weight(1f))
-        }
     }
 }
 
@@ -1754,14 +1539,7 @@ private fun ProfileChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AetherIconTile(
-                icon = icon,
-                tint = fg,
-                containerColor = fg.copy(alpha = if (selected) 0.22f else 0.10f),
-                size = 30.dp,
-                iconSize = 16.dp,
-                selected = selected
-            )
+            Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
@@ -1809,14 +1587,20 @@ private fun AppProfileCard(onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            AetherIconTile(
-                icon = Icons.Outlined.Apps,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f),
-                size = 44.dp,
-                iconSize = 24.dp
-            )
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Outlined.Apps,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Column(
                 Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -1824,7 +1608,7 @@ private fun AppProfileCard(onClick: () -> Unit) {
                 Text(
                     text = strings.appProfileCardTitle,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1866,7 +1650,7 @@ private fun DropdownAction(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.ExtraBold
                 )
             },
             text = {
@@ -1961,15 +1745,20 @@ private fun ModernDropdownItem(
                 overflow = TextOverflow.Ellipsis
             )
             if (selected) {
-                AetherIconTile(
-                    icon = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    size = 28.dp,
-                    iconSize = 16.dp,
-                    selected = true
-                )
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
     }
@@ -2026,7 +1815,7 @@ private fun ToggleOption(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                AetherSwitch(checked = checked, onCheckedChange = { onClick() })
+                Switch(checked = checked, onCheckedChange = { onClick() })
             }
         }
     }
@@ -2051,13 +1840,15 @@ private fun CompactFeatureBlock(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            AetherIconTile(
-                icon = icon,
-                tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                size = 34.dp,
-                iconSize = 18.dp
-            )
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -2173,14 +1964,7 @@ private fun ThermalChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AetherIconTile(
-                icon = icon,
-                tint = fg,
-                containerColor = fg.copy(alpha = if (selected) 0.22f else 0.10f),
-                size = 30.dp,
-                iconSize = 16.dp,
-                selected = selected
-            )
+            Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
@@ -2349,7 +2133,6 @@ private fun activeProfileLabel(value: String): String {
         "performance" -> "Performance"
         "extreme" -> "Extreme"
         "battery", "powersave" -> "Battery"
-        "custom" -> "Custom"
         else -> "Balance"
     }
 }
@@ -2359,7 +2142,6 @@ private fun activeProfileIcon(value: String): ImageVector {
         "performance" -> Icons.Outlined.Bolt
         "extreme" -> Icons.Outlined.Speed
         "battery", "powersave" -> Icons.Outlined.BatteryChargingFull
-        "custom" -> Icons.Outlined.Tune
         else -> Icons.Outlined.Balance
     }
 }

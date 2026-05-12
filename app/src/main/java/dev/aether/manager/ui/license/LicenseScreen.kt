@@ -32,7 +32,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.aether.manager.i18n.LocalStrings
-import dev.aether.manager.ui.components.AetherIconTile
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.license.LicensePrefs
 import dev.aether.manager.license.LicenseViewModel
@@ -548,13 +547,9 @@ private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
 @Composable
 private fun CleanBenefitRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        AetherIconTile(
-            icon = icon,
-            tint = MaterialTheme.colorScheme.primary,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            size = 30.dp,
-            iconSize = 15.dp
-        )
+        Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+            Icon(icon, null, modifier = Modifier.padding(7.dp).size(15.dp), tint = MaterialTheme.colorScheme.primary)
+        }
         Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
     }
 }
@@ -563,13 +558,7 @@ private fun CleanBenefitRow(icon: androidx.compose.ui.graphics.vector.ImageVecto
 private fun PaymentPreviewChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     Surface(modifier = modifier, shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            AetherIconTile(
-                icon = icon,
-                tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                size = 34.dp,
-                iconSize = 18.dp
-            )
+            Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
             Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
@@ -1158,13 +1147,11 @@ private fun PremiumSuccessDialog(licenseKey: String, expLabel: String, onDismiss
                 Box(contentAlignment = Alignment.Center) {
                     Surface(shape = CircleShape, color = green.copy(alpha = 0.10f), modifier = Modifier.size(96.dp)) {}
                     Surface(shape = CircleShape, color = green.copy(alpha = 0.16f), modifier = Modifier.size(76.dp)) {}
-                    AetherIconTile(
-                        icon = Icons.Outlined.Check,
-                        tint = green,
-                        containerColor = green,
-                        size = 58.dp,
-                        iconSize = 32.dp
-                    )
+                    Surface(shape = CircleShape, color = green, modifier = Modifier.size(58.dp)) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                        }
+                    }
                 }
 
                 AnimatedVisibility(visible = showContent, enter = fadeIn(tween(220)) + slideInVertically { it / 5 }) {

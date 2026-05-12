@@ -23,37 +23,36 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import dev.aether.manager.ui.LocalAetherThemeStyle
 
 // ── M3 Snackbar Toast (bottom-center) ────────────────────────────────────────
 
-enum class AetherToastType { LOADING, SUCCESS, ERROR, INFO }
+enum class IosToastType { LOADING, SUCCESS, ERROR, INFO }
 
-data class AetherToastData(
+data class IosToastData(
     val message: String,
-    val type: AetherToastType = AetherToastType.SUCCESS,
+    val type: IosToastType = IosToastType.SUCCESS,
 )
 
 @Composable
-fun rememberAetherToastState(): AetherToastState = remember { AetherToastState() }
+fun rememberIosToastState(): IosToastState = remember { IosToastState() }
 
-class AetherToastState {
-    var current by mutableStateOf<AetherToastData?>(null)
+class IosToastState {
+    var current by mutableStateOf<IosToastData?>(null)
         private set
     var visible by mutableStateOf(false)
         private set
 
     fun showLoading(message: String) {
-        current = AetherToastData(message, AetherToastType.LOADING)
+        current = IosToastData(message, IosToastType.LOADING)
         visible = true
     }
 
-    fun resolve(message: String, type: AetherToastType = AetherToastType.SUCCESS) {
-        current = AetherToastData(message, type)
+    fun resolve(message: String, type: IosToastType = IosToastType.SUCCESS) {
+        current = IosToastData(message, type)
     }
 
-    fun show(message: String, type: AetherToastType = AetherToastType.SUCCESS) {
-        current = AetherToastData(message, type)
+    fun show(message: String, type: IosToastType = IosToastType.SUCCESS) {
+        current = IosToastData(message, type)
         visible = true
     }
 
@@ -68,13 +67,13 @@ class AetherToastState {
 }
 
 @Composable
-fun AetherToastHost(state: AetherToastState) {
+fun IosToastHost(state: IosToastState) {
     val data    = state.current
     val visible = state.visible
 
     // Auto-dismiss after result shown (non-LOADING)
     LaunchedEffect(data) {
-        if (data != null && data.type != AetherToastType.LOADING) {
+        if (data != null && data.type != IosToastType.LOADING) {
             delay(2400)
             state.dismiss()
             delay(400)
@@ -85,7 +84,7 @@ fun AetherToastHost(state: AetherToastState) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(data, visible) {
-        if (visible && data != null && data.type != AetherToastType.LOADING) {
+        if (visible && data != null && data.type != IosToastType.LOADING) {
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(
                 message  = data.message,
@@ -107,15 +106,15 @@ fun AetherToastHost(state: AetherToastState) {
                 .padding(bottom = 80.dp), // di atas bottom nav bar
             snackbar = { snackData ->
                 val accentColor = when (data?.type) {
-                    AetherToastType.SUCCESS -> Color(0xFF34C759)
-                    AetherToastType.ERROR   -> Color(0xFFFF3B30)
-                    AetherToastType.INFO    -> Color(0xFF007AFF)
+                    IosToastType.SUCCESS -> Color(0xFF34C759)
+                    IosToastType.ERROR   -> Color(0xFFFF3B30)
+                    IosToastType.INFO    -> Color(0xFF007AFF)
                     else                 -> MaterialTheme.colorScheme.primary
                 }
                 val icon = when (data?.type) {
-                    AetherToastType.SUCCESS -> Icons.Filled.CheckCircle
-                    AetherToastType.ERROR   -> Icons.Filled.Error
-                    AetherToastType.INFO    -> Icons.Filled.Info
+                    IosToastType.SUCCESS -> Icons.Filled.CheckCircle
+                    IosToastType.ERROR   -> Icons.Filled.Error
+                    IosToastType.INFO    -> Icons.Filled.Info
                     else                 -> null
                 }
                 Snackbar(
@@ -177,14 +176,12 @@ fun CardItemRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        AetherIconTile(
-            icon = icon,
-            contentDescription = null,
-            tint = iconTint,
-            containerColor = iconContainerColor,
-            size = 44.dp,
-            iconSize = 22.dp
-        )
+        Box(
+            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(iconContainerColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 16.sp)
@@ -203,17 +200,10 @@ fun ItemDivider() {
 }
 
 @Composable
-fun AetherSwitch(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
+fun AetherSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
-        modifier = modifier,
-        enabled = enabled,
         colors = SwitchDefaults.colors(
             checkedTrackColor = MaterialTheme.colorScheme.primary,
             checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
@@ -225,7 +215,7 @@ fun AetherSwitch(
 
 @Composable
 fun StatCard(value: String, label: String, modifier: Modifier = Modifier) {
-    AetherGlassSurface(
+    Surface(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f),
@@ -309,14 +299,10 @@ fun ProfileChip(
         tonalElevation = 0.dp
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AetherIconTile(
-                icon = icon,
-                contentDescription = null,
-                tint = accentColor,
-                containerColor = accentColor.copy(alpha = 0.18f),
-                size = 40.dp,
-                iconSize = 22.dp
-            )
+            Box(
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(accentColor.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) { Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(22.dp)) }
             Text(label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
             Text(desc, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
             if (active) {
@@ -350,14 +336,10 @@ fun InfoClickCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            AetherIconTile(
-                icon = icon,
-                contentDescription = null,
-                tint = iconTint,
-                containerColor = iconContainerColor,
-                size = 44.dp,
-                iconSize = 22.dp
-            )
+            Box(
+                Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(iconContainerColor),
+                contentAlignment = Alignment.Center
+            ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(22.dp)) }
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 17.sp)

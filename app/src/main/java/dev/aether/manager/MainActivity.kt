@@ -59,12 +59,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import dev.aether.manager.license.LicenseManager
 import dev.aether.manager.notification.LicenseNotificationChecker
 import dev.aether.manager.ui.AetherTheme
-import dev.aether.manager.ui.LocalAetherThemeStyle
 import dev.aether.manager.ui.appprofile.AppProfileScreen
 import dev.aether.manager.ui.components.RebootBottomSheet
-import dev.aether.manager.ui.components.AetherIconTile
-import dev.aether.manager.ui.components.AetherSmallIcon
-import dev.aether.manager.ui.components.AetherGlassSurface
 import dev.aether.manager.ui.home.HomeScreen
 import dev.aether.manager.ui.settings.SettingsScreen
 import dev.aether.manager.ui.tweak.TweakScreen
@@ -315,68 +311,13 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Aether Manager",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                actions = {
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings"
-                        )
-                    }
-                    IconButton(onClick = { showReboot = true }) {
-                        Icon(
-                            imageVector = Icons.Outlined.PowerSettingsNew,
-                            contentDescription = "Power"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
-            )
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                tonalElevation = 3.dp
-            ) {
-                navItems.forEach { item ->
-                    val selected = currentScreen == item.screen
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { currentScreen = item.screen },
-                        icon = {
-                            Icon(
-                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                contentDescription = item.label
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = item.label,
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1
-                            )
-                        }
-                    )
-                }
-            }
-        }
+        contentWindowInsets = WindowInsets.systemBars
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
+                .nestedScroll(scrollAwareNavConnection)
         ) {
             AnimatedContent(
                 targetState = currentScreen,
@@ -393,6 +334,16 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
                     Screen.APPS -> AppProfileScreen(apVm)
                 }
             }
+
+            FloatingBottomCluster(
+                navItems = navItems,
+                currentScreen = currentScreen,
+                visible = bottomNavVisible,
+                onScreenChange = { currentScreen = it },
+                onSettingsClick = { showSettings = true },
+                onPowerClick = { showReboot = true },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
     if (showReboot) {
@@ -467,13 +418,12 @@ private fun FloatingUtilityBar(
     onPowerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val themeStyle = LocalAetherThemeStyle.current
     // Match the utility bar elevation with the main bottom navigation bar to avoid
     // inconsistent shadows when sliding between tabs.
-    AetherGlassSurface(
-        shape = RoundedCornerShape(themeStyle.pillCorner),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = themeStyle.navAlpha),
-        shadowElevation = if (themeStyle.cardElevation == 0.dp) 0.dp else 10.dp,
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        shadowElevation = 8.dp,
         tonalElevation = 4.dp,
         modifier = modifier
     ) {
@@ -489,7 +439,7 @@ private fun FloatingUtilityBar(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FloatingBottomBar — hold-to-expand + drag-to-switch capsule
+// FloatingBottomBar — iOS 26-style hold-to-expand + drag-to-switch capsule
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun FloatingBottomBar(
@@ -532,12 +482,10 @@ private fun FloatingBottomBar(
     // ── Drag threshold per item (px → will be set after layout) ──────────────
     val itemWidthPx = remember { mutableStateOf(0f) }
 
-    val themeStyle = LocalAetherThemeStyle.current
-
-    AetherGlassSurface(
-        shape = RoundedCornerShape(themeStyle.pillCorner),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = themeStyle.navAlpha),
-        shadowElevation = if (themeStyle.cardElevation == 0.dp) 0.dp else 10.dp,
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        shadowElevation = 8.dp,
         tonalElevation = 4.dp,
         modifier = modifier
             .scale(scaleX = 1f, scaleY = capsuleScale)
@@ -588,7 +536,7 @@ private fun FloatingBottomBar(
                     animationSpec = tween(200),
                     label = "item_tint_$idx"
                 )
-                val bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha * 0.86f)
+                val bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha)
 
                 Box(
                     modifier = Modifier
@@ -597,7 +545,7 @@ private fun FloatingBottomBar(
                         .onGloballyPositioned { coords ->
                             itemWidthPx.value = coords.size.width.toFloat().coerceAtLeast(1f)
                         }
-                        .clip(RoundedCornerShape(LocalAetherThemeStyle.current.pillCorner))
+                        .clip(RoundedCornerShape(50))
                         .background(bgColor)
                         // Short tap → navigate
                         .clickable(
@@ -653,12 +601,11 @@ private fun FloatingBottomBar(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
-                        AetherSmallIcon(
-                            icon = if (isHighlighted || (!expanded && isSelected)) item.selectedIcon else item.unselectedIcon,
+                        Icon(
+                            imageVector = if (isHighlighted || (!expanded && isSelected)) item.selectedIcon else item.unselectedIcon,
                             contentDescription = item.label,
                             tint = iconTint,
-                            size = 30.dp,
-                            iconSize = 20.dp
+                            modifier = Modifier.size(22.dp)
                         )
                         // Label — slides in when expanded
                         AnimatedVisibility(
@@ -699,21 +646,14 @@ private fun FloatingActionIcon(icon: ImageVector, onClick: () -> Unit) {
         modifier = Modifier
             .size(48.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(LocalAetherThemeStyle.current.pillCorner))
+            .clip(RoundedCornerShape(50))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
             ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        AetherIconTile(
-            icon = icon,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            size = 38.dp,
-            iconSize = 21.dp,
-            selected = false
-        )
+        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(23.dp))
     }
 }
 
@@ -727,7 +667,7 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
         modifier = Modifier
             .size(48.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(LocalAetherThemeStyle.current.pillCorner))
+            .clip(RoundedCornerShape(50))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable(
                 interactionSource = interactionSource,
@@ -735,13 +675,6 @@ private fun FloatingPowerIcon(onClick: () -> Unit) {
             ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        AetherIconTile(
-            icon = Icons.Outlined.PowerSettingsNew,
-            tint = MaterialTheme.colorScheme.primary,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            size = 40.dp,
-            iconSize = 22.dp,
-            selected = true
-        )
+        Icon(Icons.Outlined.PowerSettingsNew, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
     }
 }

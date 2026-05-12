@@ -44,7 +44,6 @@ import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -71,9 +70,6 @@ import dev.aether.manager.data.MonitorState
 import dev.aether.manager.data.UiState
 import dev.aether.manager.util.DeviceInfo
 import dev.aether.manager.util.SocType
-import dev.aether.manager.ui.components.AetherIconTile
-import dev.aether.manager.ui.LocalAetherThemeStyle
-import dev.aether.manager.ui.components.AetherGlassSurface
 import kotlin.math.PI
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
@@ -88,11 +84,9 @@ fun HomeScreen(vm: MainViewModel) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
-            .padding(top = 12.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(top = 10.dp, bottom = 150.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        HomeHeader(onRefresh = { vm.refresh() })
-
         AnimatedContent(
             targetState = deviceState,
             transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(120)) },
@@ -106,35 +100,6 @@ fun HomeScreen(vm: MainViewModel) {
                     info = state.data
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun HomeHeader(onRefresh: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = "Overview",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Monitor perangkat dan status sistem",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        IconButton(onClick = onRefresh) {
-            Icon(
-                imageVector = Icons.Outlined.Refresh,
-                contentDescription = "Refresh"
-            )
         }
     }
 }
@@ -209,11 +174,11 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
         else -> 30.sp
     }
 
-    TappableCard(modifier = modifier.height(150.dp)) {
+    TappableCard(modifier = modifier.height(178.dp)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
@@ -228,7 +193,7 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
                 Text(
                     text = "CPU",
                     fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
@@ -241,7 +206,7 @@ private fun CpuInfoCard(state: MonitorState, info: DeviceInfo?, modifier: Modifi
                     text = cpuFreq,
                     fontSize = freqSize,
                     lineHeight = 30.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     softWrap = false,
@@ -262,10 +227,10 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
         TempItem("Baterai", state.batTemp, Icons.Outlined.BatteryFull)
     )
     val pager = rememberPagerState(pageCount = { temps.size })
-    val accent = MaterialTheme.colorScheme.tertiary
+    val accent = Color(0xFFFF9CAF)
 
-    TappableCard(modifier = modifier.height(150.dp)) {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    TappableCard(modifier = modifier.height(178.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Start,
@@ -273,7 +238,7 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconBadge(Icons.Outlined.Thermostat, accent)
-                    Text("Suhu", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Suhu", fontSize = 17.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -288,7 +253,7 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
                             if (item.value > 0f) "%.0f°C".format(item.value) else "—°C",
                             fontSize = 34.sp,
                             lineHeight = 36.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Black,
                             color = accent
                         )
                         Text(item.label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -316,7 +281,7 @@ private fun TemperaturePagerCard(state: MonitorState, modifier: Modifier = Modif
 
 @Composable
 private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
-    val accent = MaterialTheme.colorScheme.tertiary
+    val accent = Color(0xFFFF9CAF)
     val gpuFullName = cleanGpuName(
         state.gpuName.ifBlank {
             when (info?.soc) {
@@ -331,13 +296,13 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
     val gpuShortName = shortGpuName(gpuFullName)
 
     TappableCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("GPU", fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text("GPU", fontSize = 22.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     SmallToggleIcon(Icons.Outlined.ViewAgenda, true)
                     SmallToggleIcon(Icons.Outlined.Widgets, false)
@@ -346,7 +311,7 @@ private fun GpuInfoCard(state: MonitorState, info: DeviceInfo?) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("FREKUENSI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(normalizeGpuFreq(state.gpuFreq), fontSize = 30.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(normalizeGpuFreq(state.gpuFreq), fontSize = 32.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("GPU Type", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
@@ -377,7 +342,7 @@ private fun MemoryInfoCard(state: MonitorState) {
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconBadge(Icons.Outlined.Dns, MaterialTheme.colorScheme.primary)
-                    Text("Memori", fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Memori", fontSize = 21.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -392,7 +357,7 @@ private fun MemoryInfoCard(state: MonitorState) {
                 "%.1f GB".format(state.storageUsedGb),
                 advertisedStorageLabel(state.storageTotalGb),
                 ratio(state.storageUsedGb, advertisedStorageGb(state.storageTotalGb)),
-                MaterialTheme.colorScheme.tertiary
+                Color(0xFFFF9CAF)
             )
         }
     }
@@ -409,36 +374,29 @@ private fun TappableCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? =
         animationSpec = tween(160, easing = FastOutSlowInEasing),
         label = "card_press_scale"
     )
-    val style = LocalAetherThemeStyle.current
-    val clickableModifier = if (onClick != null) {
-        Modifier.clickable(
-            interactionSource = interactionSource,
-            indication = null,
-            onClick = onClick
-        )
-    } else Modifier
 
-    AetherGlassSurface(
-        shape = RoundedCornerShape(style.cardCorner),
+    Surface(
+        shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)),
+        tonalElevation = if (pressed) 4.dp else 1.dp,
+        shadowElevation = if (pressed) 6.dp else 0.dp,
         modifier = modifier
             .scale(scale)
-            .then(clickableModifier)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick?.invoke() }
     ) { content() }
 }
 
 @Composable
 private fun IconBadge(icon: ImageVector, color: Color) {
-    AetherIconTile(
-        icon = icon,
-        tint = color,
-        containerColor = color.copy(alpha = 0.13f),
-        size = 42.dp,
-        iconSize = 22.dp
-    )
+    Box(
+        modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.13f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(22.dp))
+    }
 }
 
 @Composable
@@ -449,7 +407,7 @@ private fun PillText(text: String, color: Color = MaterialTheme.colorScheme.prim
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             fontSize = 12.sp,
             lineHeight = 12.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Black,
             color = color,
             maxLines = 1
         )
@@ -459,37 +417,29 @@ private fun PillText(text: String, color: Color = MaterialTheme.colorScheme.prim
 
 @Composable
 private fun SmallToggleIcon(icon: ImageVector, active: Boolean) {
-    val color = if (active) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-    AetherIconTile(
-        icon = icon,
-        tint = color,
-        containerColor = color.copy(alpha = if (active) 0.16f else 0.08f),
-        size = 36.dp,
-        iconSize = 18.dp,
-        selected = active
-    )
+    val color = if (active) Color(0xFFFF9CAF) else MaterialTheme.colorScheme.onSurfaceVariant
+    Box(
+        modifier = Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(color.copy(alpha = if (active) 0.16f else 0.08f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(18.dp))
+    }
 }
 
 @Composable
 private fun InfoTile(icon: ImageVector, value: String, label: String, color: Color, modifier: Modifier = Modifier) {
-    AetherGlassSurface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = modifier) {
+    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = modifier) {
         Row(
             modifier = Modifier.padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AetherIconTile(
-                icon = icon,
-                tint = color,
-                containerColor = color.copy(alpha = 0.12f),
-                size = 36.dp,
-                iconSize = 20.dp
-            )
+            Icon(icon, null, tint = color, modifier = Modifier.size(26.dp))
             Column {
                 Text(
                     value,
                     fontSize = if (value.length > 8) 15.sp else 18.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -512,20 +462,19 @@ private fun MemoryMetricRow(icon: ImageVector, label: String, used: String, tota
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AetherIconTile(
-            icon = icon,
-            tint = color,
-            containerColor = color.copy(alpha = 0.12f),
-            size = 38.dp,
-            iconSize = 20.dp
-        )
+        Box(
+            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+        }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     label,
                     modifier = Modifier.weight(1f),
                     fontSize = if (label.length > 12) 13.sp else 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -656,18 +605,16 @@ fun TabSectionTitle(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            AetherIconTile(
-                icon = icon,
+            Icon(
+                imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                size = 28.dp,
-                iconSize = 15.dp
+                modifier = Modifier.size(16.dp)
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.onSurface,
                 letterSpacing = 0.1.sp
             )

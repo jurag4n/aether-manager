@@ -40,9 +40,6 @@ object NativeAether {
 
     external fun nativeCheckAll(ctx: Context): Boolean
 
-    /** Reason-based native security result. Returns "ok" when no native issue is found. */
-    external fun nativeRuntimeReason(ctx: Context): String
-
     // ── Data / URL getters (decoded from obfuscated constants at runtime) ────
     external fun nativeGetGameId(): String
     external fun nativeGetGithubApi(): String

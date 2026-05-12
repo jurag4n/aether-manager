@@ -1,9 +1,6 @@
 package dev.aether.manager.ui.settings
 
-import android.content.Intent
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -26,7 +23,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
@@ -40,9 +36,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,10 +47,6 @@ import dev.aether.manager.i18n.LocalLanguage
 import dev.aether.manager.i18n.LocalSetLanguage
 import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.license.LicenseManager
-import dev.aether.manager.ui.LocalAetherThemeStyle
-import dev.aether.manager.ui.components.AetherIconTile
-import dev.aether.manager.ui.components.AetherGlassSurface
-import dev.aether.manager.ui.components.AetherSwitch
 import dev.aether.manager.util.BackupManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,13 +74,11 @@ fun SettingsScreen(
     var showReset by remember { mutableStateOf(false) }
     var showResetProfiles by remember { mutableStateOf(false) }
     var showResetMonitor by remember { mutableStateOf(false) }
-    var showLogDialog by remember { mutableStateOf(false) }
     var restoreTarget by remember { mutableStateOf<String?>(null) }
     var processingFile by remember { mutableStateOf<String?>(null) }
 
     var appearanceExpanded by remember(Unit) { mutableStateOf(false) }
     var generalExpanded by remember(Unit) { mutableStateOf(false) }
-    var safetyExpanded by remember(Unit) { mutableStateOf(false) }
     var backupExpanded by remember(Unit) { mutableStateOf(false) }
 
     val isLicensed = remember { LicenseManager.isActive(ctx) }
@@ -102,23 +90,6 @@ fun SettingsScreen(
     val autoBackup by vm.autoBackup.collectAsState()
     val applyOnBoot by vm.applyOnBoot.collectAsState()
     val notifications by vm.notifications.collectAsState()
-    val safeModeEnabled by vm.safeModeEnabled.collectAsState()
-    val logText by vm.logText.collectAsState()
-    val clipboard = LocalClipboardManager.current
-
-    val importSettingsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            runCatching {
-                ctx.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            }
-            vm.importSettingsFromUri(uri)
-        }
-    }
 
     val currentLanguage = LocalLanguage.current
     val setLanguage = LocalSetLanguage.current
@@ -147,8 +118,7 @@ fun SettingsScreen(
         vm.clearBackupEvent()
     }
 
-    LaunchedEffect(Unit) { vm.loadBackups(); vm.refreshLogs() }
-    LaunchedEffect(showLogDialog) { if (showLogDialog) vm.refreshLogs() }
+    LaunchedEffect(Unit) { vm.loadBackups() }
     LaunchedEffect(working) { if (!working) processingFile = null }
 
     Scaffold(
@@ -256,49 +226,6 @@ fun SettingsScreen(
             }
 
             SettingsSectionCard(
-                icon = Icons.Outlined.Security,
-                title = "Safety & Logs",
-                subtitle = "Safe Mode, export/import, dan log apply",
-                expanded = safetyExpanded,
-                onToggle = { safetyExpanded = !safetyExpanded }
-            ) {
-                SettingsRowSwitch(
-                    icon = Icons.Outlined.HealthAndSafety,
-                    title = "Safe Mode",
-                    subtitle = if (safeModeEnabled) "Aktif: tweak agresif dimatikan dan profile direset ke Balance" else "Mati: tweak bisa dipakai normal",
-                    checked = safeModeEnabled,
-                    onCheckedChange = { vm.setSafeModeEnabled(it) }
-                )
-                SettingsDivider()
-                SettingsActionRow(
-                    icon = Icons.Outlined.Article,
-                    title = "Log Center",
-                    subtitle = "Lihat hasil apply, verify, boot, dan error",
-                    iconTint = MaterialTheme.colorScheme.tertiary,
-                    iconBg = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.58f),
-                    onClick = { showLogDialog = true; vm.refreshLogs() }
-                )
-                SettingsDivider()
-                SettingsActionRow(
-                    icon = Icons.Outlined.FileUpload,
-                    title = "Export Settings",
-                    subtitle = "Simpan ke Downloads/Aether dengan MediaStore",
-                    iconTint = MaterialTheme.colorScheme.primary,
-                    iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
-                    onClick = { vm.exportSettingsToSdcard() }
-                )
-                SettingsDivider()
-                SettingsActionRow(
-                    icon = Icons.Outlined.FileDownload,
-                    title = "Import Settings",
-                    subtitle = "Pilih file .conf dari file manager",
-                    iconTint = MaterialTheme.colorScheme.primary,
-                    iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
-                    onClick = { importSettingsLauncher.launch(arrayOf("text/*", "application/octet-stream", "*/*")) }
-                )
-            }
-
-            SettingsSectionCard(
                 icon = Icons.Outlined.Archive,
                 title = "Backup & Reset",
                 subtitle = if (backupList.isEmpty()) s.settingsNoBackup else "${backupList.size} backup tersimpan",
@@ -402,39 +329,6 @@ fun SettingsScreen(
         )
     }
 
-    if (showLogDialog) {
-        AlertDialog(
-            onDismissRequest = { showLogDialog = false },
-            icon = { Icon(Icons.Outlined.Article, null, tint = MaterialTheme.colorScheme.primary) },
-            title = { Text("Log Center") },
-            text = {
-                SelectionContainer {
-                    Text(
-                        text = logText.takeLast(12000),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .heightIn(max = 360.dp)
-                            .verticalScroll(rememberScrollState())
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    clipboard.setText(AnnotatedString(logText))
-                    android.widget.Toast.makeText(ctx, "Log disalin", android.widget.Toast.LENGTH_SHORT).show()
-                }) { Text("Copy") }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = { vm.exportLogs() }) { Text("Export") }
-                    TextButton(onClick = { vm.clearLogs() }) { Text("Clear") }
-                    TextButton(onClick = { showLogDialog = false }) { Text("Close") }
-                }
-            }
-        )
-    }
-
     restoreTarget?.let { fname ->
         AlertDialog(
             onDismissRequest = { restoreTarget = null },
@@ -498,9 +392,7 @@ fun SettingsScreen(
             onDismiss = { showLangSheet = false }
         )
     }
-
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -605,12 +497,11 @@ private fun SettingsLicenseCard(
     val border = if (isLicensed) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
                  else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.36f)
 
-    AetherGlassSurface(
+    Surface(
         shape = RoundedCornerShape(26.dp),
         color = bg,
         border = BorderStroke(1.dp, border),
         tonalElevation = 1.dp,
-        shadowElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
@@ -709,11 +600,10 @@ private fun SettingsSectionCard(
         label = "settings_detail_offset"
     )
 
-    AetherGlassSurface(
+    Surface(
         shape = RoundedCornerShape(corner),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = if (expanded) 3.dp else 1.dp,
-        shadowElevation = if (expanded) 3.dp else 1.dp,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (expanded) 0.32f else 0.22f)),
         modifier = Modifier
             .fillMaxWidth()
@@ -855,7 +745,7 @@ private fun SettingsRowSwitch(
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        AetherSwitch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -923,25 +813,21 @@ private fun SettingsActionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
-        if (isLoading) {
-            Box(
-                modifier = Modifier.size(40.dp),
-                contentAlignment = Alignment.Center
-            ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(iconBg, RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
                     color = iconTint
                 )
+            } else {
+                Icon(icon, null, tint = iconTint, modifier = Modifier.size(19.dp))
             }
-        } else {
-            AetherIconTile(
-                icon = icon,
-                tint = iconTint,
-                containerColor = iconBg,
-                size = 40.dp,
-                iconSize = 19.dp
-            )
         }
         Column(
             modifier = Modifier.weight(1f),
@@ -1009,25 +895,21 @@ private fun SettingsBackupItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (isProcessing) {
-            Box(
-                modifier = Modifier.size(42.dp),
-                contentAlignment = Alignment.Center
-            ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isProcessing) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.primary
                 )
+            } else {
+                Icon(Icons.Outlined.Archive, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
             }
-        } else {
-            AetherIconTile(
-                icon = Icons.Outlined.Archive,
-                tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                size = 42.dp,
-                iconSize = 19.dp
-            )
         }
         Column(
             modifier = Modifier.weight(1f),
@@ -1051,13 +933,14 @@ private fun IconBubble(
     tint      : Color,
     container : Color,
 ) {
-    AetherIconTile(
-        icon = icon,
-        tint = tint,
-        containerColor = container,
-        size = 38.dp,
-        iconSize = 18.dp
-    )
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .background(container, RoundedCornerShape(13.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
+    }
 }
 
 @Composable

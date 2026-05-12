@@ -34,8 +34,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import dev.aether.manager.data.*
 import dev.aether.manager.i18n.LocalStrings
-import dev.aether.manager.ui.components.AetherSwitch
-import dev.aether.manager.ui.components.AetherIconTile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -578,10 +576,14 @@ private fun AppProfileStatusCard(
                 )
             }
 
-            AetherSwitch(
+            Switch(
                 checked = enabled,
                 onCheckedChange = { onToggle() },
                 modifier = Modifier.scale(0.86f),
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                )
             )
         }
     }
@@ -942,10 +944,14 @@ private fun ProfileSwitchRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            AetherSwitch(
+            Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 modifier = Modifier.scale(0.82f),
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                )
             )
         }
     }
@@ -1233,9 +1239,13 @@ fun AppProfileEditor(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    AetherSwitch(
-                        checked = draft.enabled,
+                    Switch(
+                        checked         = draft.enabled,
                         onCheckedChange = { draft = draft.copy(enabled = it) },
+                        colors          = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        )
                     )
                     Text(
                         if (draft.enabled) s.appProfileEditorActive else s.appProfileEditorInactive,
@@ -1317,13 +1327,7 @@ private fun EditorSection(
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AetherIconTile(
-                icon = icon,
-                tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                size = 28.dp,
-                iconSize = 15.dp
-            )
+            Icon(icon, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
             Text(
                 title,
                 style      = MaterialTheme.typography.labelLarge,
@@ -1419,14 +1423,7 @@ private fun GovernorChip(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            AetherIconTile(
-                icon = icon,
-                tint = fg,
-                containerColor = fg.copy(alpha = if (selected) 0.22f else 0.10f),
-                size = 30.dp,
-                iconSize = 16.dp,
-                selected = selected
-            )
+            Icon(icon, null, modifier = Modifier.size(18.dp), tint = fg)
             Text(
                 label,
                 style      = MaterialTheme.typography.labelSmall,
@@ -1563,14 +1560,7 @@ private fun ExtraTweakRow(
             else MaterialTheme.colorScheme.onSurfaceVariant,
             label = "extra_icon"
         )
-        AetherIconTile(
-            icon = icon,
-            tint = iconTint,
-            containerColor = iconTint.copy(alpha = if (checked && enabled) 0.16f else 0.08f),
-            size = 32.dp,
-            iconSize = 16.dp,
-            selected = checked && enabled
-        )
+        Icon(icon, null, modifier = Modifier.size(18.dp), tint = iconTint)
 
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
@@ -1581,11 +1571,15 @@ private fun ExtraTweakRow(
             )
         }
 
-        AetherSwitch(
-            checked = checked,
+        Switch(
+            checked         = checked,
             onCheckedChange = { if (enabled) onChange(it) },
-            enabled = enabled,
-            modifier = Modifier.scale(0.8f),
+            enabled         = enabled,
+            modifier        = Modifier.scale(0.8f),
+            colors          = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary
+            )
         )
     }
 }

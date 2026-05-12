@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,8 +47,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import dev.aether.manager.ui.AetherTheme
-import dev.aether.manager.ui.components.AetherIconTile
-import dev.aether.manager.util.SettingsPrefs
 import kotlin.system.exitProcess
 
 class SecurityBlockActivity : ComponentActivity() {
@@ -62,12 +59,7 @@ class SecurityBlockActivity : ComponentActivity() {
         val rawReason = intent.getStringExtra(EXTRA_REASON).orEmpty().ifBlank { "security_violation" }
 
         setContent {
-            val darkOverride = SettingsPrefs.isDarkModeOverride(this)
-            val darkTheme = if (darkOverride) SettingsPrefs.getDarkMode(this) else isSystemInDarkTheme()
-            AetherTheme(
-                darkTheme = darkTheme,
-                dynamicColor = SettingsPrefs.getDynamicColor(this)
-            ) {
+            AetherTheme {
                 SecurityBlockScreen(
                     rawReason = rawReason,
                     onClose = ::closeApp
@@ -134,14 +126,20 @@ private fun SecurityBlockScreen(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AetherIconTile(
-                        icon = Icons.Rounded.GppBad,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        size = 76.dp,
-                        iconSize = 38.dp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(76.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.errorContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.GppBad,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(38.dp)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(18.dp))
 
@@ -295,7 +293,7 @@ private fun securityReasonUi(rawReason: String): SecurityReasonUi {
             title = "Terdeteksi Lucky Patcher / LSPatch",
             description = "Ada indikasi patcher seperti Lucky Patcher, Chelpus, LSPatch, atau tool modifikasi APK yang mengubah keamanan aplikasi."
         )
-        "frida_detected", "frida_or_injector_detected", "frida_maps_detected", "frida_fd_detected", "frida_tmp_detected" -> SecurityReasonUi(
+        "frida_detected", "frida_or_injector_detected" -> SecurityReasonUi(
             title = "Terdeteksi Frida / Injector",
             description = "Aplikasi menemukan artefak Frida, gadget, atau injector aktif di proses. LSPosed, Zygisk, dan Riru tidak diblokir otomatis."
         )
@@ -315,7 +313,7 @@ private fun securityReasonUi(rawReason: String): SecurityReasonUi {
             title = "Debugger terdeteksi",
             description = "Aplikasi mendeteksi proses debugging aktif yang dapat memengaruhi keamanan runtime."
         )
-        "unity_tamper", "unity_ads_tamper", "elf_tamper", "apk_zip_tamper", "dex_tamper" -> SecurityReasonUi(
+        "unity_tamper", "elf_tamper" -> SecurityReasonUi(
             title = "Integritas library terganggu",
             description = "Ada indikasi perubahan pada komponen native atau library penting aplikasi."
         )

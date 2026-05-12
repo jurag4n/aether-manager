@@ -22,7 +22,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,7 +62,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.aether.manager.i18n.ProvideStrings
 import dev.aether.manager.ui.AetherTheme
-import dev.aether.manager.util.SettingsPrefs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -102,12 +100,7 @@ class SplashActivity : ComponentActivity() {
         )
 
         setContent {
-            val darkOverride = SettingsPrefs.isDarkModeOverride(this)
-            val darkTheme = if (darkOverride) SettingsPrefs.getDarkMode(this) else isSystemInDarkTheme()
-            AetherTheme(
-                darkTheme = darkTheme,
-                dynamicColor = SettingsPrefs.getDynamicColor(this)
-            ) {
+            AetherTheme {
                 ProvideStrings {
                     SplashScreen {
                         val next = if (setupDone) MainActivity::class.java else SetupActivity::class.java

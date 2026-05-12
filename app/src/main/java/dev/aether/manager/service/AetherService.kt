@@ -168,7 +168,6 @@ class BootReceiver : BroadcastReceiver() {
                 RootEngine.toggleSafeMode(true)
                 // Reset counter supaya tidak terus-menerus trigger
                 RootEngine.writeFile(RAPID_BOOT_COUNT, "0")
-                RootEngine.appendRootLog("boot", "safe_mode_enabled rapid_boot_count=$newRapidCnt")
                 return  // Jangan apply tweak di boot ini
             }
         } catch (_: Exception) { /* Tidak kritis, lanjut */ }
@@ -195,7 +194,6 @@ class BootReceiver : BroadcastReceiver() {
         try {
             // Cek safe mode
             if (RootEngine.fileExists(RootEngine.SAFE_MODE_FILE)) {
-                RootEngine.appendRootLog("boot", "skip safe_mode")
                 return
             }
 
@@ -204,16 +202,13 @@ class BootReceiver : BroadcastReceiver() {
                 return
             }
 
-            RootEngine.appendRootLog("boot", "apply start keys=${tweaks.size}")
             val result = TweakApplier.apply(tweaks)
-            RootEngine.appendRootLog("boot", "apply result success=${result.success} summary=${result.summary}")
 
             // Retry sekali kalau ada yang gagal — tunggu lebih lama agar
             // kernel/HAL sudah benar-benar stabil sebelum retry
             if (!result.success) {
                 delay(10_000)
-                val retry = TweakApplier.apply(tweaks)
-                RootEngine.appendRootLog("boot", "retry result success=${retry.success} summary=${retry.summary}")
+                TweakApplier.apply(tweaks)
             }
 
             // Restart app_monitor.sh jika script-nya ada (app profiles aktif)

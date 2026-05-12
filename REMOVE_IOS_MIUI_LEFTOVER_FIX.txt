@@ -1,3 +1,0 @@
-Fixed leftover CupertinoBridge.kt after removing iOS/MIUI themes.
-The file is now a harmless Material3-only stub to prevent old merged repositories from compiling against deleted AetherThemePreset.
-For a clean repo you may delete it completely, but keeping this stub is safe.

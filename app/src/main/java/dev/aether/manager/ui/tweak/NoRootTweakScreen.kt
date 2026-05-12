@@ -57,7 +57,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.aether.manager.ui.components.AetherSwitch
 import dev.aether.manager.data.MainViewModel
 import dev.aether.manager.shizuku.ShizukuShell
 import kotlinx.coroutines.delay
@@ -94,7 +93,7 @@ fun NoRootTweakScreen(vm: MainViewModel) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
-            .padding(top = 12.dp, bottom = 32.dp)
+            .padding(top = 10.dp, bottom = 150.dp)
             .navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -414,10 +413,11 @@ private fun NoRootToggleCard(
                 Text(title, fontWeight = FontWeight.Bold, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline)
                 Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            AetherSwitch(
+            Switch(
                 checked = checked,
                 onCheckedChange = { onChecked(it) },
                 enabled = enabled,
+                colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
             )
         }
     }

@@ -37,7 +37,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -112,8 +111,6 @@ import dev.aether.manager.i18n.AppStrings
 import dev.aether.manager.i18n.LocalStrings
 import dev.aether.manager.i18n.ProvideStrings
 import dev.aether.manager.ui.AetherTheme
-import dev.aether.manager.ui.components.AetherIconTile
-import dev.aether.manager.util.SettingsPrefs
 import dev.aether.manager.util.RootManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -136,12 +133,7 @@ class SetupActivity : ComponentActivity() {
             )
         )
         setContent {
-            val darkOverride = SettingsPrefs.isDarkModeOverride(this)
-            val darkTheme = if (darkOverride) SettingsPrefs.getDarkMode(this) else isSystemInDarkTheme()
-            AetherTheme(
-                darkTheme = darkTheme,
-                dynamicColor = SettingsPrefs.getDynamicColor(this)
-            ) {
+            AetherTheme {
                 ProvideStrings {
                     SetupScreen(
                         onDone = { rootWasGranted ->
@@ -335,14 +327,20 @@ private fun FeatureCard(item: FeatureItem, index: Int) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            AetherIconTile(
-                icon = item.icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.76f),
-                size = 50.dp,
-                iconSize = 25.dp
-            )
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.76f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(25.dp)
+                )
+            }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = item.title,
@@ -426,23 +424,28 @@ private fun PermissionCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            AnimatedContent(
-                targetState = state,
-                transitionSpec = {
-                    (scaleIn(tween(160, easing = FastOutSlowInEasing)) + fadeIn(tween(160))) togetherWith
-                        (scaleOut(tween(120, easing = FastOutSlowInEasing)) + fadeOut(tween(120)))
-                },
-                label = "permission_icon_${item.permissionType}"
-            ) { target ->
-                AetherIconTile(
-                    icon = if (target == PermState.GRANTED) Icons.Outlined.CheckCircle else item.icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    containerColor = accentColor.copy(alpha = 0.14f),
-                    size = 50.dp,
-                    iconSize = 25.dp,
-                    selected = state != PermState.IDLE
-                )
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(accentColor.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                AnimatedContent(
+                    targetState = state,
+                    transitionSpec = {
+                        (scaleIn(tween(160, easing = FastOutSlowInEasing)) + fadeIn(tween(160))) togetherWith
+                            (scaleOut(tween(120, easing = FastOutSlowInEasing)) + fadeOut(tween(120)))
+                    },
+                    label = "permission_icon_${item.permissionType}"
+                ) { target ->
+                    Icon(
+                        imageVector = if (target == PermState.GRANTED) Icons.Outlined.CheckCircle else item.icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
             }
 
             Column(
@@ -734,14 +737,20 @@ private fun DetailRow(icon: ImageVector, title: String, desc: String) {
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        AetherIconTile(
-            icon = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-            size = 38.dp,
-            iconSize = 20.dp
-        )
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = title,
