@@ -48,6 +48,7 @@ object LicenseManager {
     suspend fun activate(ctx: Context, key: String): ActivateResult =
         withContext(Dispatchers.IO) {
             try {
+                val cleanKey = key.trim()
                 val deviceId = getDeviceId(ctx)
                 val url  = URL(activateUrl())
                 val conn = (url.openConnection() as HttpURLConnection).apply {
@@ -59,7 +60,7 @@ object LicenseManager {
                 }
 
                 val body = JSONObject().apply {
-                    put("key",      key.trim().uppercase())
+                    put("key",      cleanKey)
                     put("deviceId", deviceId)
                 }.toString()
 
@@ -72,9 +73,9 @@ object LicenseManager {
 
                 if (code == 200) {
                     val expiresAt = json.optLong("expiresAt", -1L)
-                    LicensePrefs.save(ctx, key.trim().uppercase(), expiresAt)
+                    LicensePrefs.save(ctx, cleanKey, expiresAt)
                     ActivateResult.Success(
-                        licenseKey = key.trim().uppercase(),
+                        licenseKey = cleanKey,
                         message    = json.optString("message", "License berhasil diaktifkan!"),
                         expiresAt  = expiresAt
                     )

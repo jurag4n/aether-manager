@@ -13,7 +13,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -27,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,7 +57,6 @@ fun LicenseScreen(onBack: () -> Unit) {
     var showDeactivateDialog by remember { mutableStateOf(false) }
     var showBuySheet         by remember { mutableStateOf(false) }
     var buyerName            by remember { mutableStateOf("") }
-    var buyerPhone           by remember { mutableStateOf("") }
     var showInvoiceHistory   by remember { mutableStateOf(false) }
     var resumeInvoice        by remember { mutableStateOf<InvoicePrefs.Invoice?>(null) }
 
@@ -128,6 +125,8 @@ fun LicenseScreen(onBack: () -> Unit) {
                 PremiumActiveCard(expLabel = expLabel, daysLeft = daysLeft, currentKey = currentKey ?: "", ctx = ctx)
             }
 
+            DeviceIdCard(deviceId = deviceId, ctx = ctx)
+
             AnimatedVisibility(visible = payState is PaymentViewModel.UiState.Polling) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -190,7 +189,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                             Text(s.licenseHaveKeyTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         }
                         OutlinedTextField(
-                            value = keyInput, onValueChange = { keyInput = it.uppercase() },
+                            value = keyInput, onValueChange = { keyInput = it.trim().filter { ch -> ch.isLetterOrDigit() }.take(10) },
                             label = { Text(s.licenseKeyInputLabel) },
                             modifier = Modifier.fillMaxWidth(), singleLine = true,
                             shape = RoundedCornerShape(12.dp),
@@ -239,11 +238,13 @@ fun LicenseScreen(onBack: () -> Unit) {
                 s is PaymentViewModel.UiState.CreatingOrder ||
                 s is PaymentViewModel.UiState.Failure -> {
                     BuyFormContent(
-                        buyerName = buyerName, buyerPhone = buyerPhone,
-                        onNameChange = { buyerName = it }, onPhoneChange = { buyerPhone = it },
+                        buyerName = buyerName,
+                        deviceId = deviceId,
+                        ctx = ctx,
+                        onNameChange = { buyerName = it },
                         isLoading = s is PaymentViewModel.UiState.CreatingOrder,
                         error     = (s as? PaymentViewModel.UiState.Failure)?.message,
-                        onSubmit  = { payVm.createOrder(buyerName, buyerPhone) }
+                        onSubmit  = { payVm.createOrder(buyerName) }
                     )
                 }
                 s is PaymentViewModel.UiState.WaitingTransfer -> {
@@ -251,7 +252,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                         InvoicePrefs.add(ctx, InvoicePrefs.Invoice(
                             orderId        = s.orderId,
                             name           = buyerName,
-                            phone          = buyerPhone,
+                            deviceId       = s.deviceId,
                             nominal        = s.nominal,
                             createdAt      = System.currentTimeMillis(),
                             paymentMethods = s.paymentMethods,
@@ -259,9 +260,9 @@ fun LicenseScreen(onBack: () -> Unit) {
                         ))
                     }
                     TransferInstructionContent(
-                        state = s, ctx = ctx, buyerPhone = buyerPhone,
+                        state = s, ctx = ctx,
                         onConfirm = { selectedMethod ->
-                            sendPaymentNotificationSilent(ctx, buyerName, buyerPhone, s.orderId, listOfNotNull(selectedMethod))
+                            sendPaymentNotificationSilent(ctx, buyerName, s.deviceId, s.orderId, listOfNotNull(selectedMethod))
                             payVm.confirmAndPoll()
                             showBuySheet = false
                         },
@@ -282,11 +283,11 @@ fun LicenseScreen(onBack: () -> Unit) {
         ) {
             TransferInstructionContent(
                 state = PaymentViewModel.UiState.WaitingTransfer(
-                    orderId = inv.orderId, paymentMethods = inv.paymentMethods, nominal = inv.nominal
+                    orderId = inv.orderId, paymentMethods = inv.paymentMethods, nominal = inv.nominal, deviceId = inv.deviceId
                 ),
-                ctx = ctx, buyerPhone = inv.phone,
+                ctx = ctx,
                 onConfirm = { selectedMethod ->
-                    sendPaymentNotificationSilent(ctx, inv.name, inv.phone, inv.orderId, listOfNotNull(selectedMethod))
+                    sendPaymentNotificationSilent(ctx, inv.name, inv.deviceId, inv.orderId, listOfNotNull(selectedMethod))
                     payVm.resumePoll(inv.orderId)
                     resumeInvoice = null
                 },
@@ -479,6 +480,39 @@ private fun PremiumActiveCard(expLabel: String, daysLeft: Long, currentKey: Stri
     }
 }
 
+
+@Composable
+private fun DeviceIdCard(deviceId: String, ctx: Context) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Icon(Icons.Outlined.Devices, null, modifier = Modifier.padding(10.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Device ID", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Text(deviceId, style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text("ID ini dipakai untuk aktivasi lisensi. Tanpa nomor ponsel.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = {
+                val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("Aether Device ID", deviceId))
+                Toast.makeText(ctx, "Device ID disalin", Toast.LENGTH_SHORT).show()
+            }) {
+                Icon(Icons.Outlined.ContentCopy, null)
+            }
+        }
+    }
+}
+
+
 @Composable
 private fun PremiumBenefitCard(onBuy: () -> Unit, isLoading: Boolean) {
     val s = LocalStrings.current
@@ -566,22 +600,15 @@ private fun PaymentPreviewChip(label: String, icon: androidx.compose.ui.graphics
 
 @Composable
 private fun BuyFormContent(
-    buyerName: String, buyerPhone: String,
-    onNameChange: (String) -> Unit, onPhoneChange: (String) -> Unit,
-    isLoading: Boolean, error: String?, onSubmit: () -> Unit,
+    buyerName: String,
+    deviceId: String,
+    ctx: Context,
+    onNameChange: (String) -> Unit,
+    isLoading: Boolean,
+    error: String?,
+    onSubmit: () -> Unit,
 ) {
-    val phoneError = remember(buyerPhone) {
-        if (buyerPhone.isBlank()) null else PaymentViewModel.validatePhone(buyerPhone)
-    }
-    val isPhoneValid = buyerPhone.isNotBlank() && phoneError == null
-    val isInternational = remember(buyerPhone) {
-        buyerPhone.isNotBlank() && phoneError == null && PaymentViewModel.isInternationalBuyer(buyerPhone)
-    }
-    val isFormValid = buyerName.isNotBlank() && isPhoneValid
-
-    val title = if (isInternational) "Create license invoice" else "Buat invoice lisensi"
-    val subtitle = if (isInternational) "Enter your buyer details. International users can use WhatsApp numbers with country code." else "Isi data pembeli untuk membuat order real. Nomor luar Indonesia juga didukung."
-    val paymentHint = if (isInternational) "For international users, PayPal is recommended. Admin messages will use English." else "Untuk Indonesia gunakan DANA/GoPay. Untuk luar Indonesia gunakan PayPal dan nomor +kode negara."
+    val isFormValid = buyerName.isNotBlank()
 
     Column(modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -589,24 +616,25 @@ private fun BuyFormContent(
                 Icon(Icons.Outlined.ReceiptLong, null, modifier = Modifier.padding(12.dp).size(24.dp), tint = MaterialTheme.colorScheme.primary)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Buat invoice lisensi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Isi nama pembeli. Device ID otomatis dipakai sebagai identitas aktivasi.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
         Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
             Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(if (isInternational) "Purchase flow" else "Alur pembelian", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                StepRow(1, if (isInternational) "Create invoice from the app" else "Buat invoice dari aplikasi")
-                StepRow(2, if (isInternational) "Pay using PayPal or available method" else "Transfer sesuai nominal ke DANA, GoPay, atau PayPal")
-                StepRow(3, if (isInternational) "Send payment proof to Telegram admin" else "Tap Sudah Bayar dan tunggu admin mengaktifkan lisensi")
+                Text("Alur pembelian", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                StepRow(1, "Buat invoice dari aplikasi")
+                StepRow(2, "Transfer sesuai nominal invoice")
+                StepRow(3, "Kirim bukti transfer ke admin Telegram")
+                StepRow(4, "Admin cek nama dan Device ID, lalu lisensi aktif otomatis")
             }
         }
 
         OutlinedTextField(
             value = buyerName,
             onValueChange = onNameChange,
-            label = { Text(if (isInternational) "Buyer name" else "Nama pembeli") },
+            label = { Text("Nama pembeli") },
             leadingIcon = { Icon(Icons.Outlined.Person, null) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -614,45 +642,12 @@ private fun BuyFormContent(
             enabled = !isLoading
         )
 
-        OutlinedTextField(
-            value = buyerPhone,
-            onValueChange = onPhoneChange,
-            label = { Text(if (isInternational) "WhatsApp number, example +14155552671" else "Nomor WhatsApp, contoh 08123456789 / +14155552671") },
-            leadingIcon = { Icon(Icons.Outlined.Phone, null) },
-            trailingIcon = {
-                when {
-                    buyerPhone.isNotBlank() && isPhoneValid -> Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                    phoneError != null -> Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            isError = phoneError != null,
-            supportingText = {
-                if (phoneError != null) {
-                    Text(phoneError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                } else {
-                    Text(paymentHint, style = MaterialTheme.typography.bodySmall)
-                }
-            },
-            enabled = !isLoading
-        )
-
-        AnimatedVisibility(visible = isInternational, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f)) {
-                Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Outlined.Language, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.tertiary)
-                    Text("International mode active: payment instructions and admin confirmation template will be in English.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                }
-            }
-        }
+        CopyBox(ctx = ctx, label = "Device ID", value = deviceId, toast = "Device ID disalin")
 
         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)) {
             Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Outlined.Security, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                Text(if (isInternational) "License is activated after your payment is checked and approved by admin." else "Pembayaran tidak dibuat palsu/instant. Lisensi aktif setelah pembayaran dicek dan disetujui admin.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text("Lisensi dikunci ke Device ID ini. Tidak ada nomor ponsel yang dikirim ke server.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
 
@@ -669,7 +664,7 @@ private fun BuyFormContent(
             } else {
                 Icon(Icons.Outlined.ReceiptLong, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (isInternational) "Create invoice" else "Buat invoice", fontWeight = FontWeight.SemiBold)
+                Text("Buat invoice", fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -678,17 +673,17 @@ private fun BuyFormContent(
 @Composable
 private fun TransferInstructionContent(
     state: PaymentViewModel.UiState.WaitingTransfer,
-    ctx: Context, buyerPhone: String,
+    ctx: Context,
     onConfirm: (selected: PaymentManager.PaymentMethod?) -> Unit, onCancel: () -> Unit,
 ) {
-    val isInternational = remember(buyerPhone) { buyerPhone.isNotBlank() && PaymentViewModel.isInternationalBuyer(buyerPhone) }
+    val isInternational = false
     val fmt = NumberFormat.getNumberInstance(Locale("id", "ID"))
     val realMethods = remember(state.paymentMethods, isInternational) {
         state.paymentMethods
             .filter { it.isRealPaymentMethod() }
             .sortedBy { it.realPaymentSort() }
     }
-    var selectedMethodId by remember(realMethods, isInternational) { mutableStateOf((if (isInternational) realMethods.firstOrNull { it.isPayPalMethod() } else null)?.id ?: realMethods.firstOrNull()?.id ?: "") }
+    var selectedMethodId by remember(realMethods) { mutableStateOf(realMethods.firstOrNull()?.id ?: "") }
     val selectedMethod = realMethods.firstOrNull { it.id == selectedMethodId } ?: realMethods.firstOrNull()
 
     Column(
@@ -944,8 +939,7 @@ private fun paymentIcon(id: String): androidx.compose.ui.graphics.vector.ImageVe
 
 
 /**
- * Kirim notifikasi otomatis ke WA dan Telegram setelah user menekan "Sudah Bayar".
- * Pesan berisi: Nama, Order ID, dan metode pembayaran yang dipilih.
+ * Setelah user menekan "Sudah Bayar", buat template konfirmasi berisi nama, Device ID, Order ID, dan metode pembayaran.
  */
 /**
  * Setelah user konfirmasi pembayaran, buka Telegram admin dan salin template pesan.
@@ -954,43 +948,25 @@ private fun paymentIcon(id: String): androidx.compose.ui.graphics.vector.ImageVe
 private fun sendPaymentNotificationSilent(
     ctx: Context,
     buyerName: String,
-    buyerPhone: String,
+    buyerDeviceId: String,
     orderId: String,
     paymentMethods: List<PaymentManager.PaymentMethod>,
 ) {
     val method = paymentMethods.firstOrNull()?.let { realPaymentLabel(it) } ?: "Not selected"
-    val isInternational = buyerPhone.isNotBlank() && PaymentViewModel.isInternationalBuyer(buyerPhone)
-    val msg = if (isInternational) {
-        buildString {
-            appendLine("Aether Manager Payment Confirmation")
-            appendLine()
-            appendLine("Name: $buyerName")
-            appendLine("WhatsApp: ${PaymentViewModel.normalizePhone(buyerPhone)}")
-            appendLine("Order ID: $orderId")
-            appendLine("Payment method: $method")
-            appendLine()
-            appendLine("I have completed the payment. I will send the payment proof screenshot here.")
-        }.trim()
-    } else {
-        buildString {
-            appendLine("Konfirmasi Pembayaran Aether Manager")
-            appendLine()
-            appendLine("Nama: $buyerName")
-            appendLine("WhatsApp: ${PaymentViewModel.normalizePhone(buyerPhone)}")
-            appendLine("Order ID: $orderId")
-            appendLine("Metode: $method")
-            appendLine()
-            appendLine("Saya sudah transfer. Berikut saya kirim screenshot bukti pembayaran.")
-        }.trim()
-    }
+    val msg = buildString {
+        appendLine("Konfirmasi Pembayaran Aether Manager")
+        appendLine()
+        appendLine("Nama: $buyerName")
+        appendLine("Device ID: $buyerDeviceId")
+        appendLine("Order ID: $orderId")
+        appendLine("Metode: $method")
+        appendLine()
+        appendLine("Saya sudah transfer. Berikut saya kirim screenshot bukti pembayaran.")
+    }.trim()
 
     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     cm.setPrimaryClip(ClipData.newPlainText("Aether Payment Confirmation", msg))
-    Toast.makeText(
-        ctx,
-        if (isInternational) "Confirmation message copied. Send your payment screenshot to Telegram admin." else "Pesan konfirmasi disalin. Kirim screenshot bukti transfer ke Telegram admin.",
-        Toast.LENGTH_LONG
-    ).show()
+    Toast.makeText(ctx, "Pesan konfirmasi disalin. Kirim screenshot bukti transfer ke Telegram admin.", Toast.LENGTH_LONG).show()
 
     try {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AetherDev22"))
@@ -1002,7 +978,7 @@ private fun sendPaymentNotificationSilent(
             putExtra(Intent.EXTRA_TEXT, msg)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        ctx.startActivity(Intent.createChooser(intent, if (isInternational) "Send payment proof" else "Kirim bukti pembayaran").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        ctx.startActivity(Intent.createChooser(intent, "Kirim bukti pembayaran").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }
 
@@ -1011,15 +987,12 @@ private fun ContactAdminRow(ctx: Context) {
     val s = LocalStrings.current
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(
-            onClick  = {
-                val msg = "Halo Admin, saya ingin menanyakan status pembayaran Aether Manager Premium."
-                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/6285121390218?text=${Uri.encode(msg)}")))
-            },
+            onClick  = { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AetherDev22"))) },
             modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)
         ) {
             Icon(Icons.Outlined.Chat, null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text(s.licenseContactWhatsApp, style = MaterialTheme.typography.labelMedium)
+            Text("Telegram Admin", style = MaterialTheme.typography.labelMedium)
         }
         OutlinedButton(
             onClick  = { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AetherDev22"))) },
@@ -1084,7 +1057,7 @@ private fun InvoiceHistoryContent(
                             Text("Rp ${fmt.format(inv.nominal)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                             Text(inv.dateLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("${inv.name} · ${inv.phone}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${inv.name} · Device ${inv.deviceId}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         when (inv.status) {
                             "pending" -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = { onResume(inv) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) {

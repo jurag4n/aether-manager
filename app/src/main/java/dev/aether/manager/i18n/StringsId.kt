@@ -295,7 +295,7 @@ val StringsId = AppStrings(
     licenseContinuePaymentBtn = "Lanjutkan Pembayaran",
 
     licenseHaveKeyTitle = "Punya License Key?",
-    licenseKeyInputLabel = "Kode Lisensi Kamu",
+    licenseKeyInputLabel = "Kode Lisensi 10 Karakter",
     licenseActivateBtn = "Aktifkan Key",
 
     licenseDeactivateDialogTitle = "Nonaktifkan License",
@@ -310,8 +310,8 @@ val StringsId = AppStrings(
     licenseBuySheetSubtitle = "Rp 25.000",
     licenseBuySheetFormDesc = "Isi data kamu untuk membuat invoice pembayaran.",
     licenseBuySheetNameLabel = "Nama Lengkap",
-    licenseBuySheetPhoneLabel = "Nomor (GoPay / Dana)",
-    licenseBuySheetPhoneHint = "Pastikan nomor HP aktif dan terdaftar di GoPay atau Dana. Nomor ini akan digunakan sebagai referensi pembayaran.",
+    licenseBuySheetPhoneLabel = "Device ID",
+    licenseBuySheetPhoneHint = "Device ID dipakai otomatis sebagai identitas aktivasi lisensi.",
     licenseBuySheetCreateInvoiceBtn = "Buat Invoice & Lanjut",
 
     licensePayDetailTitle = "Detail Pembayaran",
@@ -322,7 +322,7 @@ val StringsId = AppStrings(
     licenseTotalLabel = "Total Pembayaran",
     licenseDuration1Month = "1 Bulan",
     licenseImportantLabel = "Penting!",
-    licenseImportantBody = "Transfer Rp %s Ke Nomor Payment Di Atas. Jangan sampai salah nominal agar mudah diverifikasi oleh admin.",
+    licenseImportantBody = "Transfer Rp %s ke metode pembayaran di atas. Jangan sampai salah nominal agar mudah diverifikasi oleh admin.",
     licenseAfterTransferLabel = "Setelah transfer, konfirmasi ke admin:",
     licenseVerifyNowBtn = "Sudah Bayar – Verifikasi Sekarang",
     licenseCancelBtn = "Batal",
@@ -331,10 +331,10 @@ val StringsId = AppStrings(
     licensePayTypeBank = "Transfer Bank",
     licensePayTypeInternational = "International",
 
-    licenseContactWhatsApp = "WhatsApp",
+    licenseContactWhatsApp = "Admin",
     licenseContactTelegram = "Telegram",
 
-    licenseNumberCopied = "Nomor %s disalin",
+    licenseNumberCopied = "%s disalin",
     licenseCopyLabel = "Salin",
 
     licenseInvoiceHistoryTitle = "Riwayat Invoice",

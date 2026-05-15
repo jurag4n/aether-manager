@@ -45,6 +45,7 @@ object PaymentManager {
         val orderId:        String,
         val paymentMethods: List<PaymentMethod>,
         val nominal:        Int,
+        val deviceId:       String,
     )
 
     sealed class CreateOrderResult {
@@ -62,9 +63,8 @@ object PaymentManager {
     // ── Create order ──────────────────────────────────────────────────────────
 
     suspend fun createOrder(
-        ctx:   Context,
-        name:  String,
-        phone: String,
+        ctx:  Context,
+        name: String,
     ): CreateOrderResult = withContext(Dispatchers.IO) {
         try {
             val deviceId = LicenseManager.getDeviceId(ctx)
@@ -72,9 +72,6 @@ object PaymentManager {
 
             val body = JSONObject().apply {
                 put("name",     name.trim())
-                put("phone",    phone.trim())
-                put("isInternational", !phone.trim().startsWith("+62"))
-                put("language", if (phone.trim().startsWith("+62")) "id" else "en")
                 put("deviceId", deviceId)
             }.toString()
 
@@ -112,6 +109,7 @@ object PaymentManager {
                         orderId        = json.getString("orderId"),
                         paymentMethods = methods,
                         nominal        = json.optInt("nominal", 25000),
+                        deviceId       = deviceId,
                     )
                 )
             } else {

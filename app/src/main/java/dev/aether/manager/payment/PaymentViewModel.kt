@@ -19,9 +19,7 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
             val orderId:        String,
             val paymentMethods: List<PaymentManager.PaymentMethod>,
             val nominal:        Int,
-            // backward-compat fields (dipakai InvoicePrefs lama)
-            val gopay: String = paymentMethods.firstOrNull { it.id == "gopay" }?.number ?: "-",
-            val dana:  String = paymentMethods.firstOrNull { it.id == "dana"  }?.number ?: "-",
+            val deviceId:       String,
         ) : UiState()
         data object Polling : UiState()
         data class Success(val licenseKey: String, val orderId: String) : UiState()
@@ -36,65 +34,21 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
 
     private var activeOrderId: String? = null
 
-    companion object {
-        /**
-         * Validasi nomor WhatsApp global.
-         * Support:
-         * - Indonesia: 08xxxxxxxxxx, 62xxxxxxxxxx, +62xxxxxxxxxx
-         * - International: +<country-code><number>, 8-15 digit sesuai gaya E.164
-         */
-        fun validatePhone(phone: String): String? {
-            val raw = phone.trim()
-            if (raw.isBlank()) return "Nomor WhatsApp wajib diisi"
-
-            val compact = raw.replace(Regex("[\\s\\-()]"), "")
-            if (!compact.matches(Regex("^\\+?\\d+$"))) {
-                return "Format nomor tidak valid. Contoh: 08123456789 atau +14155552671"
-            }
-
-            val internationalDigits = when {
-                compact.startsWith("+") -> compact.drop(1)
-                compact.startsWith("00") -> compact.drop(2)
-                compact.startsWith("08") -> "62" + compact.drop(1)
-                compact.startsWith("62") -> compact
-                else -> compact
-            }
-
-            if (internationalDigits.length < 8) return "Nomor terlalu pendek"
-            if (internationalDigits.length > 15) return "Nomor terlalu panjang"
-            return null
+    fun createOrder(name: String) {
+        if (name.isBlank()) {
+            _uiState.value = UiState.Failure("Nama harus diisi")
+            return
         }
-
-        fun normalizePhone(phone: String): String {
-            val compact = phone.trim().replace(Regex("[\\s\\-()]"), "")
-            return when {
-                compact.startsWith("+") -> compact
-                compact.startsWith("00") -> "+" + compact.drop(2)
-                compact.startsWith("08") -> "+62" + compact.drop(1)
-                compact.startsWith("62") -> "+" + compact
-                else -> "+" + compact
-            }
-        }
-
-        fun isInternationalBuyer(phone: String): Boolean {
-            val normalized = normalizePhone(phone)
-            return normalized.isNotBlank() && !normalized.startsWith("+62")
-        }
-    }
-
-    fun createOrder(name: String, phone: String) {
-        if (name.isBlank()) { _uiState.value = UiState.Failure("Nama harus diisi"); return }
-        val phoneError = validatePhone(phone)
-        if (phoneError != null) { _uiState.value = UiState.Failure(phoneError); return }
         viewModelScope.launch {
             _uiState.value = UiState.CreatingOrder
-            when (val r = PaymentManager.createOrder(ctx, name, normalizePhone(phone))) {
+            when (val r = PaymentManager.createOrder(ctx, name)) {
                 is PaymentManager.CreateOrderResult.Success -> {
-                    activeOrderId  = r.order.orderId
+                    activeOrderId = r.order.orderId
                     _uiState.value = UiState.WaitingTransfer(
                         orderId        = r.order.orderId,
                         paymentMethods = r.order.paymentMethods,
                         nominal        = r.order.nominal,
+                        deviceId       = r.order.deviceId,
                     )
                 }
                 is PaymentManager.CreateOrderResult.Error ->
@@ -116,7 +70,6 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
     private fun startPolling(orderId: String) {
         _showTimeoutWarning.value = false
         viewModelScope.launch {
-            // 2-minute warning timer
             delay(2 * 60 * 1_000L)
             if (_uiState.value is UiState.Polling) {
                 _showTimeoutWarning.value = true
@@ -144,7 +97,7 @@ class PaymentViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun reset() {
-        activeOrderId  = null
+        activeOrderId = null
         _showTimeoutWarning.value = false
         _uiState.value = UiState.Idle
     }

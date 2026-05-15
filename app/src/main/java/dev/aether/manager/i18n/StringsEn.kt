@@ -295,7 +295,7 @@ val StringsEn = AppStrings(
     licenseContinuePaymentBtn = "Continue Payment",
 
     licenseHaveKeyTitle = "Have a License Key?",
-    licenseKeyInputLabel = "Your License Code",
+    licenseKeyInputLabel = "10-character License Code",
     licenseActivateBtn = "Activate Key",
 
     licenseDeactivateDialogTitle = "Deactivate License",
@@ -310,8 +310,8 @@ val StringsEn = AppStrings(
     licenseBuySheetSubtitle = "Rp 25.000",
     licenseBuySheetFormDesc = "Fill in your details to create a payment invoice.",
     licenseBuySheetNameLabel = "Full Name",
-    licenseBuySheetPhoneLabel = "Number (GoPay / Dana)",
-    licenseBuySheetPhoneHint = "Make sure the number is active and registered with GoPay or Dana. This number will be used as payment reference.",
+    licenseBuySheetPhoneLabel = "Device ID",
+    licenseBuySheetPhoneHint = "Device ID is used automatically as the license activation identity.",
     licenseBuySheetCreateInvoiceBtn = "Create Invoice & Continue",
 
     licensePayDetailTitle = "Payment Details",
@@ -322,7 +322,7 @@ val StringsEn = AppStrings(
     licenseTotalLabel = "Total Payment",
     licenseDuration1Month = "1 Month",
     licenseImportantLabel = "Important!",
-    licenseImportantBody = "Transfer Rp %s To the Payment Number Above. Wrong amount will delay admin verification.",
+    licenseImportantBody = "Transfer Rp %s to the payment method above. Wrong amount will delay admin verification.",
     licenseAfterTransferLabel = "After transfer, confirm to admin:",
     licenseVerifyNowBtn = "Paid – Verify Now",
     licenseCancelBtn = "Cancel",
@@ -331,10 +331,10 @@ val StringsEn = AppStrings(
     licensePayTypeBank = "Transfer Bank",
     licensePayTypeInternational = "International",
 
-    licenseContactWhatsApp = "WhatsApp",
+    licenseContactWhatsApp = "Admin",
     licenseContactTelegram = "Telegram",
 
-    licenseNumberCopied = "%s number copied",
+    licenseNumberCopied = "%s copied",
     licenseCopyLabel = "Copy",
 
     licenseInvoiceHistoryTitle = "Invoice History",

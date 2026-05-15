@@ -14,14 +14,11 @@ object InvoicePrefs {
     data class Invoice(
         val orderId:        String,
         val name:           String,
-        val phone:          String,
+        val deviceId:       String,
         val nominal:        Int,
         val createdAt:      Long,
         val paymentMethods: List<PaymentManager.PaymentMethod>,
-        val status:         String,  // "pending" | "paid" | "expired"
-        // backward-compat
-        val gopay: String = paymentMethods.firstOrNull { it.id == "gopay" }?.number ?: "-",
-        val dana:  String = paymentMethods.firstOrNull { it.id == "dana"  }?.number ?: "-",
+        val status:         String,
     ) {
         val dateLabel: String get() =
             SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(createdAt))
@@ -36,7 +33,6 @@ object InvoicePrefs {
             val arr = JSONArray(raw)
             (0 until arr.length()).map { i ->
                 val o = arr.getJSONObject(i)
-                // Parse paymentMethods array if present, else fallback gopay+dana
                 val methods = mutableListOf<PaymentManager.PaymentMethod>()
                 if (o.has("paymentMethods")) {
                     val ma = o.getJSONArray("paymentMethods")
@@ -59,7 +55,7 @@ object InvoicePrefs {
                 Invoice(
                     orderId        = o.getString("orderId"),
                     name           = o.getString("name"),
-                    phone          = o.getString("phone"),
+                    deviceId       = o.optString("deviceId", "-"),
                     nominal        = o.getInt("nominal"),
                     createdAt      = o.getLong("createdAt"),
                     paymentMethods = methods,
@@ -103,7 +99,7 @@ object InvoicePrefs {
             arr.put(JSONObject().apply {
                 put("orderId",        inv.orderId)
                 put("name",           inv.name)
-                put("phone",          inv.phone)
+                put("deviceId",       inv.deviceId)
                 put("nominal",        inv.nominal)
                 put("createdAt",      inv.createdAt)
                 put("paymentMethods", methodsArr)
