@@ -304,7 +304,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
-                        painter = painterResource(R.mipmap.ic_launcher_round),
+                        painter = painterResource(R.drawable.ic_launcher_foreground_v3),
                         contentDescription = null,
                         modifier = Modifier
                             .size(82.dp)

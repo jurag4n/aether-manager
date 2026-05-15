@@ -234,7 +234,7 @@ private fun SetupHeader() {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Image(
-            painter = painterResource(id = R.mipmap.ic_launcher),
+            painter = painterResource(id = R.drawable.ic_launcher_foreground_v3),
             contentDescription = "Aether Manager",
             modifier = Modifier
                 .size(42.dp)
