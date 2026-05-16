@@ -1,0 +1,231 @@
+package com.aether.service
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import com.aether.R
+import com.aether.i18n.AppLanguage
+import com.aether.i18n.getStringsForLanguage
+import com.aether.i18n.loadSavedLanguage
+import com.aether.util.RootEngine
+import com.aether.util.RootManager
+import com.aether.util.SettingsPrefs
+import com.aether.util.TweakApplier
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class AetherService : Service() {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    companion object {
+        const val CHANNEL_ID = "aether_service"
+        const val NOTIF_ID   = 1001
+        const val ACTION_REAPPLY = "com.aether.REAPPLY_TWEAKS"
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        RootManager.configureShell(this)
+        createNotificationChannel()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForeground(NOTIF_ID, buildNotification())
+
+        if (intent?.action == ACTION_REAPPLY) {
+            scope.launch { reapplyTweaks("manual") }
+        }
+
+        return START_NOT_STICKY
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Volatile private var isReapplying = false
+
+    private suspend fun reapplyTweaks(reason: String) {
+        if (isReapplying) return  // hindari concurrent shell execution
+        isReapplying = true
+        try {
+            val tweaks = RootEngine.readTweaksConf()
+            if (tweaks.isEmpty()) return
+            TweakApplier.apply(tweaks)
+        } catch (_: Exception) {
+        } finally {
+            isReapplying = false
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private fun strings() = getStringsForLanguage(
+        loadSavedLanguage(this) ?: AppLanguage.fromSystemLocale(java.util.Locale.getDefault())
+    )
+
+    private fun createNotificationChannel() {
+        val s = strings()
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            s.serviceNotifChannelName,
+            NotificationManager.IMPORTANCE_MIN
+        ).apply {
+            description = s.serviceNotifChannelDesc
+            setShowBadge(false)
+        }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+    }
+
+    private fun buildNotification(): Notification {
+        val s = strings()
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(s.serviceNotifChannelName)
+            .setContentText(s.serviceNotifText)
+            .setSmallIcon(R.drawable.ic_aether_v3)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setSilent(true)
+            .setOngoing(true)
+            .build()
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BootReceiver — apply tweaks on boot dengan delay adaptif
+// Delay lebih panjang = lebih aman (kernel/HAL sudah stabil), tapi lebih lambat.
+// Pakai boot_count: boot pertama lebih lambat (lebih hati-hati), boot selanjutnya lebih cepat.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class BootReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        val validActions = setOf(
+            Intent.ACTION_BOOT_COMPLETED,
+            "android.intent.action.LOCKED_BOOT_COMPLETED",
+            "android.intent.action.QUICKBOOT_POWERON",   // HTC
+            "com.htc.intent.action.QUICKBOOT_POWERON",
+        )
+        if (intent.action !in validActions) return
+
+        // goAsync() supaya tidak timeout (max 10 detik di BroadcastReceiver)
+        val pendingResult = goAsync()
+
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                applyOnBoot(context)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private suspend fun applyOnBoot(context: Context) {
+        if (!SettingsPrefs.getApplyOnBoot(context)) return
+
+        // BootReceiver berjalan dalam proses terpisah dari Application — libsu belum di-init.
+        // Inisialisasi builder root-only supaya tidak ter-cache sebagai non-root shell.
+        com.aether.util.RootManager.configureShell(context)
+
+        // Verifikasi root tersedia sebelum lanjut — jangan apply kalau su tidak ada
+        val rootOk = withContext(kotlinx.coroutines.Dispatchers.IO) {
+            com.aether.util.RootManager.ensureRootShellSync(requestIfNeeded = false)
+        }
+        if (!rootOk) return
+
+        // ── Bootloop detection ────────────────────────────────────────────────
+        // Simpan timestamp boot terakhir. Jika 3 boot berturut-turut dalam < 5 menit
+        // (tanda bootloop akibat tweak), aktifkan safe mode otomatis.
+        val RAPID_BOOT_FILE   = "${RootEngine.CONF_DIR}/rapid_boot_ts"
+        val RAPID_BOOT_COUNT  = "${RootEngine.CONF_DIR}/rapid_boot_count"
+        val now = System.currentTimeMillis()
+
+        try {
+            val lastTs    = RootEngine.readFile(RAPID_BOOT_FILE).trim().toLongOrNull() ?: 0L
+            val rapidCnt  = RootEngine.readFile(RAPID_BOOT_COUNT).trim().toIntOrNull() ?: 0
+            val timeDiff  = now - lastTs
+
+            val newRapidCnt = if (timeDiff < 5 * 60 * 1000L) rapidCnt + 1 else 1
+            RootEngine.writeFile(RAPID_BOOT_FILE, now.toString())
+            RootEngine.writeFile(RAPID_BOOT_COUNT, newRapidCnt.toString())
+
+            if (newRapidCnt >= 3 && !RootEngine.fileExists(RootEngine.SAFE_MODE_FILE)) {
+                // 3+ reboot cepat = kemungkinan bootloop akibat tweak → aktifkan safe mode
+                RootEngine.toggleSafeMode(true)
+                // Reset counter supaya tidak terus-menerus trigger
+                RootEngine.writeFile(RAPID_BOOT_COUNT, "0")
+                return  // Jangan apply tweak di boot ini
+            }
+        } catch (_: Exception) { /* Tidak kritis, lanjut */ }
+
+        // Increment boot count
+        val bootCount = try {
+            val raw = RootEngine.readFile(RootEngine.BOOT_COUNT_FILE).trim().toIntOrNull() ?: 0
+            val next = raw + 1
+            RootEngine.writeFile(RootEngine.BOOT_COUNT_FILE, next.toString())
+            next
+        } catch (_: Exception) { 1 }
+
+        // Delay adaptif:
+        // Boot ke-1 (fresh install / wipe): tunggu 20 detik — sistem belum settle
+        // Boot ke-2..5: 15 detik
+        // Boot ke-6+: 10 detik (sudah terbukti stabil)
+        val delayMs = when {
+            bootCount <= 1 -> 30_000L
+            bootCount <= 5 -> 15_000L
+            else           -> 10_000L
+        }
+        delay(delayMs)
+
+        try {
+            // Cek safe mode
+            if (RootEngine.fileExists(RootEngine.SAFE_MODE_FILE)) {
+                return
+            }
+
+            val tweaks = RootEngine.readTweaksConf()
+            if (tweaks.isEmpty()) {
+                return
+            }
+
+            val result = TweakApplier.apply(tweaks)
+            if (result.success) RootEngine.writeFile(RAPID_BOOT_COUNT, "0")
+
+            // Retry sekali kalau ada yang gagal — tunggu lebih lama agar
+            // kernel/HAL sudah benar-benar stabil sebelum retry
+            if (!result.success) {
+                delay(10_000)
+                TweakApplier.apply(tweaks)
+            }
+
+            // Restart app_monitor.sh jika script-nya ada (app profiles aktif)
+            val monitorScript = "${RootEngine.CONF_DIR}/app_monitor.sh"
+            try {
+                if (RootEngine.fileExists(monitorScript)) {
+                    RootEngine.sh(
+                        "pkill -f app_monitor.sh 2>/dev/null || true",
+                        "sh $monitorScript >/dev/null 2>&1 &"
+                    )
+                }
+            } catch (_: Exception) { /* non-critical */ }
+
+        } catch (e: Exception) {
+        }
+    }
+}

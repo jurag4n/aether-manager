@@ -17,11 +17,11 @@ val gitHash: String by lazy {
 }
 
 android {
-    namespace   = "dev.aether.manager"
+    namespace   = "com.aether"
     compileSdk  = 36
 
     defaultConfig {
-        applicationId = "dev.aether.manager"
+        applicationId = "com.aether"
         minSdk        = 26
         targetSdk     = 36
         versionCode   = 300

@@ -16,18 +16,18 @@
 # AETHER MANAGER — CORE (wajib di AndroidManifest, tidak bisa di-rename)
 # =============================================================================
 
--keep public class dev.aether.manager.MainActivity { <init>(); }
--keep public class dev.aether.manager.SplashActivity { <init>(); }
--keep public class dev.aether.manager.SetupActivity { <init>(); }
--keep public class dev.aether.manager.AetherApplication { <init>(); }
--keep public class dev.aether.manager.service.AetherService { <init>(); }
--keep public class dev.aether.manager.service.BootReceiver { <init>(); }
+-keep public class com.aether.MainActivity { <init>(); }
+-keep public class com.aether.SplashActivity { <init>(); }
+-keep public class com.aether.SetupActivity { <init>(); }
+-keep public class com.aether.AetherApplication { <init>(); }
+-keep public class com.aether.service.AetherService { <init>(); }
+-keep public class com.aether.service.BootReceiver { <init>(); }
 
 # =============================================================================
 # JNI — libaether.so
 # =============================================================================
 
--keep class dev.aether.manager.NativeAether {
+-keep class com.aether.NativeAether {
     public static boolean tryLoad();
     public static boolean isLoaded();
     public static native boolean nativeCheckSignature(java.lang.String);
@@ -229,4 +229,4 @@
 # =============================================================================
 # JNI — libjembut.so high security layer
 # =============================================================================
--keep class dev.aether.manager.security.AetherSecurityNative { *; }
+-keep class com.aether.security.AetherSecurityNative { *; }

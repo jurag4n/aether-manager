@@ -17,7 +17,7 @@ static long now_nanos() {
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_util_UiNativeBoost_nativeWarmUp(JNIEnv*, jobject) {
+Java_com_aether_util_UiNativeBoost_nativeWarmUp(JNIEnv*, jobject) {
     // Lightweight native warm-up: touches linker/JNI/clock/sysconf early so the
     // first Compose frames avoid doing this work during UI interaction.
     (void) now_nanos();
@@ -28,7 +28,7 @@ Java_dev_aether_manager_util_UiNativeBoost_nativeWarmUp(JNIEnv*, jobject) {
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_dev_aether_manager_util_UiNativeBoost_nativeCpuCount(JNIEnv*, jobject) {
+Java_com_aether_util_UiNativeBoost_nativeCpuCount(JNIEnv*, jobject) {
     long n = sysconf(_SC_NPROCESSORS_CONF);
     if (n < 1) n = 1;
     if (n > 256) n = 256;
@@ -36,12 +36,12 @@ Java_dev_aether_manager_util_UiNativeBoost_nativeCpuCount(JNIEnv*, jobject) {
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_dev_aether_manager_util_UiNativeBoost_nativeFrameClockNanos(JNIEnv*, jobject) {
+Java_com_aether_util_UiNativeBoost_nativeFrameClockNanos(JNIEnv*, jobject) {
     return static_cast<jlong>(now_nanos());
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_util_UiNativeBoost_nativeIsReady(JNIEnv*, jobject) {
+Java_com_aether_util_UiNativeBoost_nativeIsReady(JNIEnv*, jobject) {
     return g_ready.load(std::memory_order_acquire) ? JNI_TRUE : JNI_FALSE;
 }
 

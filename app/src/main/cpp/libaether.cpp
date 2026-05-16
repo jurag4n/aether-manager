@@ -754,17 +754,17 @@ static void early_security_check(void) {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeIsHooked(JNIEnv *, jobject) {
+Java_com_aether_NativeAether_nativeIsHooked(JNIEnv *, jobject) {
     return layer1_anti_hook()?JNI_TRUE:JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeIsDebugged(JNIEnv *, jobject) {
+Java_com_aether_NativeAether_nativeIsDebugged(JNIEnv *, jobject) {
     return layer2_anti_debug()?JNI_TRUE:JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeCheckAntiPatch(JNIEnv *env, jobject, jobject ctx) {
+Java_com_aether_NativeAether_nativeCheckAntiPatch(JNIEnv *env, jobject, jobject ctx) {
     if(!l3_zip_integrity()) return JNI_FALSE;
     if(!l3_dex_magic())     return JNI_FALSE;
     if(layer4_anti_patch(env,ctx)) return JNI_FALSE;
@@ -772,29 +772,29 @@ Java_dev_aether_manager_NativeAether_nativeCheckAntiPatch(JNIEnv *env, jobject, 
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeCheckUnityIntact(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeCheckUnityIntact(JNIEnv *env, jobject) {
     if(!l5_unity_strings()) return JNI_FALSE;
     if(!l5_unity_class(env)) return JNI_FALSE;
     return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeCheckCloner(JNIEnv *env, jobject, jobject ctx) {
+Java_com_aether_NativeAether_nativeCheckCloner(JNIEnv *env, jobject, jobject ctx) {
     return layer7_anti_cloner(env,ctx)?JNI_TRUE:JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeCheckElfIntegrity(JNIEnv *, jobject) {
+Java_com_aether_NativeAether_nativeCheckElfIntegrity(JNIEnv *, jobject) {
     return layer8_elf_self_integrity()?JNI_TRUE:JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeCheckGotHook(JNIEnv *, jobject) {
+Java_com_aether_NativeAether_nativeCheckGotHook(JNIEnv *, jobject) {
     return layer9_got_hook_check()?JNI_FALSE:JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_aether_manager_NativeAether_nativeCheckAll(JNIEnv *env, jobject, jobject ctx) {
+Java_com_aether_NativeAether_nativeCheckAll(JNIEnv *env, jobject, jobject ctx) {
     DEVLOG("start");
     if(layer1_anti_hook())         { DEVLOG("anti-hook");    return JNI_FALSE; }
     if(layer2_anti_debug())        { DEVLOG("anti-debug");   return JNI_FALSE; }
@@ -810,14 +810,14 @@ Java_dev_aether_manager_NativeAether_nativeCheckAll(JNIEnv *env, jobject, jobjec
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetGameId(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetGameId(JNIEnv *env, jobject) {
     char buf[sizeof(EM_GAME_ID)+1];
     xdec(EM_GAME_ID,sizeof(EM_GAME_ID),XK_MISC,buf);
     return env->NewStringUTF(buf);
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetGithubApi(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetGithubApi(JNIEnv *env, jobject) {
     char buf[sizeof(EU_GITHUB_API)+1];
     xdec(EU_GITHUB_API,sizeof(EU_GITHUB_API),XK_URL,buf);
     return env->NewStringUTF(buf);
@@ -826,21 +826,21 @@ Java_dev_aether_manager_NativeAether_nativeGetGithubApi(JNIEnv *env, jobject) {
 // ─── URL GETTERS (obfuscated, XOR decode saat runtime) ───────────────────────
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetVercelApi(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetVercelApi(JNIEnv *env, jobject) {
     char buf[sizeof(EU_VERCEL_API)+1];
     xdec(EU_VERCEL_API,sizeof(EU_VERCEL_API),XK_URL,buf);
     return env->NewStringUTF(buf);
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetGithubRepo(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetGithubRepo(JNIEnv *env, jobject) {
     char buf[sizeof(EU_GITHUB_REPO)+1];
     xdec(EU_GITHUB_REPO,sizeof(EU_GITHUB_REPO),XK_URL,buf);
     return env->NewStringUTF(buf);
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetTelegram(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetTelegram(JNIEnv *env, jobject) {
     char buf[sizeof(EU_TELEGRAM)+1];
     xdec(EU_TELEGRAM,sizeof(EU_TELEGRAM),XK_URL,buf);
     return env->NewStringUTF(buf);
@@ -849,28 +849,28 @@ Java_dev_aether_manager_NativeAether_nativeGetTelegram(JNIEnv *env, jobject) {
 // ─── ENDPOINT URL GETTERS (full path, obfuscated) ────────────────────────────
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetActivateUrl(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetActivateUrl(JNIEnv *env, jobject) {
     char buf[sizeof(EU_ACTIVATE)+1];
     xdec(EU_ACTIVATE,sizeof(EU_ACTIVATE),XK_URL,buf);
     return env->NewStringUTF(buf);
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetCreateOrderUrl(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetCreateOrderUrl(JNIEnv *env, jobject) {
     char buf[sizeof(EU_CREATE_ORDER)+1];
     xdec(EU_CREATE_ORDER,sizeof(EU_CREATE_ORDER),XK_URL,buf);
     return env->NewStringUTF(buf);
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetPollOrderUrl(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetPollOrderUrl(JNIEnv *env, jobject) {
     char buf[sizeof(EU_POLL_ORDER)+1];
     xdec(EU_POLL_ORDER,sizeof(EU_POLL_ORDER),XK_URL,buf);
     return env->NewStringUTF(buf);
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetAdblockDnsKeywords(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetAdblockDnsKeywords(JNIEnv *env, jobject) {
     static const uint8_t EK_DNS_ADGUARD[]  = {0xC2,0xC7,0xC4,0xD6,0xC2,0xD1,0xC7};
     static const uint8_t EK_DNS_NEXTDNS[]  = {0xCD,0xC6,0xDB,0xD7,0xC7,0xCD,0xD0};
     static const uint8_t EK_DNS_BLOKADA[]  = {0xC1,0xCF,0xCC,0xC8,0xC2,0xC7,0xC2};
@@ -899,7 +899,7 @@ Java_dev_aether_manager_NativeAether_nativeGetAdblockDnsKeywords(JNIEnv *env, jo
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetHostsSignatures(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetHostsSignatures(JNIEnv *env, jobject) {
     static const uint8_t EK_H_ADAWAY[]      = {0xC2,0xC7,0xC2,0xD4,0xC2,0xDA};
     static const uint8_t EK_H_ADBLOCK[]     = {0xC2,0xC7,0xC1,0xCF,0xCC,0xC0,0xC8};
     static const uint8_t EK_H_GENERATED[]   = {0xC4,0xC6,0xCD,0xC6,0xD1,0xC2,0xD7,0xC6,0xC7,0x83,0xC1,0xDA};
@@ -925,7 +925,7 @@ Java_dev_aether_manager_NativeAether_nativeGetHostsSignatures(JNIEnv *env, jobje
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_aether_manager_NativeAether_nativeGetPackageName(JNIEnv *env, jobject) {
+Java_com_aether_NativeAether_nativeGetPackageName(JNIEnv *env, jobject) {
     char maps[32]; xdec(EP_PROC_MAPS,sizeof(EP_PROC_MAPS),XK_PATH,maps);
     FILE *f=fopen(maps,"r"); if(!f) return nullptr;
     char line[1024], result[256]={0};
