@@ -100,7 +100,6 @@ class AetherService : Service() {
             .setContentTitle(s.serviceNotifChannelName)
             .setContentText(s.serviceNotifText)
             .setSmallIcon(R.drawable.ic_aether_v3)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
             .setSilent(true)
             .setOngoing(true)
             .build()
