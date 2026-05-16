@@ -39,6 +39,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +68,7 @@ import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SportsEsports
@@ -137,12 +139,13 @@ class SetupActivity : ComponentActivity() {
             AetherTheme {
                 ProvideStrings {
                     SetupScreen(
-                        onDone = { rootWasGranted ->
+                        onDone = { selectedMode, rootWasGranted ->
+                            val finalMode = if (selectedMode == SetupAccessMode.ROOT && rootWasGranted) "root" else "no_root"
                             getSharedPreferences("aether_prefs", Context.MODE_PRIVATE)
                                 .edit()
                                 .putBoolean("setup_done", true)
                                 .apply()
-                            SettingsPrefs.setAccessMode(this, if (rootWasGranted) "root" else "no_root")
+                            SettingsPrefs.setAccessMode(this, finalMode)
 
                             if (rootWasGranted) RootManager.markGranted()
                             startActivity(Intent(this, MainActivity::class.java))
@@ -156,6 +159,7 @@ class SetupActivity : ComponentActivity() {
 }
 
 private enum class PermState { IDLE, CHECKING, GRANTED, DENIED }
+private enum class SetupAccessMode { ROOT, NO_ROOT }
 
 private data class FeatureItem(
     val icon: ImageVector,
@@ -772,12 +776,13 @@ private fun DetailRow(icon: ImageVector, title: String, desc: String) {
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalAnimationApi::class)
 @Composable
-fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
+private fun SetupScreen(onDone: (selectedMode: SetupAccessMode, rootWasGranted: Boolean) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val s = LocalStrings.current
     val density = LocalDensity.current
 
+    var selectedMode by remember { mutableStateOf(SetupAccessMode.NO_ROOT) }
     var rootState by remember { mutableStateOf(PermState.IDLE) }
     var notifState by remember { mutableStateOf(PermState.IDLE) }
     var writeState by remember { mutableStateOf(PermState.IDLE) }
@@ -944,7 +949,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
             scope.launch {
                 buttonRunning = true
                 delay(80)
-                onDone(rootState == PermState.GRANTED)
+                onDone(selectedMode, rootState == PermState.GRANTED)
             }
         } else {
             goNext()
@@ -1074,6 +1079,26 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                 storageState = storState,
                                 batteryState = batteryState,
                                 usageState = usageState,
+                                selectedMode = selectedMode,
+                                onModeChange = { mode ->
+                                    selectedMode = mode
+                                    if (mode == SetupAccessMode.ROOT && rootState != PermState.GRANTED && rootState != PermState.CHECKING) {
+                                        scope.launch {
+                                            rootState = PermState.CHECKING
+                                            val ok = withContext(Dispatchers.IO) { RootManager.requestRoot() }
+                                            if (ok) {
+                                                RootManager.markGranted()
+                                                rootState = PermState.GRANTED
+                                            } else {
+                                                rootState = PermState.DENIED
+                                                selectedMode = SetupAccessMode.NO_ROOT
+                                            }
+                                        }
+                                    }
+                                    if (mode == SetupAccessMode.NO_ROOT && rootState == PermState.CHECKING) {
+                                        rootState = PermState.IDLE
+                                    }
+                                },
                                 onAction = { permType ->
                                     when (permType) {
                                         "ROOT" -> scope.launch {
@@ -1084,8 +1109,10 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                             if (ok) {
                                                 RootManager.markGranted()
                                                 rootState = PermState.GRANTED
+                                                selectedMode = SetupAccessMode.ROOT
                                             } else {
                                                 rootState = PermState.DENIED
+                                                selectedMode = SetupAccessMode.NO_ROOT
                                             }
                                         }
 
@@ -1166,7 +1193,7 @@ fun SetupScreen(onDone: (rootWasGranted: Boolean) -> Unit) {
                                     }
                                 }
                             )
-                            2 -> DonePage(s, allGranted = allDecided)
+                            2 -> DonePage(s, allGranted = allDecided, selectedMode = selectedMode, rootGranted = rootState == PermState.GRANTED)
                         }
                     }
                 }
@@ -1273,6 +1300,92 @@ private fun WelcomePage(s: AppStrings) {
 }
 
 @Composable
+private fun SetupAccessModeSelector(
+    selected: SetupAccessMode,
+    rootGranted: Boolean,
+    onSelect: (SetupAccessMode) -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.26f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = "Pilih Mode Awal",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SetupModeChip(
+                    icon = Icons.Outlined.AdminPanelSettings,
+                    title = "Root",
+                    subtitle = if (rootGranted) "SU aktif" else "Butuh Superuser",
+                    selected = selected == SetupAccessMode.ROOT,
+                    onClick = { onSelect(SetupAccessMode.ROOT) },
+                    modifier = Modifier.weight(1f)
+                )
+                SetupModeChip(
+                    icon = Icons.Outlined.PhoneAndroid,
+                    title = "No Root",
+                    subtitle = "Aman tanpa SU",
+                    selected = selected == SetupAccessMode.NO_ROOT,
+                    onClick = { onSelect(SetupAccessMode.NO_ROOT) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Text(
+                text = "Kalau Root dipilih tapi akses Superuser belum aktif, app otomatis masuk No Root supaya tidak crash.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun SetupModeChip(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bg by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f) else MaterialTheme.colorScheme.surfaceContainerLow,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "setup_mode_chip_bg_$title"
+    )
+    val fg by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "setup_mode_chip_fg_$title"
+    )
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(22.dp),
+        color = bg,
+        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.26f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.16f))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(24.dp))
+            Text(title, color = fg, fontWeight = FontWeight.Black, maxLines = 1)
+            Text(subtitle, color = fg.copy(alpha = 0.82f), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        }
+    }
+}
+
+@Composable
 private fun PermissionsPage(
     s: AppStrings,
     permItems: List<PermItem>,
@@ -1284,6 +1397,8 @@ private fun PermissionsPage(
     storageState: PermState,
     batteryState: PermState,
     usageState: PermState,
+    selectedMode: SetupAccessMode,
+    onModeChange: (SetupAccessMode) -> Unit,
     onAction: (String) -> Unit,
 ) {
     fun stateFor(type: String) = when (type) {
@@ -1308,6 +1423,12 @@ private fun PermissionsPage(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 22.sp
+        )
+
+        SetupAccessModeSelector(
+            selected = selectedMode,
+            rootGranted = rootState == PermState.GRANTED,
+            onSelect = onModeChange
         )
 
         PermissionSummaryCard(granted = granted, total = total, rootOk = rootState == PermState.GRANTED)
@@ -1357,7 +1478,7 @@ private fun PermissionsPage(
 }
 
 @Composable
-private fun DonePage(s: AppStrings, allGranted: Boolean) {
+private fun DonePage(s: AppStrings, allGranted: Boolean, selectedMode: SetupAccessMode, rootGranted: Boolean) {
     val iconScale = remember { Animatable(0.82f) }
     val iconAlpha = remember { Animatable(0f) }
 
@@ -1411,8 +1532,10 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
             lineHeight = 32.sp
         )
         Text(
-            text = if (allGranted) "Aether Manager sudah siap digunakan. Mode akses bisa diubah kapan saja: Root, No Root, atau Shizuku Shell."
-            else "Beberapa izin belum selesai. Kembali ke halaman izin lalu aktifkan kartu yang masih belum aktif.",
+            text = if (allGranted) {
+                val modeText = if (selectedMode == SetupAccessMode.ROOT && rootGranted) "Root" else "No Root"
+                "Aether Manager sudah siap digunakan dalam mode $modeText. Mode bisa diubah kapan saja dari Tweak atau Settings."
+            } else "Beberapa izin belum selesai. Kembali ke halaman izin lalu aktifkan kartu yang masih belum aktif.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1444,7 +1567,7 @@ private fun DonePage(s: AppStrings, allGranted: Boolean) {
                 DetailRow(
                     icon = Icons.Outlined.AdminPanelSettings,
                     title = "Mode Akses",
-                    desc = "Tersedia pilihan Root, No Root biasa, dan No Root dengan Shizuku Shell."
+                    desc = "Tersedia pilihan Root dan No Root. Shizuku Shell ada sebagai opsi tambahan di mode No Root."
                 )
                 DetailRow(
                     icon = Icons.Outlined.QueryStats,

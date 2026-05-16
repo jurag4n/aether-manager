@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.PhoneAndroid
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -67,8 +66,7 @@ fun TweakModeScreen(
             ) { target ->
                 when (target) {
                     AccessMode.ROOT -> TweakScreen(vm = vm, onOpenAppProfile = onOpenAppProfile)
-                    AccessMode.NO_ROOT -> NoRootTweakScreen(vm = vm, useShizuku = false)
-                    AccessMode.SHIZUKU -> NoRootTweakScreen(vm = vm, useShizuku = true)
+                    AccessMode.NO_ROOT -> NoRootTweakScreen(vm = vm)
                 }
             }
         }
@@ -105,13 +103,6 @@ private fun AccessModeSelector(
                 icon = Icons.Outlined.PhoneAndroid,
                 selected = current == AccessMode.NO_ROOT,
                 onClick = { onSelect(AccessMode.NO_ROOT) },
-                modifier = Modifier.weight(1f)
-            )
-            ModeChip(
-                mode = AccessMode.SHIZUKU,
-                icon = Icons.Outlined.Terminal,
-                selected = current == AccessMode.SHIZUKU,
-                onClick = { onSelect(AccessMode.SHIZUKU) },
                 modifier = Modifier.weight(1f)
             )
         }

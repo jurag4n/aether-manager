@@ -207,17 +207,9 @@ fun SettingsScreen(
                 SettingsModeChoiceRow(
                     icon = Icons.Outlined.PhoneAndroid,
                     title = "No Root",
-                    subtitle = "Monitor aman + simpan preferensi lokal tanpa shell",
+                    subtitle = "Mode aman; Shizuku bisa dipakai opsional di Tweak",
                     selected = accessMode == AccessMode.NO_ROOT,
                     onClick = { vm.setAccessMode(AccessMode.NO_ROOT) }
-                )
-                SettingsDivider()
-                SettingsModeChoiceRow(
-                    icon = Icons.Outlined.Terminal,
-                    title = "No Root + Shizuku Shell",
-                    subtitle = "Apply tweak aman lewat Shizuku tanpa root",
-                    selected = accessMode == AccessMode.SHIZUKU,
-                    onClick = { vm.setAccessMode(AccessMode.SHIZUKU) }
                 )
                 SettingsDivider()
                 SettingsRowSwitch(

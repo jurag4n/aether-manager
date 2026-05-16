@@ -1,5 +1,9 @@
 package com.aether.util
 
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
@@ -481,14 +485,60 @@ object RootEngine {
         return Triple(usage.coerceIn(0, 100), normalizeFreqToMhz(freq), name.lineSequence().firstOrNull().orEmpty().take(48))
     }
 
-    suspend fun getMonitorState(): com.aether.data.MonitorState = withContext(Dispatchers.IO) {
+    private data class BatterySnapshot(
+        val level: Int = 0,
+        val tempC: Float = 0f,
+        val currentMa: Long = 0L,
+        val voltageMv: Long = 0L,
+        val status: String = "Unknown",
+    )
+
+    private fun normalizeBatteryCurrentMa(raw: Long): Long {
+        if (raw == 0L || raw == Long.MIN_VALUE) return 0L
+        return if (raw > 30_000L || raw < -30_000L) raw / 1000L else raw
+    }
+
+    private fun readBatterySnapshot(context: Context?): BatterySnapshot {
+        if (context == null) return BatterySnapshot()
+        return runCatching {
+            val app = context.applicationContext
+            val intent = app.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val levelRaw = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100)?.takeIf { it > 0 } ?: 100
+            val level = if (levelRaw >= 0) ((levelRaw * 100f) / scale).roundToInt().coerceIn(0, 100) else 0
+            val tempRaw = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+            val tempC = (tempRaw / 10f).takeIf(::validTemp) ?: 0f
+            val voltageMv = (intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0).toLong().coerceAtLeast(0L)
+            val status = when (intent?.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)) {
+                BatteryManager.BATTERY_STATUS_CHARGING -> "Charging"
+                BatteryManager.BATTERY_STATUS_DISCHARGING -> "Discharging"
+                BatteryManager.BATTERY_STATUS_FULL -> "Full"
+                BatteryManager.BATTERY_STATUS_NOT_CHARGING -> "Not charging"
+                else -> "Unknown"
+            }
+            val bm = app.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+            val currentRaw = listOf(
+                bm?.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0L,
+                bm?.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE) ?: 0L
+            ).firstOrNull { it != 0L && it != Long.MIN_VALUE } ?: 0L
+            BatterySnapshot(
+                level = level,
+                tempC = tempC,
+                currentMa = normalizeBatteryCurrentMa(currentRaw),
+                voltageMv = voltageMv,
+                status = status,
+            )
+        }.getOrDefault(BatterySnapshot())
+    }
+
+    suspend fun getMonitorState(context: Context? = null): com.aether.data.MonitorState = withContext(Dispatchers.IO) {
         val cpuUsage = readCpuUsage()
         var cpuFreqMhz = readCpuFreqMhz()
         val cpuGovernor = readCpuGovernor()
-        var cpuTempC = readThermalByName("cpu", "tsens", "apc", "cluster", "big", "little", "silver", "gold", excludeBattery = true)
+        var cpuTempC = readThermalByName("cpu", "cpu0", "cpu-", "tsens", "apc", "cluster", "big", "little", "silver", "gold", "socd", "cpuss", excludeBattery = true)
 
         var (gpuUsage, gpuFreqMhz, gpuName) = readGpuLocal()
-        var gpuTempC = readThermalByName("gpu", "adreno", "mali", "g3d", "mfg", "ged", excludeBattery = true)
+        var gpuTempC = readThermalByName("gpu", "gpu0", "gpu-", "adreno", "mali", "g3d", "mfg", "ged", excludeBattery = true)
 
         if ((gpuUsage <= 0 || gpuFreqMhz <= 0L || gpuName.isBlank() || !validTemp(gpuTempC)) && RootManager.isRootGranted) {
             val rootGpuR = shRootCached("""
@@ -569,29 +619,38 @@ object RootEngine {
         val swapTotalMb = (memInfo["SwapTotal"] ?: 0L) / 1024L
         val swapUsedMb = (((memInfo["SwapTotal"] ?: 0L) - (memInfo["SwapFree"] ?: 0L)).coerceAtLeast(0L)) / 1024L
 
-        val batLevel = readLongFast("/sys/class/power_supply/battery/capacity").toInt().coerceIn(0, 100)
+        val battery = readBatterySnapshot(context)
+        val sysBatteryLevel = readLongFast("/sys/class/power_supply/battery/capacity").toInt().coerceIn(0, 100)
+        val batLevel = if (sysBatteryLevel > 0) sysBatteryLevel else battery.level
         val batTempC = listOf(
             "/sys/class/power_supply/battery/temp",
             "/sys/class/power_supply/Battery/temp",
             "/sys/class/power_supply/bms/temp",
             "/sys/class/power_supply/battery/batt_temp"
-        ).firstNotNullOfOrNull { normRaw(readLongFast(it)).takeIf(::validTemp) } ?: readThermalByName("battery", "batt")
+        ).firstNotNullOfOrNull { normRaw(readLongFast(it)).takeIf(::validTemp) }
+            ?: battery.tempC.takeIf(::validTemp)
+            ?: readThermalByName("battery", "batt")
         val rawUa = listOf(
             "/sys/class/power_supply/battery/current_now",
             "/sys/class/power_supply/Battery/current_now",
             "/sys/class/power_supply/bms/current_now"
         ).firstNotNullOfOrNull { readLongFast(it).takeIf { v -> v != 0L } } ?: 0L
-        val batCurrentMa = if (rawUa > 30_000L || rawUa < -30_000L) rawUa / 1000L else rawUa
+        val batCurrentMa = normalizeBatteryCurrentMa(rawUa).takeIf { it != 0L } ?: battery.currentMa
         val rawUv = listOf(
             "/sys/class/power_supply/battery/voltage_now",
             "/sys/class/power_supply/Battery/voltage_now",
             "/sys/class/power_supply/bms/voltage_now"
         ).firstNotNullOfOrNull { readLongFast(it).takeIf { v -> v > 0L } } ?: 0L
-        val batVoltage = if (rawUv > 1_000_000L) rawUv / 1000L else rawUv
-        val batStatus = readTextFast("/sys/class/power_supply/battery/status").ifBlank { "Unknown" }
+        val sysVoltage = if (rawUv > 1_000_000L) rawUv / 1000L else rawUv
+        val batVoltage = sysVoltage.takeIf { it > 0L } ?: battery.voltageMv
+        val batStatus = readTextFast("/sys/class/power_supply/battery/status").ifBlank { battery.status }
 
-        val thermalTempC = readThermalByName("soc", "xo", "skin", "shell", "board", "ambient", "pmic", "modem", excludeBattery = true)
-            .takeIf(::validTemp) ?: cpuTempC.takeIf(::validTemp) ?: 0f
+        val thermalTempC = readThermalByName("soc", "xo", "skin", "shell", "board", "ambient", "pmic", "modem", "quiet", "therm", excludeBattery = true)
+            .takeIf(::validTemp)
+            ?: cpuTempC.takeIf(::validTemp)
+            ?: gpuTempC.takeIf(::validTemp)
+            ?: batTempC.takeIf(::validTemp)
+            ?: 0f
 
         val (storageTotalKb, storageUsedKb) = runCatching {
             val dataFs = StatFs(Environment.getDataDirectory().absolutePath)

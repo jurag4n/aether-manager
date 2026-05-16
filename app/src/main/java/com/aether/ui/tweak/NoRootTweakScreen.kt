@@ -62,21 +62,15 @@ import com.aether.shizuku.ShizukuShell
 import kotlinx.coroutines.delay
 
 @Composable
-fun NoRootTweakScreen(vm: MainViewModel, useShizuku: Boolean = true) {
+fun NoRootTweakScreen(vm: MainViewModel) {
     val tweaks by vm.tweaks.collectAsState()
     val applyStatus by vm.applyStatus.collectAsState()
-    val monitor by vm.monitorState.collectAsState()
 
     var shizukuRunning by remember { mutableStateOf(false) }
     var shizukuGranted by remember { mutableStateOf(false) }
     var dnsExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(useShizuku) {
-        if (!useShizuku) {
-            shizukuRunning = false
-            shizukuGranted = false
-            return@LaunchedEffect
-        }
+    LaunchedEffect(Unit) {
         while (true) {
             shizukuRunning = ShizukuShell.isAvailable()
             shizukuGranted = ShizukuShell.hasPermission()
@@ -84,9 +78,7 @@ fun NoRootTweakScreen(vm: MainViewModel, useShizuku: Boolean = true) {
         }
     }
 
-    val canApply = useShizuku && shizukuRunning && shizukuGranted
-    val ramText = if (monitor.ramTotalMb > 0L) "${monitor.ramUsedMb}/${monitor.ramTotalMb} MB" else "-"
-    val storageText = if (monitor.storageTotalGb > 0f) "${monitor.storageUsedGb.toInt()}/${monitor.storageTotalGb.toInt()} GB" else "-"
+    val canApply = shizukuRunning && shizukuGranted
     val dnsOptions = listOf(
         "Off" to "Off",
         "Cloudflare" to "cloudflare",
@@ -106,24 +98,14 @@ fun NoRootTweakScreen(vm: MainViewModel, useShizuku: Boolean = true) {
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         NoRootHeader(
-            useShizuku = useShizuku,
             running = shizukuRunning,
             granted = shizukuGranted,
             onRequest = { ShizukuShell.requestPermissionIfNeeded() }
         )
 
-        NoRootMonitorCard(
-            cpu = monitor.cpuUsage,
-            ram = ramText,
-            storage = storageText,
-            uptime = monitor.uptime.ifBlank { "-" }
-        )
+        PlainNoRootInfoCard()
 
-        if (!useShizuku) {
-            PlainNoRootInfoCard()
-            RootLockedCard()
-        } else {
-            SectionTitle("No Root + Shizuku Shell", "Apply safe shell tweaks without root access.")
+        SectionTitle("No Root + Shizuku Shell", "Shizuku opsional untuk apply tweak aman tanpa root.")
 
             DnsOptionCard(
                 selected = selectedDnsLabel,
@@ -173,9 +155,9 @@ fun NoRootTweakScreen(vm: MainViewModel, useShizuku: Boolean = true) {
                 onChecked = { vm.setTweak("network_stable", it) }
             )
 
-            RootLockedCard()
+        RootLockedCard()
 
-            if (applyStatus.running || applyStatus.summary.isNotBlank()) {
+        if (applyStatus.running || applyStatus.summary.isNotBlank()) {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -203,7 +185,6 @@ fun NoRootTweakScreen(vm: MainViewModel, useShizuku: Boolean = true) {
                         )
                     }
                 }
-            }
         }
 
         Spacer(Modifier.height(18.dp))
@@ -214,17 +195,15 @@ fun NoRootTweakScreen(vm: MainViewModel, useShizuku: Boolean = true) {
 
 @Composable
 private fun NoRootHeader(
-    useShizuku: Boolean,
     running: Boolean,
     granted: Boolean,
     onRequest: () -> Unit
 ) {
     val color by animateColorAsState(
         when {
-            !useShizuku -> MaterialTheme.colorScheme.secondary
             running && granted -> MaterialTheme.colorScheme.primary
             running -> MaterialTheme.colorScheme.tertiary
-            else -> MaterialTheme.colorScheme.error
+            else -> MaterialTheme.colorScheme.secondary
         },
         tween(220, easing = FastOutSlowInEasing),
         label = "shizuku_status_color"
@@ -252,13 +231,12 @@ private fun NoRootHeader(
                     )
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(if (useShizuku) "No Root + Shizuku Shell" else "No Root Mode", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
+                    Text("No Root Mode", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
                     Text(
                         when {
-                            !useShizuku -> "Mode aman tanpa shell: monitor + simpan preferensi lokal"
-                            running && granted -> "Shizuku running and permission granted"
-                            running -> "Shizuku running, permission needed"
-                            else -> "Shizuku not running — pair/start Shizuku again"
+                            running && granted -> "Shizuku aktif — tweak aman bisa diterapkan"
+                            running -> "Shizuku berjalan, izin belum diberikan"
+                            else -> "Tanpa root: aman, Shizuku opsional"
                         },
                         color = color,
                         style = MaterialTheme.typography.bodySmall,
@@ -268,12 +246,12 @@ private fun NoRootHeader(
             }
 
             Text(
-                if (useShizuku) "Mode ini menjalankan tweak aman lewat Shizuku Shell. Fitur kernel penuh tetap butuh Root Mode." else "Mode ini tidak meminta root dan tidak menjalankan shell, jadi aman untuk perangkat non-root.",
+                "Mode ini tidak meminta root. Jika Shizuku aktif, beberapa tweak aman bisa diterapkan; fitur kernel penuh tetap butuh Root Mode.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )
 
-            if (useShizuku && !granted) {
+            if (!granted) {
                 OutlinedButton(
                     onClick = onRequest,
                     shape = RoundedCornerShape(16.dp),
@@ -311,41 +289,6 @@ private fun PlainNoRootInfoCard() {
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodySmall
             )
-        }
-    }
-}
-
-@Composable
-private fun NoRootMonitorCard(cpu: Int, ram: String, storage: String, uptime: String) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionTitle("No Root Monitor", "Safe monitor data only. CPU/GPU kernel stats require root on many devices.")
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                SmallStat("CPU", if (cpu > 0) "$cpu%" else "0–1%", Modifier.weight(1f))
-                SmallStat("RAM", ram, Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                SmallStat("Storage", storage, Modifier.weight(1f))
-                SmallStat("Uptime", uptime, Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SmallStat(title: String, value: String, modifier: Modifier = Modifier) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier
-    ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
         }
     }
 }

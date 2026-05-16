@@ -11,6 +11,7 @@ import com.aether.util.RootEngine
 import com.aether.util.SettingsPrefs
 import com.aether.util.TweakApplier
 import com.aether.ads.AdScheduler
+import com.aether.shizuku.ShizukuShell
 import com.aether.shizuku.ShizukuTweakApplier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -108,11 +109,14 @@ data class ApplyStatus(
 
 enum class AccessMode(val value: String, val label: String, val description: String) {
     ROOT("root", "Root", "Full kernel tweaks with SU permission"),
-    NO_ROOT("no_root", "No Root", "Safe monitor and local settings only"),
-    SHIZUKU("shizuku", "Shizuku Shell", "No-root shell tweaks through Shizuku");
+    NO_ROOT("no_root", "No Root", "Safe monitor, local settings, and optional Shizuku Shell");
 
     companion object {
-        fun from(value: String?): AccessMode = entries.firstOrNull { it.value == value } ?: ROOT
+        fun from(value: String?): AccessMode = when (value) {
+            ROOT.value -> ROOT
+            NO_ROOT.value, "shizuku" -> NO_ROOT
+            else -> NO_ROOT
+        }
     }
 }
 
@@ -200,7 +204,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshMonitor() = viewModelScope.launch(Dispatchers.IO) {
-        _monitorState.value = RootEngine.getMonitorState()
+        _monitorState.value = RootEngine.getMonitorState(getApplication<Application>())
     }
 
     private fun startMonitorLoop() {
@@ -210,7 +214,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             while (isActive) {
                 if (!_applyStatus.value.running) {
                     try {
-                        _monitorState.value = RootEngine.getMonitorState()
+                        _monitorState.value = RootEngine.getMonitorState(getApplication<Application>())
                     } catch (_: Exception) {}
                 }
                 delay(900)
@@ -382,29 +386,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
 
                     if (result.success) AdScheduler.tryShowAfterAction()
-                    runCatching { _monitorState.value = RootEngine.getMonitorState() }
-                    viewModelScope.launch { autoBackupIfEnabled() }
-                }
-
-                AccessMode.SHIZUKU -> {
-                    val result = ShizukuTweakApplier.apply(map)
-                    _applyStatus.value = ApplyStatus(
-                        running = false,
-                        lastOk  = result.success,
-                        summary = "Shizuku · ${result.summary}",
-                        totalMs = result.totalMs,
-                    )
-                    if (result.success) AdScheduler.tryShowAfterAction()
+                    runCatching { _monitorState.value = RootEngine.getMonitorState(getApplication<Application>()) }
                     viewModelScope.launch { autoBackupIfEnabled() }
                 }
 
                 AccessMode.NO_ROOT -> {
-                    _applyStatus.value = ApplyStatus(
-                        running = false,
-                        lastOk = true,
-                        summary = "No Root · tersimpan lokal, tidak menjalankan shell",
-                        totalMs = 0L,
-                    )
+                    val canUseShizuku = runCatching { ShizukuShell.isAvailable() && ShizukuShell.hasPermission() }.getOrDefault(false)
+                    if (canUseShizuku) {
+                        val result = ShizukuTweakApplier.apply(map)
+                        _applyStatus.value = ApplyStatus(
+                            running = false,
+                            lastOk  = result.success,
+                            summary = "No Root · Shizuku · ${result.summary}",
+                            totalMs = result.totalMs,
+                        )
+                        if (result.success) AdScheduler.tryShowAfterAction()
+                        viewModelScope.launch { autoBackupIfEnabled() }
+                    } else {
+                        _applyStatus.value = ApplyStatus(
+                            running = false,
+                            lastOk = true,
+                            summary = "No Root · tersimpan lokal, Shizuku belum aktif",
+                            totalMs = 0L,
+                        )
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -415,20 +420,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setAccessMode(mode: AccessMode) {
-        SettingsPrefs.setAccessMode(getApplication(), mode.value)
-        _accessMode.value = mode
-        _applyStatus.value = ApplyStatus(
-            running = false,
-            lastOk = true,
-            summary = when (mode) {
-                AccessMode.ROOT -> "Mode Root aktif"
-                AccessMode.NO_ROOT -> "Mode No Root aktif"
-                AccessMode.SHIZUKU -> "Mode Shizuku Shell aktif"
-            }
-        )
         if (mode == AccessMode.ROOT) {
-            viewModelScope.launch(Dispatchers.IO) { ensureRootReady(requestIfNeeded = false) }
+            viewModelScope.launch(Dispatchers.IO) {
+                _applyStatus.value = ApplyStatus(running = true, summary = "Memeriksa akses Root…")
+                val ok = ensureRootReady(requestIfNeeded = true)
+                if (ok) {
+                    SettingsPrefs.setAccessMode(getApplication(), AccessMode.ROOT.value)
+                    _accessMode.value = AccessMode.ROOT
+                    _applyStatus.value = ApplyStatus(running = false, lastOk = true, summary = "Mode Root aktif")
+                    snack("Mode Root aktif")
+                } else {
+                    SettingsPrefs.setAccessMode(getApplication(), AccessMode.NO_ROOT.value)
+                    _accessMode.value = AccessMode.NO_ROOT
+                    _applyStatus.value = ApplyStatus(
+                        running = false,
+                        lastOk = false,
+                        summary = "Root diblok — akses superuser belum tersedia"
+                    )
+                    snack("Root diblok: grant Superuser dulu, atau tetap pakai No Root")
+                }
+            }
+            return
         }
+
+        SettingsPrefs.setAccessMode(getApplication(), AccessMode.NO_ROOT.value)
+        _accessMode.value = AccessMode.NO_ROOT
+        _applyStatus.value = ApplyStatus(running = false, lastOk = true, summary = "Mode No Root aktif")
+        snack("Mode No Root aktif")
     }
 
     fun setProfile(profile: String) {

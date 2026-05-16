@@ -86,14 +86,13 @@ object SettingsPrefs {
     }
 
     // ── Access mode ──────────────────────────────────────────────────────────
-    fun getAccessMode(ctx: Context): String =
-        prefs(ctx).getString(KEY_ACCESS_MODE, "root") ?: "root"
+    fun getAccessMode(ctx: Context): String {
+        val raw = prefs(ctx).getString(KEY_ACCESS_MODE, "no_root") ?: "no_root"
+        return if (raw == "root") "root" else "no_root"
+    }
 
     fun setAccessMode(ctx: Context, mode: String) {
-        val safeMode = when (mode) {
-            "root", "no_root", "shizuku" -> mode
-            else -> "root"
-        }
+        val safeMode = if (mode == "root") "root" else "no_root"
         prefs(ctx).edit().putString(KEY_ACCESS_MODE, safeMode).apply()
     }
 }
