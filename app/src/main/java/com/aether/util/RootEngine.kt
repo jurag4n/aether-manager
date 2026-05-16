@@ -298,6 +298,25 @@ object RootEngine {
 
     private fun readLongFast(path: String): Long = readTextFast(path).filter { it.isDigit() || it == '-' }.toLongOrNull() ?: 0L
 
+    private fun powerSupplyPaths(fileName: String): List<String> = runCatching {
+        val preferred = setOf("battery", "bms", "fg_battery", "main", "main-battery")
+        File("/sys/class/power_supply").listFiles()
+            ?.filter { ps -> preferred.any { key -> ps.name.contains(key, ignoreCase = true) } }
+            ?.flatMap { ps ->
+                listOf("${ps.path}/$fileName") + when (fileName) {
+                    "temp" -> listOf("${ps.path}/temperature", "${ps.path}/batt_temp")
+                    "current_now" -> listOf("${ps.path}/current_avg", "${ps.path}/batt_current_now")
+                    "voltage_now" -> listOf("${ps.path}/batt_vol", "${ps.path}/voltage_avg")
+                    else -> emptyList()
+                }
+            }
+            .orEmpty()
+            .distinct()
+    }.getOrDefault(emptyList())
+
+    private fun firstReadableLong(paths: List<String>): Long =
+        paths.firstNotNullOfOrNull { readLongFast(it).takeIf { value -> value != 0L } } ?: 0L
+
     private fun glob(prefix: String, suffix: String = ""): List<File> = runCatching {
         val root = File(prefix.substringBefore('*').ifBlank { "/" })
         val parent = if (prefix.contains('*')) root.parentFile ?: File("/") else File(prefix)
@@ -620,30 +639,46 @@ object RootEngine {
         val swapUsedMb = (((memInfo["SwapTotal"] ?: 0L) - (memInfo["SwapFree"] ?: 0L)).coerceAtLeast(0L)) / 1024L
 
         val battery = readBatterySnapshot(context)
-        val sysBatteryLevel = readLongFast("/sys/class/power_supply/battery/capacity").toInt().coerceIn(0, 100)
+        val sysBatteryLevel = firstReadableLong(
+            listOf("/sys/class/power_supply/battery/capacity", "/sys/class/power_supply/Battery/capacity") + powerSupplyPaths("capacity")
+        ).toInt().coerceIn(0, 100)
         val batLevel = if (sysBatteryLevel > 0) sysBatteryLevel else battery.level
-        val batTempC = listOf(
-            "/sys/class/power_supply/battery/temp",
-            "/sys/class/power_supply/Battery/temp",
-            "/sys/class/power_supply/bms/temp",
-            "/sys/class/power_supply/battery/batt_temp"
+        val batTempC = (
+            listOf(
+                "/sys/class/power_supply/battery/temp",
+                "/sys/class/power_supply/Battery/temp",
+                "/sys/class/power_supply/bms/temp",
+                "/sys/class/power_supply/battery/batt_temp",
+                "/sys/class/power_supply/fg_battery/temp"
+            ) + powerSupplyPaths("temp")
         ).firstNotNullOfOrNull { normRaw(readLongFast(it)).takeIf(::validTemp) }
             ?: battery.tempC.takeIf(::validTemp)
-            ?: readThermalByName("battery", "batt")
-        val rawUa = listOf(
-            "/sys/class/power_supply/battery/current_now",
-            "/sys/class/power_supply/Battery/current_now",
-            "/sys/class/power_supply/bms/current_now"
-        ).firstNotNullOfOrNull { readLongFast(it).takeIf { v -> v != 0L } } ?: 0L
+            ?: readThermalByName("battery", "batt", "charger")
+        val rawUa = firstReadableLong(
+            listOf(
+                "/sys/class/power_supply/battery/current_now",
+                "/sys/class/power_supply/Battery/current_now",
+                "/sys/class/power_supply/battery/current_avg",
+                "/sys/class/power_supply/bms/current_now",
+                "/sys/class/power_supply/bms/current_avg",
+                "/sys/class/power_supply/fg_battery/current_now"
+            ) + powerSupplyPaths("current_now")
+        )
         val batCurrentMa = normalizeBatteryCurrentMa(rawUa).takeIf { it != 0L } ?: battery.currentMa
-        val rawUv = listOf(
-            "/sys/class/power_supply/battery/voltage_now",
-            "/sys/class/power_supply/Battery/voltage_now",
-            "/sys/class/power_supply/bms/voltage_now"
-        ).firstNotNullOfOrNull { readLongFast(it).takeIf { v -> v > 0L } } ?: 0L
+        val rawUv = firstReadableLong(
+            listOf(
+                "/sys/class/power_supply/battery/voltage_now",
+                "/sys/class/power_supply/Battery/voltage_now",
+                "/sys/class/power_supply/battery/voltage_avg",
+                "/sys/class/power_supply/bms/voltage_now",
+                "/sys/class/power_supply/fg_battery/voltage_now"
+            ) + powerSupplyPaths("voltage_now")
+        )
         val sysVoltage = if (rawUv > 1_000_000L) rawUv / 1000L else rawUv
         val batVoltage = sysVoltage.takeIf { it > 0L } ?: battery.voltageMv
-        val batStatus = readTextFast("/sys/class/power_supply/battery/status").ifBlank { battery.status }
+        val batStatus = (
+            listOf("/sys/class/power_supply/battery/status", "/sys/class/power_supply/Battery/status") + powerSupplyPaths("status")
+        ).firstNotNullOfOrNull { readTextFast(it).takeIf { v -> v.isNotBlank() } } ?: battery.status
 
         val thermalTempC = readThermalByName("soc", "xo", "skin", "shell", "board", "ambient", "pmic", "modem", "quiet", "therm", excludeBattery = true)
             .takeIf(::validTemp)

@@ -3,9 +3,12 @@ package com.aether.ui
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 
 private val md_primary_light = Color(0xFF006CFA)
 private val md_onPrimary_light = Color(0xFFFFFFFF)
@@ -64,6 +67,30 @@ private val md_surfaceContainer_dark = Color(0xFF211F26)
 private val md_surfaceContainerLow_dark = Color(0xFF1D1B20)
 private val md_surfaceContainerHigh_dark = Color(0xFF2B2930)
 private val md_surfaceContainerHighest_dark = Color(0xFF36343B)
+
+
+private val BaseTypography = Typography()
+
+private val AetherTypography = Typography(
+    displayLarge = BaseTypography.displayLarge.copy(fontWeight = FontWeight.Black),
+    displayMedium = BaseTypography.displayMedium.copy(fontWeight = FontWeight.Black),
+    headlineLarge = BaseTypography.headlineLarge.copy(fontWeight = FontWeight.Black),
+    headlineMedium = BaseTypography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+    headlineSmall = BaseTypography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+    titleLarge = BaseTypography.titleLarge.copy(fontWeight = FontWeight.Bold),
+    titleMedium = BaseTypography.titleMedium.copy(fontWeight = FontWeight.Bold),
+    titleSmall = BaseTypography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+    labelLarge = BaseTypography.labelLarge.copy(fontWeight = FontWeight.Bold),
+    labelMedium = BaseTypography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+)
+
+private val AetherShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp),
+)
 
 private val LightColorScheme = lightColorScheme(
     primary = md_primary_light,
@@ -144,6 +171,8 @@ fun AetherTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = AetherTypography,
+        shapes = AetherShapes,
         content = content
     )
 }

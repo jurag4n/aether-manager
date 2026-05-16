@@ -557,7 +557,7 @@ private fun tempText(value: Float): String = if (value > 0f) "${value.toInt()}°
 private fun freqText(value: String): String = value.ifBlank { "— MHz" }.uppercase()
 private fun oneDecimal(value: Float): String = "%.1f".format(value.coerceAtLeast(0f))
 private fun ratio(used: Float, total: Float): Float = if (total <= 0f) 0f else (used / total).coerceIn(0f, 1f)
-private fun currentText(value: Long): String = if (value == 0L) "— mA" else "${value} mA"
+private fun currentText(value: Long): String = if (value == 0L) "— mA" else "${kotlin.math.abs(value)} mA"
 private fun voltageText(value: Long): String = if (value <= 0L) "— mV" else "${value} mV"
 private fun profileLabel(value: String?): String = when (value?.lowercase()) {
     "performance" -> "Performance"
