@@ -16,9 +16,16 @@ import com.aether.security.AetherSecurityNative
 import com.aether.security.SecurityBlockActivity
 import com.aether.util.UiNativeBoost
 import com.aether.util.UiPerformanceMonitor
+import com.aether.remote.AetherAdminSync
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlin.system.exitProcess
 
 class AetherApplication : Application() {
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Background thread for security checks — avoids ANR from l1_frida_port()
     // which opens 3 socket connections on each call.
@@ -61,6 +68,8 @@ class AetherApplication : Application() {
 
         NotificationHelper.createChannels(this)
         NotificationScheduler.schedule(this)
+
+        appScope.launch { AetherAdminSync.sync(this@AetherApplication) }
     }
 
     @Volatile private var securityBlocked = false

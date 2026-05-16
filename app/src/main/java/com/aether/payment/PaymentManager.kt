@@ -4,6 +4,7 @@ import android.content.Context
 import com.aether.NativeAether
 import com.aether.license.LicenseManager
 import com.aether.license.LicensePrefs
+import com.aether.remote.AetherAdminSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -19,17 +20,9 @@ object PaymentManager {
 
     // ── Endpoint URL getters (dari native layer, dengan hardcoded fallback) ───
 
-    private fun createOrderUrl(): String =
-        if (NativeAether.isLoaded)
-            runCatching { NativeAether.nativeGetCreateOrderUrl() }.getOrNull()
-                ?: "https://aether-app-weld.vercel.app/api/payment/create-order"
-        else "https://aether-app-weld.vercel.app/api/payment/create-order"
+    private fun createOrderUrl(): String = AetherAdminSync.endpoint("/payment/create-order")
 
-    private fun pollOrderUrl(): String =
-        if (NativeAether.isLoaded)
-            runCatching { NativeAether.nativeGetPollOrderUrl() }.getOrNull()
-                ?: "https://aether-app-weld.vercel.app/api/payment/poll-order"
-        else "https://aether-app-weld.vercel.app/api/payment/poll-order"
+    private fun pollOrderUrl(): String = AetherAdminSync.endpoint("/payment/poll-order")"
 
     // ── Data classes ──────────────────────────────────────────────────────────
 
@@ -68,9 +61,9 @@ object PaymentManager {
     ): CreateOrderResult = withContext(Dispatchers.IO) {
         try {
             val deviceId = LicenseManager.getDeviceId(ctx)
-            val conn = openPost(createOrderUrl())
+            val conn = openPost(createOrderUrl(), ctx)
 
-            val body = JSONObject().apply {
+            val body = AetherAdminSync.clientPayload(ctx).apply {
                 put("name",     name.trim())
                 put("deviceId", deviceId)
             }.toString()
@@ -137,14 +130,15 @@ object PaymentManager {
                 return@withContext r
             }
 
-            val result = checkOrder(orderId, deviceId)
+            val result = checkOrder(ctx, orderId, deviceId)
             onPoll(result)
 
             when (result) {
                 is PollResult.Pending -> delay(POLL_INTERVAL_MS)
                 else -> {
                     if (result is PollResult.Completed) {
-                        LicensePrefs.save(ctx, result.licenseKey, result.expiresAt)
+                        LicensePrefs.save(ctx, LicenseManager.normalizeKey(result.licenseKey), result.expiresAt)
+                        AetherAdminSync.sync(ctx)
                         InvoicePrefs.updateStatus(ctx, orderId, "paid")
                     }
                     return@withContext result
@@ -158,7 +152,7 @@ object PaymentManager {
 
     // ── Single poll ───────────────────────────────────────────────────────────
 
-    private suspend fun checkOrder(orderId: String, deviceId: String): PollResult =
+    private suspend fun checkOrder(ctx: Context, orderId: String, deviceId: String): PollResult =
         withContext(Dispatchers.IO) {
             try {
                 val oid  = java.net.URLEncoder.encode(orderId,  "UTF-8")
@@ -166,6 +160,7 @@ object PaymentManager {
                 val conn = (URL("${pollOrderUrl()}?orderId=$oid&deviceId=$did")
                     .openConnection() as HttpURLConnection).apply {
                     requestMethod  = "GET"
+                    AetherAdminSync.applyProjectHeaders(this, ctx)
                     connectTimeout = 8_000
                     readTimeout    = 8_000
                 }
@@ -189,10 +184,11 @@ object PaymentManager {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun openPost(url: String): HttpURLConnection =
+    private fun openPost(url: String, ctx: Context): HttpURLConnection =
         (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             setRequestProperty("Content-Type", "application/json")
+            AetherAdminSync.applyProjectHeaders(this, ctx)
             doOutput       = true
             connectTimeout = 15_000
             readTimeout    = 15_000

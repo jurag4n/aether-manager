@@ -189,7 +189,7 @@ fun LicenseScreen(onBack: () -> Unit) {
                             Text(s.licenseHaveKeyTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         }
                         OutlinedTextField(
-                            value = keyInput, onValueChange = { keyInput = it.trim().filter { ch -> ch.isLetterOrDigit() }.take(10) },
+                            value = keyInput, onValueChange = { keyInput = LicenseManager.formatKeyInput(it) },
                             label = { Text(s.licenseKeyInputLabel) },
                             modifier = Modifier.fillMaxWidth(), singleLine = true,
                             shape = RoundedCornerShape(12.dp),

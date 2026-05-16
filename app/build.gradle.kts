@@ -8,6 +8,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+fun String.asBuildConfigString(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
 val gitHash: String by lazy {
     try {
         providers.exec {
@@ -27,6 +29,9 @@ android {
         versionCode   = 300
         versionName   = "3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "AETHER_API_BASE", (System.getenv("AETHER_API_BASE") ?: "https://aether-app-weld.vercel.app/api").asBuildConfigString())
+        buildConfigField("String", "AETHER_PROJECT_API_KEY", (System.getenv("AETHER_PROJECT_API_KEY") ?: "").asBuildConfigString())
 
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
