@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -180,7 +179,7 @@ private fun OverviewCard(info: DeviceInfo, monitor: MonitorState, onRefresh: () 
                 )
                 .padding(18.dp)
         ) {
-            Canvas(modifier = Modifier.matchParentSize()) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
                 drawCircle(
                     color = Color.White.copy(alpha = .10f),
                     radius = size.minDimension * .45f,
