@@ -687,6 +687,15 @@ object RootEngine {
             ?: batTempC.takeIf(::validTemp)
             ?: 0f
 
+        val ramTotalForEstimate = ramTotalMb.takeIf { it > 0L } ?: 1L
+        val ramUsageEstimate = ((ramUsedMb * 100L) / ramTotalForEstimate).toInt().coerceIn(0, 100)
+        if (gpuUsage <= 0 && gpuFreqMhz <= 0L && gpuName.isBlank()) {
+            gpuUsage = ((cpuUsage * 0.62f) + (ramUsageEstimate * 0.18f)).roundToInt().coerceIn(0, 100)
+            gpuName = "System estimate"
+        }
+        val displayCpuTempC = if (validTemp(cpuTempC)) cpuTempC else thermalTempC
+        val displayGpuTempC = if (validTemp(gpuTempC)) gpuTempC else thermalTempC
+
         val (storageTotalKb, storageUsedKb) = runCatching {
             val dataFs = StatFs(Environment.getDataDirectory().absolutePath)
             val blockSize = dataFs.blockSizeLong
@@ -706,8 +715,8 @@ object RootEngine {
             gpuName = gpuName.trim(),
             ramUsedMb = ramUsedMb,
             ramTotalMb = ramTotalMb,
-            cpuTemp = cpuTempC,
-            gpuTemp = gpuTempC,
+            cpuTemp = displayCpuTempC,
+            gpuTemp = displayGpuTempC,
             thermalTemp = thermalTempC,
             batTemp = batTempC,
             storageUsedGb = storageUsedKb / 1_048_576f,

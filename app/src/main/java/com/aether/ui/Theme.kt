@@ -80,8 +80,12 @@ private val AetherTypography = Typography(
     titleLarge = BaseTypography.titleLarge.copy(fontWeight = FontWeight.Bold),
     titleMedium = BaseTypography.titleMedium.copy(fontWeight = FontWeight.Bold),
     titleSmall = BaseTypography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+    bodyLarge = BaseTypography.bodyLarge.copy(fontWeight = FontWeight.Normal),
+    bodyMedium = BaseTypography.bodyMedium.copy(fontWeight = FontWeight.Normal),
+    bodySmall = BaseTypography.bodySmall.copy(fontWeight = FontWeight.Normal),
     labelLarge = BaseTypography.labelLarge.copy(fontWeight = FontWeight.Bold),
     labelMedium = BaseTypography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+    labelSmall = BaseTypography.labelSmall.copy(fontWeight = FontWeight.Medium),
 )
 
 private val AetherShapes = Shapes(
