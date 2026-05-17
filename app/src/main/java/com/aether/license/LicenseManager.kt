@@ -23,16 +23,34 @@ object LicenseManager {
     private fun verifyUrl(): String = AetherAdminSync.endpoint("/verify")
 
     fun formatKeyInput(value: String): String {
-        val raw = value.uppercase(Locale.US).filter { it.isLetterOrDigit() }.take(16)
-        if (!raw.startsWith("AETH")) return raw
-        val tail = raw.drop(4)
-        return buildString {
-            append("AETH")
-            tail.chunked(4).forEach { part -> append('-').append(part) }
-        }.take(19)
+        val trimmed = value.trim()
+        val compact = trimmed.filter { it.isLetterOrDigit() }
+
+        // Format baru Aether: AETH-XXXX-XXXX-XXXX.
+        // Hanya key yang diawali AETH yang otomatis di-uppercase dan diberi strip.
+        if (compact.uppercase(Locale.US).startsWith("AETH")) {
+            val raw = compact.uppercase(Locale.US).take(16)
+            val tail = raw.drop(4)
+            return buildString {
+                append("AETH")
+                tail.chunked(4).forEach { part -> append('-').append(part) }
+            }.take(19)
+        }
+
+        // Format legacy/custom seperti NLlHOl9oGb harus case-sensitive.
+        // Jangan uppercase, jangan paksa strip, agar kode lama tetap valid.
+        return trimmed.filter { it.isLetterOrDigit() || it == '-' || it == '_' }.take(64)
     }
 
-    fun normalizeKey(value: String): String = formatKeyInput(value).trim().uppercase(Locale.US)
+    fun normalizeKey(value: String): String {
+        val formatted = formatKeyInput(value).trim()
+        val compact = formatted.filter { it.isLetterOrDigit() }
+        return if (compact.uppercase(Locale.US).startsWith("AETH")) {
+            formatKeyInput(compact).uppercase(Locale.US)
+        } else {
+            formatted
+        }
+    }
 
     fun getDeviceId(ctx: Context): String {
         val androidId = Settings.Secure.getString(

@@ -295,7 +295,7 @@ val StringsId = AppStrings(
     licenseContinuePaymentBtn = "Lanjutkan Pembayaran",
 
     licenseHaveKeyTitle = "Punya License Key?",
-    licenseKeyInputLabel = "Kode Lisensi 10 Karakter",
+    licenseKeyInputLabel = "Kode Lisensi",
     licenseActivateBtn = "Aktifkan Key",
 
     licenseDeactivateDialogTitle = "Nonaktifkan License",

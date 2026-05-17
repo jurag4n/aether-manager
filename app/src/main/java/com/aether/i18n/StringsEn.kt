@@ -295,7 +295,7 @@ val StringsEn = AppStrings(
     licenseContinuePaymentBtn = "Continue Payment",
 
     licenseHaveKeyTitle = "Have a License Key?",
-    licenseKeyInputLabel = "10-character License Code",
+    licenseKeyInputLabel = "License Code",
     licenseActivateBtn = "Activate Key",
 
     licenseDeactivateDialogTitle = "Deactivate License",
