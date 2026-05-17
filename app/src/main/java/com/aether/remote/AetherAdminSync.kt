@@ -2,6 +2,7 @@ package com.aether.remote
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.pm.Signature
 import android.os.Build
 import com.aether.BuildConfig
 import com.aether.NativeAether
@@ -109,13 +110,17 @@ object AetherAdminSync {
 
     fun signingSha256(ctx: Context): String = runCatching {
         val pm = ctx.packageManager
-        val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val signatures: Array<Signature> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             val info = pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
             val signingInfo = info.signingInfo
-            if (signingInfo.hasMultipleSigners()) signingInfo.apkContentsSigners else signingInfo.signingCertificateHistory
+            when {
+                signingInfo == null -> emptyArray()
+                signingInfo.hasMultipleSigners() -> signingInfo.apkContentsSigners ?: emptyArray()
+                else -> signingInfo.signingCertificateHistory ?: signingInfo.apkContentsSigners ?: emptyArray()
+            }
         } else {
             @Suppress("DEPRECATION")
-            pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNATURES).signatures
+            pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNATURES).signatures ?: emptyArray()
         }
         val cert = signatures.firstOrNull()?.toByteArray() ?: return@runCatching ""
         MessageDigest.getInstance("SHA-256").digest(cert).joinToString("") { "%02x".format(it) }

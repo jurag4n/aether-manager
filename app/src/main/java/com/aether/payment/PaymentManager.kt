@@ -22,7 +22,7 @@ object PaymentManager {
 
     private fun createOrderUrl(): String = AetherAdminSync.endpoint("/payment/create-order")
 
-    private fun pollOrderUrl(): String = AetherAdminSync.endpoint("/payment/poll-order")"
+    private fun pollOrderUrl(): String = AetherAdminSync.endpoint("/payment/poll-order")
 
     // ── Data classes ──────────────────────────────────────────────────────────
 
