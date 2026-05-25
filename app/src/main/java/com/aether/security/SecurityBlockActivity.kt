@@ -178,7 +178,7 @@ private fun SecurityBlockScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Lingkungan aplikasi terdeteksi tidak aman, sehingga sesi dihentikan untuk melindungi lisensi, data, dan integritas aplikasi.",
+                        text = "Validasi keamanan aplikasi gagal. Proteksi ini hanya memakai pengecekan penting agar lebih akurat dan tidak mudah false positive.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -292,68 +292,33 @@ private fun securityReasonUi(rawReason: String): SecurityReasonUi {
     return when (rawReason.lowercase()) {
         "signature_mismatch" -> SecurityReasonUi(
             title = "Signature aplikasi tidak cocok",
-            description = "APK kemungkinan bukan hasil signing resmi, sudah di-repack, atau memakai key berbeda.",
-            fix = "Install ulang dari rilis resmi. Kalau ini build developer, update fingerprint signature yang benar di native security."
+            description = "APK tidak ditandatangani dengan sertifikat resmi. Biasanya terjadi karena APK hasil modifikasi, repack, atau memakai key signing berbeda.",
+            fix = "Install ulang APK resmi. Kalau ini build baru dari developer, update SHA-256 signature resmi di file native security."
         )
         "signature_check_failed" -> SecurityReasonUi(
-            title = "Validasi signature gagal",
-            description = "Aplikasi tidak bisa membaca atau memvalidasi sertifikat APK.",
-            fix = "Coba install ulang APK. Pastikan APK tidak rusak dan tidak ditimpa oleh build dengan package/signature berbeda."
+            title = "Signature tidak bisa dibaca",
+            description = "Sistem gagal membaca sertifikat APK. Penyebab umum: APK rusak, proses install tidak sempurna, atau metadata signing tidak valid.",
+            fix = "Uninstall aplikasi, lalu install ulang APK yang masih utuh. Pastikan APK belum diubah setelah proses signing."
         )
-        "lucky_patcher_detected" -> SecurityReasonUi(
-            title = "Terdeteksi Lucky Patcher",
-            description = "Aplikasi mendeteksi komponen, package, file, atau jejak Lucky Patcher/Chelpus yang bisa memodifikasi APK dan lisensi.",
-            fix = "Hapus/nonaktifkan patcher tersebut, restart perangkat, lalu buka ulang aplikasi."
+        "package_mismatch" -> SecurityReasonUi(
+            title = "Package name tidak sesuai",
+            description = "Nama paket aplikasi berbeda dari package resmi yang diizinkan oleh proteksi.",
+            fix = "Gunakan package resmi aplikasi. Jika package sengaja diganti, sesuaikan EXPECTED_PACKAGE di AetherSecurityNative.kt."
         )
-        "lspatch_detected" -> SecurityReasonUi(
-            title = "Terdeteksi LSPatch",
-            description = "Aplikasi mendeteksi LSPatch atau loader LSPatch. LSPosed, Zygisk, dan Riru tetap diizinkan; yang diblokir adalah LSPatch.",
-            fix = "Gunakan APK original tanpa patcher, lalu install ulang."
+        "native_not_loaded" -> SecurityReasonUi(
+            title = "Library security tidak termuat",
+            description = "File libaethersec.so tidak ditemukan atau gagal dimuat untuk ABI perangkat ini.",
+            fix = "Pastikan CMake membuild libaethersec.so dan APK membawa library native untuk ABI target."
         )
-        "lucky_patcher_or_lspatch_detected" -> SecurityReasonUi(
-            title = "Terdeteksi Lucky Patcher / LSPatch",
-            description = "Ada indikasi patcher seperti Lucky Patcher, Chelpus, LSPatch, atau tool modifikasi APK yang mengubah keamanan aplikasi.",
-            fix = "Nonaktifkan module/patcher terkait dan install ulang APK resmi."
-        )
-        "frida_detected", "frida_or_injector_detected" -> SecurityReasonUi(
-            title = "Terdeteksi Frida / Injector",
-            description = "Aplikasi menemukan artefak Frida, gadget, atau injector aktif di proses. LSPosed, Zygisk, dan Riru tidak diblokir otomatis.",
-            fix = "Tutup tool debugging/injector, matikan server Frida, lalu restart aplikasi."
-        )
-        "native_integrity_tamper", "native_hook_detected" -> SecurityReasonUi(
-            title = "Terdeteksi perubahan native",
-            description = "Ada indikasi perubahan pada library native aplikasi. Deteksi ini tidak dipicu hanya karena LSPosed, Zygisk, atau Riru.",
-            fix = "Pastikan file lib native berasal dari APK resmi dan tidak diubah saat proses proteksi/signing."
-        )
-        "runtime_tamper", "multi_signal_tamper", "native_tamper", "loader_tamper", "got_hook_detected", "hook_detected" -> SecurityReasonUi(
-            title = "Modifikasi runtime terdeteksi",
-            description = "Ada indikasi hooking, patching, atau injeksi yang mengubah perilaku asli aplikasi.",
-            fix = "Nonaktifkan hook/injector untuk aplikasi ini, lalu buka ulang."
-        )
-        "apk_repack", "package_repack", "patch_detected", "cloner_detected" -> SecurityReasonUi(
-            title = "Aplikasi hasil modifikasi atau cloning",
-            description = "Paket aplikasi tampak telah direpack, dikloning, atau dimodifikasi di luar rilis resmi.",
-            fix = "Hapus clone/modded APK dan install ulang build resmi dari developer."
-        )
-        "debugger_detected" -> SecurityReasonUi(
-            title = "Debugger terdeteksi",
-            description = "Aplikasi mendeteksi proses debugging aktif yang dapat memengaruhi keamanan runtime.",
-            fix = "Lepaskan debugger/profiler dan jalankan aplikasi secara normal."
-        )
-        "unity_tamper", "elf_tamper" -> SecurityReasonUi(
-            title = "Integritas library terganggu",
-            description = "Ada indikasi perubahan pada komponen native atau library penting aplikasi.",
-            fix = "Build ulang APK, pastikan library native tidak di-strip/diubah setelah proses signing final."
-        )
-        "security_check_failed", "native_not_loaded" -> SecurityReasonUi(
+        "security_check_failed" -> SecurityReasonUi(
             title = "Pengecekan keamanan gagal",
-            description = "Mesin keamanan tidak dapat dijalankan dengan benar sehingga aplikasi dihentikan untuk keamanan.",
-            fix = "Pastikan libaethersec.so ikut ter-package untuk ABI perangkat dan nama library cocok dengan System.loadLibrary."
+            description = "Aplikasi gagal menjalankan validasi signature karena error runtime.",
+            fix = "Coba install ulang. Jika masih gagal, cek logcat pada tag AetherSecurity untuk melihat penyebab teknisnya."
         )
         else -> SecurityReasonUi(
-            title = "Aktivitas tidak wajar terdeteksi",
-            description = "Sistem proteksi mendeteksi kondisi yang tidak sesuai dengan lingkungan aman aplikasi.",
-            fix = "Coba restart aplikasi. Jika ini false positive, kirim kode deteksi ke developer untuk whitelist atau kalibrasi rule."
+            title = "Validasi keamanan gagal",
+            description = "Aplikasi dihentikan karena pengecekan signature/package tidak lolos.",
+            fix = "Gunakan APK resmi yang ditandatangani dengan key yang sesuai."
         )
     }
 }

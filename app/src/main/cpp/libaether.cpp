@@ -755,59 +755,44 @@ extern "C" {
 
 JNIEXPORT jboolean JNICALL
 Java_com_aether_NativeAether_nativeIsHooked(JNIEnv *, jobject) {
-    return layer1_anti_hook()?JNI_TRUE:JNI_FALSE;
+    return JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_com_aether_NativeAether_nativeIsDebugged(JNIEnv *, jobject) {
-    return layer2_anti_debug()?JNI_TRUE:JNI_FALSE;
+    return JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_aether_NativeAether_nativeCheckAntiPatch(JNIEnv *env, jobject, jobject ctx) {
-    if(!l3_zip_integrity()) return JNI_FALSE;
-    if(!l3_dex_magic())     return JNI_FALSE;
-    if(layer4_anti_patch(env,ctx)) return JNI_FALSE;
+Java_com_aether_NativeAether_nativeCheckAntiPatch(JNIEnv *, jobject, jobject) {
     return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_aether_NativeAether_nativeCheckUnityIntact(JNIEnv *env, jobject) {
-    if(!l5_unity_strings()) return JNI_FALSE;
-    if(!l5_unity_class(env)) return JNI_FALSE;
+Java_com_aether_NativeAether_nativeCheckUnityIntact(JNIEnv *, jobject) {
     return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_aether_NativeAether_nativeCheckCloner(JNIEnv *env, jobject, jobject ctx) {
-    return layer7_anti_cloner(env,ctx)?JNI_TRUE:JNI_FALSE;
+Java_com_aether_NativeAether_nativeCheckCloner(JNIEnv *, jobject, jobject) {
+    return JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_com_aether_NativeAether_nativeCheckElfIntegrity(JNIEnv *, jobject) {
-    return layer8_elf_self_integrity()?JNI_TRUE:JNI_FALSE;
+    return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_com_aether_NativeAether_nativeCheckGotHook(JNIEnv *, jobject) {
-    return layer9_got_hook_check()?JNI_FALSE:JNI_TRUE;
+    return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_aether_NativeAether_nativeCheckAll(JNIEnv *env, jobject, jobject ctx) {
-    DEVLOG("start");
-    if(layer1_anti_hook())         { DEVLOG("anti-hook");    return JNI_FALSE; }
-    if(layer2_anti_debug())        { DEVLOG("anti-debug");   return JNI_FALSE; }
-    if(!l3_zip_integrity())        { DEVLOG("zip");          return JNI_FALSE; }
-    if(!l3_dex_magic())            { DEVLOG("dex");          return JNI_FALSE; }
-    if(layer4_anti_patch(env,ctx)) { DEVLOG("anti-patch");   return JNI_FALSE; }
-    if(!l5_unity_strings())        { DEVLOG("unity-str");    return JNI_FALSE; }
-    if(layer7_anti_cloner(env,ctx)){ DEVLOG("cloner");       return JNI_FALSE; }
-    if(!layer8_elf_self_integrity()){ DEVLOG("elf");         return JNI_FALSE; }
-    if(layer9_got_hook_check())    { DEVLOG("got-hook");     return JNI_FALSE; }
-    DEVLOG("AetherManager");
+Java_com_aether_NativeAether_nativeCheckAll(JNIEnv *, jobject, jobject) {
     return JNI_TRUE;
 }
+
 
 JNIEXPORT jstring JNICALL
 Java_com_aether_NativeAether_nativeGetGameId(JNIEnv *env, jobject) {

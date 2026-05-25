@@ -23,21 +23,21 @@ object AetherSecurityNative {
             }
             loaded = true
             true
-        }.getOrElse { false }
+        }.getOrDefault(false)
     }
 
     fun highCheck(context: Context): Boolean {
         if (BuildConfig.DEBUG) return true
         if (!tryLoad(context)) return false
-        return runCatching {
-            verifyAppSignature(context) && nativeHighCheck(context.applicationContext)
-        }.getOrDefault(false)
+        return verifyPackageName(context) && verifyAppSignature(context)
     }
 
     fun tamperReason(context: Context): String {
-        if (!isLoaded && !tryLoad(context)) return "native_not_loaded"
+        if (BuildConfig.DEBUG) return "ok"
+        if (!tryLoad(context)) return "native_not_loaded"
+        if (!verifyPackageName(context)) return "package_mismatch"
         if (!verifyAppSignature(context)) return "signature_mismatch"
-        return runCatching { nativeTamperReason(context.applicationContext) }.getOrDefault("unknown")
+        return "ok"
     }
 
     fun verifyAppSignature(context: Context): Boolean {
@@ -46,6 +46,10 @@ object AetherSecurityNative {
         val digests = collectSigningSha256(context)
         if (digests.isEmpty()) return false
         return digests.any { nativeVerifySignature(it) }
+    }
+
+    private fun verifyPackageName(context: Context): Boolean {
+        return context.packageName == BuildConfig.APPLICATION_ID && context.packageName == EXPECTED_PACKAGE
     }
 
     private fun collectSigningSha256(context: Context): Set<String> {
@@ -78,7 +82,7 @@ object AetherSecurityNative {
         }.getOrDefault(emptySet())
     }
 
-    external fun nativeHighCheck(ctx: Context): Boolean
     external fun nativeVerifySignature(sha256Hex: String): Boolean
-    external fun nativeTamperReason(ctx: Context): String
+
+    private const val EXPECTED_PACKAGE = "com.aether"
 }

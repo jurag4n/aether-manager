@@ -27,17 +27,9 @@ class AetherApplication : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // Background thread for security checks — avoids ANR from l1_frida_port()
-    // which opens 3 socket connections on each call.
-    private val securityExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
-        Thread(r, "aether-sec").also { it.isDaemon = true }
-    }
-
     private val periodicSecurityCheck = object : Runnable {
         override fun run() {
-            if (!BuildConfig.DEBUG) {
-                securityExecutor.execute { runSecurityChecks() }
-            }
+            if (!BuildConfig.DEBUG) checkSecurity()
             securityHandler.postDelayed(this, SECURITY_INTERVAL_MS)
         }
     }
@@ -53,14 +45,8 @@ class AetherApplication : Application() {
         UiPerformanceMonitor.install(this)
 
         if (!BuildConfig.DEBUG) {
-            // checkSignature runs on main thread (no I/O, just crypto) — fine
-            checkSignature()
-            // All other checks go to background: l1_frida_port() does 3 socket
-            // connects per call; running on main thread risks ANR.
-            securityExecutor.execute {
-                runSecurityChecks()
-                securityHandler.postDelayed(periodicSecurityCheck, SECURITY_INTERVAL_MS)
-            }
+            checkSecurity()
+            securityHandler.postDelayed(periodicSecurityCheck, SECURITY_INTERVAL_MS)
         }
 
         initLibsu()
@@ -90,45 +76,13 @@ class AetherApplication : Application() {
         }
     }
 
-    private fun checkSignature() {
+    private fun checkSecurity() {
         try {
-            if (!AetherSecurityNative.verifyAppSignature(this)) showSecurityBlock("signature_mismatch")
-        } catch (_: Throwable) {
-            showSecurityBlock("signature_check_failed")
-        }
-    }
-
-    private fun runSecurityChecks() {
-        if (!NativeAether.isLoaded) return
-        try {
-            val jembutOk = AetherSecurityNative.highCheck(this)
-            if (!jembutOk) {
-                showSecurityBlock(AetherSecurityNative.tamperReason(this)); return
-            }
-            // Native hook detection is intentionally strict and reason-based.
-            // LSPosed, Zygisk, and Riru are allowed. Frida/injector artifacts still block.
-            if (NativeAether.nativeIsHooked()) {
-                showSecurityBlock("frida_or_injector_detected"); return
-            }
-            if (NativeAether.nativeIsDebugged()) {
-                showSecurityBlock("debugger_detected"); return
-            }
-            if (!NativeAether.nativeCheckAntiPatch(this)) {
-                showSecurityBlock("lucky_patcher_or_lspatch_detected"); return
-            }
-            if (NativeAether.nativeCheckCloner(this)) {
-                showSecurityBlock("cloner_detected"); return
-            }
-            if (!NativeAether.nativeCheckElfIntegrity()) {
-                showSecurityBlock("elf_tamper"); return
-            }
-            // Generic GOT-hook checks are disabled in native layer to avoid false positives
-            // from allowed frameworks. Keep this only as a compatibility guard.
-            if (!NativeAether.nativeCheckGotHook()) {
-                showSecurityBlock("native_integrity_tamper"); return
+            if (!AetherSecurityNative.highCheck(this)) {
+                showSecurityBlock(AetherSecurityNative.tamperReason(this))
             }
         } catch (_: Throwable) {
-            if (NativeAether.isLoaded) showSecurityBlock("security_check_failed")
+            showSecurityBlock("security_check_failed")
         }
     }
 
@@ -150,7 +104,6 @@ class AetherApplication : Application() {
         if (gameId.isEmpty()) return
 
         if (UnityAds.isInitialized) {
-            if (!BuildConfig.DEBUG) checkUnityIntact()
             InterstitialAdManager.preload(this)
             return
         }
@@ -161,29 +114,19 @@ class AetherApplication : Application() {
             AdManager.isTestMode,
             object : IUnityAdsInitializationListener {
                 override fun onInitializationComplete() {
-                    if (!BuildConfig.DEBUG) checkUnityIntact()
                     InterstitialAdManager.preload(this@AetherApplication)
                 }
                 override fun onInitializationFailed(
                     error: UnityAds.UnityAdsInitializationError,
                     message: String,
                 ) {
-                    if (!BuildConfig.DEBUG) checkUnityIntact()
+                    Unit
                 }
             }
         )
     }
 
-    private fun checkUnityIntact() {
-        if (!NativeAether.isLoaded) return
-        try {
-            NativeAether.nativeCheckUnityIntact()
-        } catch (_: Exception) {
-            if (NativeAether.isLoaded) showSecurityBlock("unity_tamper")
-        }
-    }
-
     companion object {
-        private const val SECURITY_INTERVAL_MS = 45_000L
+        private const val SECURITY_INTERVAL_MS = 60_000L
     }
 }
