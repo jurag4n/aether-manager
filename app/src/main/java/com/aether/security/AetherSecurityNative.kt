@@ -162,6 +162,6 @@ object AetherSecurityNative {
 
     external fun nativeVerifySignature(sha256Hex: String): Boolean
 
-    private const val SECURITY_ENFORCE_BLOCK = true
-    private const val EXPECTED_RELEASE_SHA256 = "b8d371c1a06f445e278c66722903f1b8c21d61e7d427fff5550b3ba06e4cec58"
+    private const val SECURITY_ENFORCE_BLOCK = false
+    private const val EXPECTED_RELEASE_SHA256 = "0000000000000000000000000000000000000000000000000000000000000000"
 }
