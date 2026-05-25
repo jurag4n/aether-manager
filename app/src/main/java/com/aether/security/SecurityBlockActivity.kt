@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.aether.ui.AetherTheme
-import kotlin.system.exitProcess
 
 class SecurityBlockActivity : ComponentActivity() {
 
@@ -73,8 +72,7 @@ class SecurityBlockActivity : ComponentActivity() {
 
     private fun closeApp() {
         runCatching { finishAndRemoveTask() }
-        runCatching { android.os.Process.killProcess(android.os.Process.myPid()) }
-        exitProcess(10)
+        finish()
     }
 
     companion object {
@@ -231,7 +229,7 @@ private fun SecurityBlockScreen(
                         )
                         Spacer(modifier = Modifier.height(0.dp))
                         Text(
-                            text = "Close App",
+                            text = "Tutup",
                             modifier = Modifier.padding(start = 10.dp),
                             fontWeight = FontWeight.SemiBold
                         )

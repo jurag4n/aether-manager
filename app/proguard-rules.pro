@@ -230,3 +230,8 @@
 # JNI — libjembut.so high security layer
 # =============================================================================
 -keep class com.aether.security.AetherSecurityNative { *; }
+
+# JNI keep names
+-keepclasseswithmembernames class * {
+    native <methods>;
+}

@@ -151,6 +151,44 @@ fun AetherApp(vm: MainViewModel, apVm: AppProfileViewModel, updateVm: UpdateView
         LicenseManager.isActive(context)
     }
 
+    var showSecurityWarning by remember { mutableStateOf(false) }
+    var securityTitle by remember { mutableStateOf("") }
+    var securityMessage by remember { mutableStateOf("") }
+    var securityFix by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        val securityPrefs = context.getSharedPreferences("aether_security", android.content.Context.MODE_PRIVATE)
+        val ok = securityPrefs.getBoolean("security_status_ok", true)
+        val code = securityPrefs.getString("security_status_code", "ok").orEmpty()
+        if (!ok) {
+            securityTitle = securityPrefs.getString("security_status_title", "Security check gagal").orEmpty()
+            securityMessage = securityPrefs.getString("security_status_message", code).orEmpty()
+            securityFix = securityPrefs.getString("security_status_fix", "Install APK resmi atau update SHA-256 release key.").orEmpty()
+            showSecurityWarning = true
+        }
+    }
+
+    if (showSecurityWarning) {
+        AlertDialog(
+            onDismissRequest = { showSecurityWarning = false },
+            confirmButton = {
+                TextButton(onClick = { showSecurityWarning = false }) {
+                    Text("Mengerti")
+                }
+            },
+            title = { Text(securityTitle.ifBlank { "Security check gagal" }) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(securityMessage.ifBlank { "Signature atau package aplikasi tidak sesuai." })
+                    Text(
+                        text = securityFix.ifBlank { "Install APK resmi atau update SHA-256 release key." },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        )
+    }
+
     val updateState by updateVm.state.collectAsState()
     LaunchedEffect(Unit) { updateVm.checkUpdate() }
     LaunchedEffect(updateState) {

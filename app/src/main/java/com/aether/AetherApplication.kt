@@ -1,10 +1,7 @@
 package com.aether
 
 import android.app.Application
-import android.content.Intent
-import android.os.Build
-import android.os.Handler
-import android.os.Looper
+import android.util.Log
 import com.topjohnwu.superuser.Shell
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
@@ -13,7 +10,6 @@ import com.aether.ads.InterstitialAdManager
 import com.aether.notification.NotificationHelper
 import com.aether.notification.NotificationScheduler
 import com.aether.security.AetherSecurityNative
-import com.aether.security.SecurityBlockActivity
 import com.aether.util.UiNativeBoost
 import com.aether.util.UiPerformanceMonitor
 import com.aether.remote.AetherAdminSync
@@ -21,20 +17,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlin.system.exitProcess
 
 class AetherApplication : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    private val periodicSecurityCheck = object : Runnable {
-        override fun run() {
-            if (!BuildConfig.DEBUG) checkSecurity()
-            securityHandler.postDelayed(this, SECURITY_INTERVAL_MS)
-        }
-    }
-
-    private val securityHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
         super.onCreate()
@@ -44,11 +30,7 @@ class AetherApplication : Application() {
         if (BuildConfig.DEBUG) timber.log.Timber.plant(timber.log.Timber.DebugTree())
         UiPerformanceMonitor.install(this)
 
-        if (!BuildConfig.DEBUG) {
-            checkSecurity()
-            securityHandler.postDelayed(periodicSecurityCheck, SECURITY_INTERVAL_MS)
-        }
-
+        runSecurityStartupCheck()
         initLibsu()
         initUnityAds()
 
@@ -58,31 +40,32 @@ class AetherApplication : Application() {
         appScope.launch { AetherAdminSync.sync(this@AetherApplication) }
     }
 
-    @Volatile private var securityBlocked = false
-
-    private fun showSecurityBlock(reason: String) {
-        if (securityBlocked) return
-        securityBlocked = true
-        securityHandler.removeCallbacks(periodicSecurityCheck)
-        val intent = Intent(this, SecurityBlockActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(SecurityBlockActivity.EXTRA_REASON, reason)
-        runCatching { startActivity(intent) }.onFailure {
-            try {
-                android.os.Process.killProcess(android.os.Process.myPid())
-            } finally {
-                exitProcess(10)
+    private fun runSecurityStartupCheck() {
+        val status = runCatching { AetherSecurityNative.startupStatus(this) }
+            .getOrElse { err ->
+                AetherSecurityNative.SecurityStatus(
+                    ok = false,
+                    code = "security_runtime_error",
+                    title = "Security runtime error",
+                    message = err.message ?: err.javaClass.simpleName,
+                    fix = "Cek logcat tag AetherSecurity. Aplikasi tetap dibuka agar tidak force close."
+                )
             }
-        }
-    }
 
-    private fun checkSecurity() {
-        try {
-            if (!AetherSecurityNative.highCheck(this)) {
-                showSecurityBlock(AetherSecurityNative.tamperReason(this))
-            }
-        } catch (_: Throwable) {
-            showSecurityBlock("security_check_failed")
+        getSharedPreferences("aether_security", MODE_PRIVATE)
+            .edit()
+            .putBoolean("security_status_ok", status.ok)
+            .putString("security_status_code", status.code)
+            .putString("security_status_title", status.title)
+            .putString("security_status_message", status.message)
+            .putString("security_status_fix", status.fix)
+            .putString("security_current_sha256", status.currentSha256)
+            .apply()
+
+        if (status.ok) {
+            Log.i("AetherSecurity", "${status.code}: ${status.message} ${status.currentSha256}".trim())
+        } else {
+            Log.w("AetherSecurity", "${status.code}: ${status.message}")
         }
     }
 
@@ -124,9 +107,5 @@ class AetherApplication : Application() {
                 }
             }
         )
-    }
-
-    companion object {
-        private const val SECURITY_INTERVAL_MS = 60_000L
     }
 }
