@@ -15,10 +15,10 @@ object AetherSecurityNative {
         if (loaded) return true
         return runCatching {
             try {
-                System.loadLibrary("jembut")
+                System.loadLibrary("aethersec")
             } catch (err: UnsatisfiedLinkError) {
                 val dir = context?.applicationInfo?.nativeLibraryDir
-                val fallback = dir?.let { "$it/libjembut.so" }
+                val fallback = dir?.let { "$it/libaethersec.so" }
                 if (fallback != null) System.load(fallback) else throw err
             }
             loaded = true

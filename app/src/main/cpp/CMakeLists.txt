@@ -4,7 +4,7 @@ project(aether LANGUAGES CXX)
 
 set(COMMON_COMPILE_OPTIONS
     -O3
-    -flto=full
+    -flto=thin
     -fstack-protector-strong
     -fPIC
     -fvisibility=hidden
@@ -25,7 +25,7 @@ set(COMMON_COMPILE_OPTIONS
 )
 
 set(COMMON_LINK_OPTIONS
-    -flto=full
+    -flto=thin
     -Wl,--gc-sections
     -Wl,--strip-all
     -Wl,--strip-debug
@@ -66,22 +66,20 @@ target_link_libraries(aether PRIVATE
     log
 )
 
-# ─── libjembut.so ────────────────────────────────────────────────────────────
-# FIX: target ini sebelumnya tidak ada → libjembut.so tidak pernah di-compile
-#      → dlopen "library not found" → AetherSecurityNative.tryLoad() = false → FC
-add_library(jembut SHARED jembut.cpp)
+# ─── libaethersec.so ───────────────────────────────────────────────────────
+add_library(aethersec SHARED jembut.cpp)
 
-target_compile_features(jembut PRIVATE cxx_std_17)
+target_compile_features(aethersec PRIVATE cxx_std_17)
 
-set_target_properties(jembut PROPERTIES
+set_target_properties(aethersec PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
     NO_SONAME TRUE
 )
 
-target_compile_options(jembut PRIVATE ${COMMON_COMPILE_OPTIONS})
-target_link_options(jembut PRIVATE ${COMMON_LINK_OPTIONS})
+target_compile_options(aethersec PRIVATE ${COMMON_COMPILE_OPTIONS})
+target_link_options(aethersec PRIVATE ${COMMON_LINK_OPTIONS})
 
-target_link_libraries(jembut PRIVATE
+target_link_libraries(aethersec PRIVATE
     android
     log
 )

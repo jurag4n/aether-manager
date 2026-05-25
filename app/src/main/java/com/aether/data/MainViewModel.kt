@@ -168,9 +168,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _deviceInfo.value = UiState.Success(RootEngine.getDeviceInfoFallback())
 
         viewModelScope.launch(Dispatchers.IO) {
-            if (ensureRootReady(requestIfNeeded = false)) {
-                loadAll()
-            }
+            loadAll()
         }
     }
 
@@ -198,7 +196,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshIfNeeded() {
         val current = (_deviceInfo.value as? UiState.Success)?.data
-        if (_deviceInfo.value is UiState.Loading || (RootManager.isRootGranted && current?.rootType == "Unknown")) {
+        if (_deviceInfo.value is UiState.Loading || current?.pid.isNullOrBlank() || (RootManager.isRootGranted && current?.rootType == "Unknown")) {
             refresh()
         }
     }

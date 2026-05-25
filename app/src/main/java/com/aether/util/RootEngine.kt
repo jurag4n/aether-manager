@@ -151,7 +151,7 @@ object RootEngine {
             android   = Build.VERSION.RELEASE ?: "?",
             kernel    = System.getProperty("os.version") ?: "?",
             selinux   = "?",
-            rootType  = RootManager.detectRootType(),
+            rootType  = if (RootManager.isRootGranted) RootManager.detectRootType() else "No Root",
             soc       = detectSoc(raw.lowercase()),
             socRaw    = raw,
             pid       = "",
@@ -169,25 +169,13 @@ object RootEngine {
 
     suspend fun getDeviceInfo(): DeviceInfo {
         val script = """
-            model=${'$'}(getprop ro.product.model 2>/dev/null | head -c 40)
+            model=${'$'}(getprop ro.product.model 2>/dev/null | head -c 60)
             android=${'$'}(getprop ro.build.version.release 2>/dev/null)
             platform=${'$'}(getprop ro.board.platform 2>/dev/null)
             hardware=${'$'}(getprop ro.hardware 2>/dev/null)
             soc_model=${'$'}(getprop ro.soc.model 2>/dev/null)
-            kernel=${'$'}(uname -r 2>/dev/null | head -c 50)
+            kernel=${'$'}(uname -r 2>/dev/null | head -c 60)
             selinux=${'$'}(getenforce 2>/dev/null)
-            if [ -d /data/adb/ksu ]; then
-              root=KernelSU
-            elif [ -d /data/adb/ap ]; then
-              root=APatch
-            elif [ -d /data/adb/magisk ]; then
-              root=Magisk
-            else
-              root=Unknown
-            fi
-            profile=${'$'}(cat '$PROFILE_FILE' 2>/dev/null || echo balance)
-            safe=${'$'}([ -f '$SAFE_MODE_FILE' ] && echo 1 || echo 0)
-            boot=${'$'}(cat '$BOOT_COUNT_FILE' 2>/dev/null || echo 0)
             echo model=${'$'}model
             echo android=${'$'}android
             echo platform=${'$'}platform
@@ -195,34 +183,53 @@ object RootEngine {
             echo soc_model=${'$'}soc_model
             echo kernel=${'$'}kernel
             echo selinux=${'$'}selinux
-            echo root=${'$'}root
-            echo profile=${'$'}profile
-            echo safe=${'$'}safe
-            echo boot=${'$'}boot
         """.trimIndent()
 
-        val result = sh(script)
-        val map = parseKv(result.stdout)
-        val platform = "${map["platform"]} ${map["hardware"]} ${map["soc_model"]}".lowercase()
+        val local = parseKv(shLocal(script).stdout)
+        val platform = "${local["platform"]} ${local["hardware"]} ${local["soc_model"]}".lowercase()
 
-        val shellRootType = map["root"]
+        val rootMeta = if (RootManager.isRootGranted || RootManager.ensureRootShellSync(requestIfNeeded = false)) {
+            parseKv(shRootCached("""
+                if [ -d /data/adb/ksu ]; then
+                  root=KernelSU
+                elif [ -d /data/adb/ap ]; then
+                  root=APatch
+                elif [ -d /data/adb/magisk ]; then
+                  root=Magisk
+                else
+                  root=Unknown
+                fi
+                profile=${'$'}(cat '$PROFILE_FILE' 2>/dev/null || echo balance)
+                safe=${'$'}([ -f '$SAFE_MODE_FILE' ] && echo 1 || echo 0)
+                boot=${'$'}(cat '$BOOT_COUNT_FILE' 2>/dev/null || echo 0)
+                echo root=${'$'}root
+                echo profile=${'$'}profile
+                echo safe=${'$'}safe
+                echo boot=${'$'}boot
+            """.trimIndent()).stdout)
+        } else {
+            emptyMap()
+        }
+
+        val shellRootType = rootMeta["root"]
         val rootType = when {
             !shellRootType.isNullOrBlank() && shellRootType != "Unknown" -> shellRootType
-            else -> RootManager.detectRootType()
+            RootManager.isRootGranted -> RootManager.detectRootType()
+            else -> "No Root"
         }
 
         return DeviceInfo(
-            model     = map["model"]   ?: "Unknown Device",
-            android   = map["android"] ?: "?",
-            kernel    = map["kernel"]  ?: "?",
-            selinux   = map["selinux"] ?: "?",
+            model     = local["model"]?.ifBlank { Build.MODEL } ?: Build.MODEL,
+            android   = local["android"]?.ifBlank { Build.VERSION.RELEASE } ?: Build.VERSION.RELEASE,
+            kernel    = local["kernel"]?.ifBlank { System.getProperty("os.version") ?: "?" } ?: (System.getProperty("os.version") ?: "?"),
+            selinux   = local["selinux"]?.ifBlank { "?" } ?: "?",
             rootType  = rootType,
             soc       = detectSoc(platform),
-            socRaw    = map["platform"] ?: "",
-            pid       = "",
-            profile   = map["profile"] ?: "balance",
-            safeMode  = map["safe"] == "1",
-            bootCount = map["boot"]?.toIntOrNull() ?: 0
+            socRaw    = platform.trim(),
+            pid       = android.os.Process.myPid().toString(),
+            profile   = rootMeta["profile"]?.ifBlank { "balance" } ?: readProfileSafe(),
+            safeMode  = rootMeta["safe"] == "1",
+            bootCount = rootMeta["boot"]?.toIntOrNull() ?: 0
         )
     }
 
