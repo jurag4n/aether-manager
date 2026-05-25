@@ -401,12 +401,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         if (result.success) AdScheduler.tryShowAfterAction()
                         viewModelScope.launch { autoBackupIfEnabled() }
                     } else {
+                        val state = ShizukuShell.state()
+                        ShizukuShell.requestPermissionIfNeeded()
                         _applyStatus.value = ApplyStatus(
                             running = false,
-                            lastOk = true,
-                            summary = "No Root · tersimpan lokal, Shizuku belum aktif",
+                            lastOk = false,
+                            summary = "No Root butuh Shizuku · ${state.detail}",
                             totalMs = 0L,
                         )
+                        snack("No Root butuh Shizuku aktif")
                     }
                 }
             }
@@ -443,8 +446,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         SettingsPrefs.setAccessMode(getApplication(), AccessMode.NO_ROOT.value)
         _accessMode.value = AccessMode.NO_ROOT
-        _applyStatus.value = ApplyStatus(running = false, lastOk = true, summary = "Mode No Root aktif")
-        snack("Mode No Root aktif")
+        val shizukuState = ShizukuShell.state()
+        _applyStatus.value = ApplyStatus(
+            running = false,
+            lastOk = shizukuState == ShizukuShell.State.READY,
+            summary = if (shizukuState == ShizukuShell.State.READY) "Mode No Root aktif · Shizuku ready" else "Mode No Root aktif · ${shizukuState.detail}"
+        )
+        if (shizukuState != ShizukuShell.State.READY) ShizukuShell.requestPermissionIfNeeded()
+        snack(if (shizukuState == ShizukuShell.State.READY) "Mode No Root aktif" else "Aktifkan Shizuku untuk No Root")
     }
 
     fun setProfile(profile: String) {
@@ -458,6 +467,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val map = tweaksStateToMap(_tweaks.value)
         executeApply(map)
     }
+
+    fun requestShizuku() = viewModelScope.launch(Dispatchers.IO) {
+        val state = ShizukuShell.state()
+        if (state == ShizukuShell.State.READY) {
+            _applyStatus.value = ApplyStatus(running = false, lastOk = true, summary = "Shizuku aktif")
+            snack("Shizuku aktif")
+        } else {
+            ShizukuShell.requestPermissionIfNeeded()
+            _applyStatus.value = ApplyStatus(running = false, lastOk = false, summary = state.detail)
+            snack(state.detail)
+        }
+    }
+
 
     private fun tweaksStateToMap(s: TweaksState): Map<String, String> = buildMap {
         put("schedboost",        if (s.schedboost)      "1" else "0")

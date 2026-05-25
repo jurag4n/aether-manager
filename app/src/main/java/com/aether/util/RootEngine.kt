@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import com.topjohnwu.superuser.Shell
+import com.aether.shizuku.ShizukuShell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -90,6 +91,18 @@ object RootEngine {
                 )
             }.getOrElse { e -> ShellResult(1, "", e.message ?: "Root monitor shell error") }
         }
+
+
+
+    /** Privileged monitor fallback: root kalau ada, Shizuku kalau No Root. Tidak pernah memunculkan dialog SU. */
+    private fun hasPrivilegedMonitorShell(): Boolean =
+        RootManager.isRootGranted || runCatching { ShizukuShell.hasPermission() }.getOrDefault(false)
+
+    private suspend fun shPrivilegedMonitor(script: String): ShellResult = when {
+        RootManager.isRootGranted -> shRootCached(script)
+        runCatching { ShizukuShell.hasPermission() }.getOrDefault(false) -> ShizukuShell.sh(script, timeoutSec = 4L)
+        else -> ShellResult(1, "", "No privileged monitor shell")
+    }
 
     // ── File helpers (butuh root) ─────────────────────────────────────────────
 
@@ -566,8 +579,8 @@ object RootEngine {
         var (gpuUsage, gpuFreqMhz, gpuName) = readGpuLocal()
         var gpuTempC = readThermalByName("gpu", "gpu0", "gpu-", "adreno", "mali", "g3d", "mfg", "ged", excludeBattery = true)
 
-        if ((gpuUsage <= 0 || gpuFreqMhz <= 0L || gpuName.isBlank() || !validTemp(gpuTempC)) && RootManager.isRootGranted) {
-            val rootGpuR = shRootCached("""
+        if ((gpuUsage <= 0 || gpuFreqMhz <= 0L || gpuName.isBlank() || !validTemp(gpuTempC)) && hasPrivilegedMonitorShell()) {
+            val rootGpuR = shPrivilegedMonitor("""
                 gpu_usage=0
                 if [ -r /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage ]; then
                   gpu_usage=${'$'}(cat /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null | tr -cd '0-9' | cut -c1-3)
@@ -613,8 +626,8 @@ object RootEngine {
             if (gpuName.isBlank()) gpuName = rootGpuM["gpu_name"].orEmpty()
         }
 
-        if ((cpuFreqMhz <= 0L || !validTemp(cpuTempC)) && RootManager.isRootGranted) {
-            val rootCpuR = shRootCached("""
+        if ((cpuFreqMhz <= 0L || !validTemp(cpuTempC)) && hasPrivilegedMonitorShell()) {
+            val rootCpuR = shPrivilegedMonitor("""
                 total=0; count=0
                 for p in /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_cur_freq /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq /sys/devices/system/cpu/cpu[0-9]*/cpufreq/cpuinfo_cur_freq; do
                   [ -r "${'$'}p" ] || continue

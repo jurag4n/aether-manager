@@ -11,25 +11,44 @@ import java.util.concurrent.TimeUnit
 object ShizukuShell {
     private const val REQUEST_CODE = 7431
 
-    fun isAvailable(): Boolean = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
+    enum class State(val label: String, val detail: String) {
+        READY("Shizuku Ready", "Permission Shizuku aktif dan shell bisa digunakan."),
+        NOT_RUNNING("Shizuku Off", "Aplikasi/daemon Shizuku belum berjalan."),
+        DENIED("Shizuku Denied", "Permission Shizuku belum diberikan untuk Aether."),
+        ERROR("Shizuku Error", "Status Shizuku tidak bisa dibaca.")
+    }
 
-    fun hasPermission(): Boolean = runCatching {
-        isAvailable() && (
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
-                Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-            )
-    }.getOrDefault(false)
+    fun state(): State = runCatching {
+        if (!Shizuku.pingBinder()) return@runCatching State.NOT_RUNNING
+        val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        if (granted) State.READY else State.DENIED
+    }.getOrDefault(State.ERROR)
+
+    fun isAvailable(): Boolean = state() != State.NOT_RUNNING && state() != State.ERROR
+
+    fun hasPermission(): Boolean = state() == State.READY
 
     fun requestPermissionIfNeeded(): Boolean {
-        if (!isAvailable()) return false
-        if (hasPermission()) return true
-        runCatching { Shizuku.requestPermission(REQUEST_CODE) }
-        return false
+        return when (state()) {
+            State.READY -> true
+            State.DENIED -> {
+                runCatching { Shizuku.requestPermission(REQUEST_CODE) }
+                false
+            }
+            else -> false
+        }
     }
 
     suspend fun sh(script: String, timeoutSec: Long = 8L): RootEngine.ShellResult = withContext(Dispatchers.IO) {
-        if (!requestPermissionIfNeeded()) {
-            return@withContext RootEngine.ShellResult(1, "", "Shizuku permission not granted")
+        when (state()) {
+            State.READY -> Unit
+            State.DENIED -> {
+                runCatching { Shizuku.requestPermission(REQUEST_CODE) }
+                return@withContext RootEngine.ShellResult(1, "", "Shizuku permission belum diberikan")
+            }
+            State.NOT_RUNNING -> return@withContext RootEngine.ShellResult(1, "", "Shizuku belum berjalan")
+            State.ERROR -> return@withContext RootEngine.ShellResult(1, "", "Status Shizuku error")
         }
 
         runCatching {

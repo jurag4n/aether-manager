@@ -67,7 +67,7 @@ target_link_libraries(aether PRIVATE
 )
 
 # ─── libaethersec.so ───────────────────────────────────────────────────────
-add_library(aethersec SHARED jembut.cpp)
+add_library(aethersec SHARED aethersec.cpp)
 
 target_compile_features(aethersec PRIVATE cxx_std_17)
 

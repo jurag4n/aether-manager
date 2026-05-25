@@ -304,7 +304,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.ic_launcher_foreground_v3),
+                        painter = painterResource(R.mipmap.ic_launcher),
                         contentDescription = null,
                         modifier = Modifier
                             .size(82.dp)
@@ -336,7 +336,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Smart Control • Safe Tuning • Clean Tools",
+                text = "Root Engine • Shizuku No Root • Live Monitor",
                 modifier = Modifier.graphicsLayer {
                     alpha = subtitleAlpha.value
                     translationY = with(density) { subtitleOffset.value.dp.toPx() }
@@ -360,7 +360,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Preparing safe tuning engine",
+                    text = "Preparing access engine",
                     color = primary.copy(alpha = 0.92f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,

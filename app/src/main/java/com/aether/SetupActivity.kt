@@ -103,6 +103,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.aether.i18n.ProvideStrings
+import com.aether.shizuku.ShizukuShell
 import com.aether.ui.AetherTheme
 import com.aether.util.RootManager
 import com.aether.util.SettingsPrefs
@@ -228,6 +229,7 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
 
     var selectedMode by remember { mutableStateOf(SetupMode.NO_ROOT) }
     var rootState by remember { mutableStateOf(CheckState.IDLE) }
+    var shizukuState by remember { mutableStateOf(CheckState.IDLE) }
     var notificationState by remember { mutableStateOf(CheckState.IDLE) }
     var storageState by remember { mutableStateOf(CheckState.IDLE) }
     var batteryState by remember { mutableStateOf(CheckState.IDLE) }
@@ -253,6 +255,11 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
     }
 
     fun refreshStates() {
+        shizukuState = when (ShizukuShell.state()) {
+            ShizukuShell.State.READY -> CheckState.GRANTED
+            ShizukuShell.State.DENIED -> if (shizukuState == CheckState.CHECKING) CheckState.DENIED else shizukuState
+            ShizukuShell.State.NOT_RUNNING, ShizukuShell.State.ERROR -> CheckState.DENIED
+        }
         notificationState = if (isNotificationGranted(ctx)) CheckState.GRANTED else notificationState
         storageState = if (isStorageGranted(ctx)) CheckState.GRANTED else storageState
         batteryState = if (isBatteryOptimizationIgnored(ctx)) CheckState.GRANTED else batteryState
@@ -284,13 +291,24 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
             if (rootState == CheckState.GRANTED) selectedMode = SetupMode.ROOT else requestRoot()
         } else {
             selectedMode = SetupMode.NO_ROOT
-            message = "Mode No Root aktif. Shizuku bisa dipakai nanti dari halaman Tweak."
+            message = "Mode No Root aktif. Izinkan Shizuku agar fitur ringan bisa berjalan normal tanpa SU."
         }
     }
 
     fun openAction(key: String) {
         when (key) {
             "ROOT" -> requestRoot()
+            "SHIZUKU" -> {
+                shizukuState = CheckState.CHECKING
+                val ok = ShizukuShell.requestPermissionIfNeeded()
+                shizukuState = if (ok || ShizukuShell.hasPermission()) CheckState.GRANTED else CheckState.IDLE
+                message = when (ShizukuShell.state()) {
+                    ShizukuShell.State.READY -> "Shizuku aktif. Mode No Root siap dipakai."
+                    ShizukuShell.State.DENIED -> "Buka popup Shizuku lalu pilih Allow untuk Aether."
+                    ShizukuShell.State.NOT_RUNNING -> "Shizuku belum berjalan. Aktifkan Shizuku dulu, lalu kembali ke Aether."
+                    ShizukuShell.State.ERROR -> "Status Shizuku belum bisa dibaca. Coba buka Shizuku lalu ulangi."
+                }
+            }
             "NOTIFICATION" -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 else notificationState = CheckState.GRANTED
@@ -311,8 +329,14 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
                 } else {
                     usageState = CheckState.CHECKING
                     scope.launch {
-                        val rootGrant = withContext(Dispatchers.IO) { grantUsageStatsViaRoot(ctx.packageName) }
-                        if (rootGrant && isUsageStatsGranted(ctx)) {
+                        val shellGrant = withContext(Dispatchers.IO) {
+                            when (selectedMode) {
+                                SetupMode.ROOT -> grantUsageStatsViaRoot(ctx.packageName)
+                                SetupMode.NO_ROOT -> ShizukuShell.hasPermission() &&
+                                    ShizukuShell.sh("appops set ${ctx.packageName} GET_USAGE_STATS allow").exitCode == 0
+                            }
+                        }
+                        if (shellGrant && isUsageStatsGranted(ctx)) {
                             usageState = CheckState.GRANTED
                         } else {
                             usageState = CheckState.IDLE
@@ -330,15 +354,26 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
 
     fun finishSetup() {
         if (startRunning) return
+        val requiredOk =
+            (if (selectedMode == SetupMode.ROOT) rootState == CheckState.GRANTED else shizukuState == CheckState.GRANTED) &&
+                notificationState == CheckState.GRANTED &&
+                (!includeStorage || storageState == CheckState.GRANTED) &&
+                batteryState == CheckState.GRANTED &&
+                usageState == CheckState.GRANTED &&
+                writeState == CheckState.GRANTED
+        if (!requiredOk) {
+            message = "Lengkapi semua izin yang tampil dulu sebelum masuk aplikasi."
+            return
+        }
         scope.launch {
             startRunning = true
-            val rootOk = if (selectedMode == SetupMode.ROOT) {
-                rootState == CheckState.GRANTED || withContext(Dispatchers.IO) { RootManager.requestRoot() }
-            } else false
+            val rootOk = selectedMode == SetupMode.ROOT && (rootState == CheckState.GRANTED || withContext(Dispatchers.IO) { RootManager.requestRoot() })
             if (selectedMode == SetupMode.ROOT && !rootOk) {
+                startRunning = false
                 RootManager.markDenied()
-                selectedMode = SetupMode.NO_ROOT
-                message = "Root gagal. Setup selesai memakai No Root agar app tetap bisa dibuka."
+                rootState = CheckState.DENIED
+                message = "Root belum diizinkan. Mode Root tidak bisa dimulai sebelum SU aktif."
+                return@launch
             }
             onDone(selectedMode, rootOk)
         }
@@ -355,20 +390,25 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
         }
     }
 
-    val permissionItems = remember(includeStorage) {
+    val permissionItems = remember(includeStorage, selectedMode) {
         buildList {
-            add(PermissionAction("ROOT", Icons.Outlined.AdminPanelSettings, "Root Access", "Opsional. Dibutuhkan untuk tweak kernel penuh."))
-            add(PermissionAction("NOTIFICATION", Icons.Outlined.NotificationsActive, "Notifikasi", "Status apply, peringatan, dan proses background."))
-            if (includeStorage) add(PermissionAction("STORAGE", Icons.Outlined.FolderOpen, "Penyimpanan", "Backup, import/export, dan log aplikasi."))
-            add(PermissionAction("BATTERY", Icons.Outlined.BatteryChargingFull, "Optimasi Baterai", "Agar service dan monitor tidak mudah dibatasi sistem."))
-            add(PermissionAction("USAGE", Icons.Outlined.QueryStats, "Usage Access", "Dibutuhkan untuk profil per-aplikasi."))
-            add(PermissionAction("WRITE", Icons.Outlined.Tune, "Write Settings", "Untuk tweak aman seperti animasi dan setting sistem."))
+            if (selectedMode == SetupMode.ROOT) {
+                add(PermissionAction("ROOT", Icons.Outlined.AdminPanelSettings, "Izinkan Root", "Wajib untuk mode Root dan tweak kernel penuh.", required = true))
+            } else {
+                add(PermissionAction("SHIZUKU", Icons.Outlined.PhoneAndroid, "Izinkan Shizuku", "Wajib untuk mode No Root agar shell sistem berjalan tanpa SU.", required = true))
+            }
+            add(PermissionAction("NOTIFICATION", Icons.Outlined.NotificationsActive, "Notifikasi", "Wajib untuk status apply, peringatan, dan proses background.", required = true))
+            if (includeStorage) add(PermissionAction("STORAGE", Icons.Outlined.FolderOpen, "Penyimpanan", "Wajib untuk backup, import/export, dan log aplikasi.", required = true))
+            add(PermissionAction("BATTERY", Icons.Outlined.BatteryChargingFull, "Optimasi Baterai", "Wajib agar service dan monitor tidak mudah dibatasi sistem.", required = true))
+            add(PermissionAction("USAGE", Icons.Outlined.QueryStats, "Usage Access", "Wajib untuk profil per-aplikasi dan statistik aplikasi.", required = true))
+            add(PermissionAction("WRITE", Icons.Outlined.Tune, "Write Settings", "Wajib untuk animasi, DNS, dan setting sistem aman.", required = true))
         }
     }
 
     val grantedCount = permissionItems.count { item ->
         when (item.key) {
             "ROOT" -> rootState == CheckState.GRANTED
+            "SHIZUKU" -> shizukuState == CheckState.GRANTED
             "NOTIFICATION" -> notificationState == CheckState.GRANTED
             "STORAGE" -> storageState == CheckState.GRANTED
             "BATTERY" -> batteryState == CheckState.GRANTED
@@ -439,6 +479,7 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
                     permissionItems.forEachIndexed { index, item ->
                         val state = when (item.key) {
                             "ROOT" -> rootState
+                            "SHIZUKU" -> shizukuState
                             "NOTIFICATION" -> notificationState
                             "STORAGE" -> storageState
                             "BATTERY" -> batteryState
@@ -455,9 +496,22 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
                     }
                 }
 
+                val canStart = permissionItems.all { item ->
+                    when (item.key) {
+                        "ROOT" -> rootState == CheckState.GRANTED
+                        "SHIZUKU" -> shizukuState == CheckState.GRANTED
+                        "NOTIFICATION" -> notificationState == CheckState.GRANTED
+                        "STORAGE" -> storageState == CheckState.GRANTED
+                        "BATTERY" -> batteryState == CheckState.GRANTED
+                        "USAGE" -> usageState == CheckState.GRANTED
+                        "WRITE" -> writeState == CheckState.GRANTED
+                        else -> true
+                    }
+                }
+
                 FilledTonalButton(
                     onClick = ::finishSetup,
-                    enabled = !startRunning,
+                    enabled = !startRunning && canStart,
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -494,7 +548,7 @@ private fun SetupScreen(onDone: (selectedMode: SetupMode, rootGranted: Boolean) 
                 }
 
                 Text(
-                    text = "Semua izin selain Root bisa diatur ulang nanti dari Settings. Jika Root tidak tersedia, app tetap aman berjalan di No Root.",
+                    text = if (selectedMode == SetupMode.ROOT) "Mode Root wajib izin SU. Jika pilih No Root, opsi izinkan Root disembunyikan dan Shizuku yang dipakai." else "Mode No Root tidak meminta SU. Semua fitur ringan berjalan lewat Shizuku dan izin Android standar.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -739,7 +793,7 @@ private fun PermissionSummary(granted: Int, total: Int) {
                     Text("Izin & Stabilitas", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
                     Text("$granted dari $total aktif", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                TinyPill(text = "Opsional", color = MaterialTheme.colorScheme.secondary)
+                TinyPill(text = "Wajib", color = MaterialTheme.colorScheme.primary)
             }
             Box(
                 modifier = Modifier
