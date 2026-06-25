@@ -16,8 +16,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // libsu, Shizuku, dll sudah ada di Maven Central
+        // Unity Ads juga via Maven Central
     }
 }
 
-rootProject.name = "LogLog"
+rootProject.name = "AetherManager"
 include(":app")

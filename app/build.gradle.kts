@@ -11,22 +11,30 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
 
 android {
-    namespace  = "com.aether.lv"
+    namespace  = "com.aether"
     compileSdk = 36
 
     defaultConfig {
-        applicationId         = "com.aether.lv"
-        minSdk                = 30          // Android 11
-        targetSdk             = 36          // Android 16
-        versionCode           = 130
-        versionName           = "1.3"
+        applicationId         = "com.aether"
+        minSdk                = 26          // Android 8.0 (Aether Manager target)
+        targetSdk             = 36
+        versionCode           = 1
+        versionName           = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
 
@@ -62,10 +70,9 @@ android {
         val variant = this
         outputs.map { it as BaseVariantOutputImpl }.forEach { output ->
             output.outputFileName =
-                "loglog-v${variant.versionName}-${variant.buildType.name}.apk"
+                "aether-v${variant.versionName}-${variant.buildType.name}.apk"
         }
     }
-
 
     lint {
         abortOnError       = false
@@ -103,6 +110,7 @@ android {
 }
 
 dependencies {
+    // Core AndroidX
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -123,7 +131,7 @@ dependencies {
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
-    // DataStore (tema / prefs)
+    // DataStore
     implementation(libs.androidx.datastore.preferences)
 
     // Coroutines
@@ -132,16 +140,41 @@ dependencies {
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
 
-    // Room (riwayat file)
+    // Room (AppProfile)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    // Gson (serialisasi)
+    // Gson
     implementation(libs.gson)
 
     // Material Components (XML themes)
     implementation(libs.material)
 
+    // WorkManager (notification scheduler)
+    implementation(libs.androidx.work.runtime.ktx)
 
+    // OkHttp (update checker)
+    implementation(libs.okhttp)
+
+    // kotlinx.serialization (update checker JSON)
+    implementation(libs.kotlinx.serialization.json)
+
+    // Timber (logging)
+    implementation(libs.timber)
+
+    // libsu (Root shell)
+    implementation(libs.libsu.core)
+    implementation(libs.libsu.service)
+
+    // Unity Ads
+    implementation(libs.unity.ads)
+
+    // Shizuku
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
+
+    // JankStats + Tracing (UiPerformanceMonitor)
+    implementation(libs.androidx.metrics.performance)
+    implementation(libs.androidx.tracing)
 }
