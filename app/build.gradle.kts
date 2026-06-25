@@ -1,69 +1,41 @@
 @file:Suppress("UnstableApiUsage")
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
+import java.util.Properties
+
+val localProps = Properties().also { props ->
+    rootProject.file("local.properties").takeIf { it.exists() }
+        ?.inputStream()?.use { props.load(it) }
+}
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.serialization)
-}
-
-fun String.asBuildConfigString(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-val gitHash: String by lazy {
-    try {
-        providers.exec {
-            commandLine("git", "rev-parse", "--short=7", "HEAD")
-        }.standardOutput.asText.get().trim()
-    } catch (_: Exception) { "unknown" }
+    alias(libs.plugins.ksp)
 }
 
 android {
-    namespace   = "com.aether"
-    compileSdk  = 36
+    namespace  = "com.aether.lv"
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.aether"
-        minSdk        = 26
-        targetSdk     = 36
-        versionCode   = 300
-        versionName   = "3.0"
+        applicationId         = "com.aether.lv"
+        minSdk                = 30          // Android 11
+        targetSdk             = 36          // Android 16
+        versionCode           = 130
+        versionName           = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField("String", "AETHER_API_BASE", (System.getenv("AETHER_API_BASE") ?: "https://aether-app-weld.vercel.app/api").asBuildConfigString())
-        buildConfigField("String", "AETHER_PROJECT_API_KEY", (System.getenv("AETHER_PROJECT_API_KEY") ?: "").asBuildConfigString())
-
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
-        }
-
-        externalNativeBuild {
-            cmake {
-                arguments += listOf(
-                    "-DANDROID_STL=c++_shared",
-                    "-DANDROID_ARM_NEON=TRUE"
-                )
-            }
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path    = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
         }
     }
 
     signingConfigs {
         create("release") {
-            val ks   = rootProject.file("aether.jks")
-            val isCI = System.getenv("CI") == "true"
-            if (ks.exists() && !isCI) {
-                storeFile     = ks
-                storePassword = System.getenv("STORE_PASSWORD") ?: ""
-                keyAlias      = System.getenv("KEY_ALIAS")      ?: ""
-                keyPassword   = System.getenv("KEY_PASSWORD")   ?: ""
-            }
+            storeFile     = localProps["STORE_FILE"]?.toString()?.let { rootProject.file(it) }
+            storePassword = localProps["STORE_PASSWORD"]?.toString() ?: ""
+            keyAlias      = localProps["KEY_ALIAS"]?.toString()      ?: ""
+            keyPassword   = localProps["KEY_PASSWORD"]?.toString()   ?: ""
         }
     }
 
@@ -71,23 +43,18 @@ android {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
-
-            val isCI = System.getenv("CI") == "true"
-            signingConfig = if (isCI) null else signingConfigs.getByName("release")
-
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-
-            isDebuggable          = false
-            isJniDebuggable       = false
+            isDebuggable           = false
             isPseudoLocalesEnabled = false
-            isCrunchPngs          = true
-
-            ndk {
-                debugSymbolLevel = "NONE"
-            }
+            isCrunchPngs           = true
+        }
+        debug {
+            applicationIdSuffix = ".debug"
+            isDebuggable        = true
         }
     }
 
@@ -95,13 +62,10 @@ android {
         val variant = this
         outputs.map { it as BaseVariantOutputImpl }.forEach { output ->
             output.outputFileName =
-                "manager-${variant.versionName}-${variant.versionCode}-$gitHash-${variant.buildType.name}.apk"
+                "loglog-v${variant.versionName}-${variant.buildType.name}.apk"
         }
     }
 
-    androidResources {
-        generateLocaleConfig = true
-    }
 
     lint {
         abortOnError       = false
@@ -127,12 +91,13 @@ android {
     packaging {
         resources {
             excludes += setOf(
-                "/META-INF/{AL2.0,LGPL2.1}", "/META-INF/*.kotlin_module",
-                "/META-INF/MANIFEST.MF", "**.proto", "kotlin/**", "META-INF/com/**"
+                "/META-INF/{AL2.0,LGPL2.1}",
+                "/META-INF/*.kotlin_module",
+                "/META-INF/MANIFEST.MF",
+                "**.proto",
+                "kotlin/**",
+                "META-INF/com/**"
             )
-        }
-        jniLibs {
-            useLegacyPackaging = true
         }
     }
 }
@@ -144,49 +109,39 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
+
+    // Compose BOM
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.compose.animation)
-    implementation(libs.androidx.compose.animation.graphics)
-    implementation(libs.androidx.ui.util)
-    implementation(libs.androidx.profileinstaller)
-    implementation(libs.androidx.tracing.ktx)
-    implementation(libs.androidx.metrics.performance)
-    implementation(libs.androidx.constraintlayout.compose)
-    implementation(libs.androidx.window)
-    implementation(libs.kotlinx.collections.immutable)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.accompanist.systemuicontroller)
-    implementation(libs.androidx.core.splashscreen)
-    implementation(libs.coil.compose)
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.unity.ads)
-    implementation(libs.libsu.core)
-    implementation(libs.libsu.service)
-    implementation(libs.libsu.io)
-    implementation(libs.mmkv)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.shizuku.api)
-    implementation(libs.shizuku.provider)
-    implementation(libs.compose.foundation)
-    implementation(libs.lottie.compose)
-    implementation(libs.timber)
-    implementation(libs.androidx.biometric)
-    implementation(libs.retrofit.core)
-    implementation(libs.retrofit.converter.gson)
-    implementation(libs.ktor.client.android)
-    implementation(libs.ktor.client.content)
-    implementation(libs.ktor.serialization)
-    implementation(libs.shimmer)
-    implementation(libs.compose.charts)
-    implementation(libs.androidx.lifecycle.process)
-    implementation(libs.androidx.startup)
     debugImplementation(libs.androidx.ui.tooling)
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+
+    // DataStore (tema / prefs)
+    implementation(libs.androidx.datastore.preferences)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.android)
+
+    // Splash Screen
+    implementation(libs.androidx.core.splashscreen)
+
+    // Room (riwayat file)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    // Gson (serialisasi)
+    implementation(libs.gson)
+
+    // Material Components (XML themes)
+    implementation(libs.material)
+
+
 }
