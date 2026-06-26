@@ -1,90 +1,81 @@
-# ── Repackage & optimasi R8 ───────────────────────────────────────────────────
--repackageclasses ''
--allowaccessmodification
--overloadaggressively
--optimizationpasses 5
--optimizations !code/simplification/cast,field/*,class/merging/*,code/allocation/variable
+# Add project specific ProGuard rules here.
+# You can control the set of applied configuration files using the
+# proguardFiles setting in build.gradle.
+#
+# For more details, see
+#   http://developer.android.com/guide/developing/tools/proguard.html
 
-# ── Attributes wajib ─────────────────────────────────────────────────────────
--keepattributes Signature,*Annotation*,InnerClasses,EnclosingMethod
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
 
-# =============================================================================
-# LOGLOG — CORE
-# =============================================================================
--keep public class com.aether.lv.MainActivity { <init>(); }
--keep public class com.aether.lv.LogLogApplication { <init>(); }
+# Uncomment this to preserve the line number information for
+# debugging stack traces.
+#-keepattributes SourceFile,LineNumberTable
 
-# =============================================================================
-# KOTLIN
-# =============================================================================
--keep class kotlin.Metadata { *; }
--keepclassmembernames class kotlinx.coroutines.** { volatile <fields>; }
--dontwarn kotlinx.coroutines.**
--assumenosideeffects class kotlin.jvm.internal.Intrinsics {
-    public static void check*(...);
-    public static void throw*(...);
-    public static void parameter*(...);
-}
+# If you keep the line number information, uncomment this to
+# hide the original source file name.
+#-renamesourcefileattribute SourceFile
 
-# =============================================================================
-# JETPACK COMPOSE
-# =============================================================================
--assumenosideeffects class androidx.compose.runtime.ComposerKt {
-    void sourceInformation(...);
-    void sourceInformationMarkerStart(...);
-    void sourceInformationMarkerEnd(...);
-    boolean isTraceInProgress();
-    void traceEventStart(...);
-    void traceEventEnd();
-}
+##---------------Begin: proguard configuration for Gson  ----------
+# Gson uses generic type information stored in a class file when working with fields. Proguard
+# removes such information by default, so configure it to keep all of it.
+-keepattributes Signature
 
-# =============================================================================
-# ROOM
-# =============================================================================
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
--keepclassmembers @androidx.room.Entity class * { *; }
--keep @androidx.room.Dao class * { *; }
--dontwarn androidx.room.**
-
-# =============================================================================
-# DATASTORE
-# =============================================================================
--keep class androidx.datastore.** { *; }
--dontwarn androidx.datastore.**
-
-# =============================================================================
-# GSON
-# =============================================================================
+# For using GSON @Expose annotation
 -keepattributes *Annotation*
--keep class com.google.gson.** { *; }
--dontwarn com.google.gson.**
 
-# =============================================================================
-# PARCELABLE / SERIALIZABLE / ENUM
-# =============================================================================
+# Gson specific classes
+-dontwarn sun.misc.**
+#-keep class com.google.gson.stream.** { *; }
+
+# Application classes that will be serialized/deserialized over Gson
+-keep class com.google.gson.examples.android.model.** { <fields>; }
+
+# Prevent proguard from stripping interface information from TypeAdapter, TypeAdapterFactory,
+# JsonSerializer, JsonDeserializer instances (so they can be used in @JsonAdapter)
+-keep class * extends com.google.gson.TypeAdapter
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# Prevent R8 from leaving Data object members always null
+-keepclassmembers,allowobfuscation class * {
+  @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# Retain generic signatures of TypeToken and its subclasses with R8 version 3.0 and higher.
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
+
+##---------------End: proguard configuration for Gson  ----------
+
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
--keepclassmembers class * implements java.io.Serializable {
-    static final long serialVersionUID;
-    private void writeObject(java.io.ObjectOutputStream);
-    private void readObject(java.io.ObjectInputStream);
-    java.lang.Object writeReplace();
-    java.lang.Object readResolve();
-}
--keepclassmembers enum * {
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
-    public final ** name();
-    public final int ordinal();
+
+-keepnames class * implements android.os.Parcelable
+
+
+-keepclasseswithmembernames,includedescriptorclasses class * {
+    native <methods>;
 }
 
-# =============================================================================
-# SUPPRESS WARNINGS
-# =============================================================================
--dontwarn java.lang.invoke.**
--dontwarn javax.annotation.**
--dontwarn sun.misc.**
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+	public static void check*(...);
+	public static void throw*(...);
+}
+
+-assumenosideeffects class java.util.Objects{
+    ** requireNonNull(...);
+}
+
+#-keep class com.frb.engine.Starter {
+#    public static void main(java.lang.String[]);
+#}
+
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

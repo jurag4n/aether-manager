@@ -1,83 +1,41 @@
-@file:Suppress("UnstableApiUsage")
-import com.android.build.gradle.internal.api.BaseVariantOutputImpl
-import java.util.Properties
-
-val localProps = Properties().also { props ->
-    rootProject.file("local.properties").takeIf { it.exists() }
-        ?.inputStream()?.use { props.load(it) }
-}
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
 }
 
 android {
-    namespace  = "com.aether"
-    compileSdk = 36
+    namespace   = "dev.aether.manager"
+    compileSdk  = 36
 
     defaultConfig {
-        applicationId         = "com.aether"
-        minSdk                = 26          // Android 8.0 (Aether Manager target)
-        targetSdk             = 36
-        versionCode           = 1
-        versionName           = "1.0"
+        applicationId = "dev.aether.manager"
+        minSdk        = 26
+        targetSdk     = 36
+        versionCode   = 120
+        versionName   = "1.2"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        ndk {
-            abiFilters += setOf("arm64-v8a", "armeabi-v7a")
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
-
-    signingConfigs {
-        create("release") {
-            storeFile     = localProps["STORE_FILE"]?.toString()?.let { rootProject.file(it) }
-            storePassword = localProps["STORE_PASSWORD"]?.toString() ?: ""
-            keyAlias      = localProps["KEY_ALIAS"]?.toString()      ?: ""
-            keyPassword   = localProps["KEY_PASSWORD"]?.toString()   ?: ""
-        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled   = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            isDebuggable           = false
-            isPseudoLocalesEnabled = false
-            isCrunchPngs           = true
+            multiDexEnabled = false
         }
         debug {
-            applicationIdSuffix = ".debug"
-            isDebuggable        = true
+            isMinifyEnabled = false
+            multiDexEnabled = true
         }
     }
 
-    applicationVariants.all {
-        val variant = this
-        outputs.map { it as BaseVariantOutputImpl }.forEach { output ->
-            output.outputFileName =
-                "aether-v${variant.versionName}-${variant.buildType.name}.apk"
-        }
-    }
-
-    lint {
-        abortOnError       = false
-        checkReleaseBuilds = false
-        ignoreTestSources  = true
+    androidResources {
+        generateLocaleConfig = true
     }
 
     compileOptions {
@@ -87,7 +45,10 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
-        freeCompilerArgs += listOf("-opt-in=kotlin.RequiresOptIn")
+        freeCompilerArgs += listOf(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-Xjvm-default=all"
+        )
     }
 
     buildFeatures {
@@ -110,71 +71,20 @@ android {
 }
 
 dependencies {
-    // Core AndroidX
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
-
-    // Compose BOM
-    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
-    debugImplementation(libs.androidx.ui.tooling)
-
-    // Navigation
     implementation(libs.androidx.navigation.compose)
-
-    // DataStore
-    implementation(libs.androidx.datastore.preferences)
-
-    // Coroutines
     implementation(libs.kotlinx.coroutines.android)
-
-    // Splash Screen
-    implementation(libs.androidx.core.splashscreen)
-
-    // Room (AppProfile)
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
-
-    // Gson
-    implementation(libs.gson)
-
-    // Material Components (XML themes)
-    implementation(libs.material)
-
-    // WorkManager (notification scheduler)
-    implementation(libs.androidx.work.runtime.ktx)
-
-    // OkHttp (update checker)
-    implementation(libs.okhttp)
-
-    // kotlinx.serialization (update checker JSON)
-    implementation(libs.kotlinx.serialization.json)
-
-    // Timber (logging)
-    implementation(libs.timber)
-
-    // libsu (Root shell)
-    implementation(libs.libsu.core)
-    implementation(libs.libsu.service)
-
-    // Unity Ads
-    implementation(libs.unity.ads)
-
-    // Shizuku
-    implementation(libs.shizuku.api)
-    implementation(libs.shizuku.provider)
-
-    // JankStats + Tracing (UiPerformanceMonitor)
-    implementation(libs.androidx.metrics.performance)
-    implementation(libs.androidx.tracing)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.accompanist.systemuicontroller)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.play.services.ads)
+    debugImplementation(libs.androidx.ui.tooling)
 }
